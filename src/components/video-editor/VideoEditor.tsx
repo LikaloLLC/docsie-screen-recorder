@@ -949,13 +949,17 @@ export default function VideoEditor() {
 					return;
 				}
 				e.preventDefault();
+				const video = videoPlaybackRef.current?.video;
+				if (!video) {
+					return;
+				}
 				const direction = e.key === "ArrowLeft" ? "backward" : "forward";
 				const newTime = computeFrameStepTime(
-					currentTimeRef.current,
-					durationRef.current,
+					video.currentTime,
+					Number.isFinite(video.duration) ? video.duration : durationRef.current,
 					direction,
 				);
-				handleSeek(newTime);
+				video.currentTime = newTime;
 				return;
 			}
 
