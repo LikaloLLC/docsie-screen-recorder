@@ -1351,7 +1351,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 							style={{ display: "none", pointerEvents: "none" }}
 						/>
 						{(() => {
-							const filtered = (annotationRegions || []).filter((annotation) => {
+							const filteredAnnotations = (annotationRegions || []).filter((annotation) => {
 								if (typeof annotation.startMs !== "number" || typeof annotation.endMs !== "number")
 									return false;
 
@@ -1361,42 +1361,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								return timeMs >= annotation.startMs && timeMs <= annotation.endMs;
 							});
 
-							// Sort by z-index (lowest to highest) so higher z-index renders on top
-							const sorted = [...filtered].sort((a, b) => a.zIndex - b.zIndex);
-
-							// Handle click-through cycling: when clicking same annotation, cycle to next
-							const handleAnnotationClick = (clickedId: string) => {
-								if (!onSelectAnnotation) return;
-
-								// If clicking on already selected annotation and there are multiple overlapping
-								if (clickedId === selectedAnnotationId && sorted.length > 1) {
-									// Find current index and cycle to next
-									const currentIndex = sorted.findIndex((a) => a.id === clickedId);
-									const nextIndex = (currentIndex + 1) % sorted.length;
-									onSelectAnnotation(sorted[nextIndex].id);
-								} else {
-									// First click or clicking different annotation
-									onSelectAnnotation(clickedId);
-								}
-							};
-
-							return sorted.map((annotation) => (
-								<AnnotationOverlay
-									key={`${annotation.id}-${overlaySize.width}-${overlaySize.height}`}
-									annotation={annotation}
-									isSelected={annotation.id === selectedAnnotationId}
-									containerWidth={overlaySize.width}
-									containerHeight={overlaySize.height}
-									onPositionChange={(id, position) => onAnnotationPositionChange?.(id, position)}
-									onSizeChange={(id, size) => onAnnotationSizeChange?.(id, size)}
-									onClick={handleAnnotationClick}
-									zIndex={annotation.zIndex}
-									isSelectedBoost={annotation.id === selectedAnnotationId}
-								/>
-							));
-						})()}
-						{(() => {
-							const filtered = (blurRegions || []).filter((blurRegion) => {
+							const filteredBlurRegions = (blurRegions || []).filter((blurRegion) => {
 								if (typeof blurRegion.startMs !== "number" || typeof blurRegion.endMs !== "number")
 									return false;
 
@@ -1406,33 +1371,83 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								return timeMs >= blurRegion.startMs && timeMs <= blurRegion.endMs;
 							});
 
-							const sorted = [...filtered].sort((a, b) => a.zIndex - b.zIndex);
+							const sorted = [
+								...filteredAnnotations.map((annotation) => ({
+									kind: "annotation" as const,
+									region: annotation,
+								})),
+								...filteredBlurRegions.map((blurRegion) => ({
+									kind: "blur" as const,
+									region: blurRegion,
+								})),
+							].sort((a, b) => a.region.zIndex - b.region.zIndex);
+
+							// Handle click-through cycling: when clicking same annotation, cycle to next
+							const handleAnnotationClick = (clickedId: string) => {
+								if (!onSelectAnnotation) return;
+
+								// If clicking on already selected annotation and there are multiple overlapping
+								if (clickedId === selectedAnnotationId && filteredAnnotations.length > 1) {
+									// Find current index and cycle to next
+									const currentIndex = filteredAnnotations.findIndex((a) => a.id === clickedId);
+									const nextIndex = (currentIndex + 1) % filteredAnnotations.length;
+									onSelectAnnotation(filteredAnnotations[nextIndex].id);
+								} else {
+									// First click or clicking different annotation
+									onSelectAnnotation(clickedId);
+								}
+							};
+
 							const handleBlurClick = (clickedId: string) => {
 								if (!onSelectBlur) return;
 
-								if (clickedId === selectedBlurId && sorted.length > 1) {
-									const currentIndex = sorted.findIndex((a) => a.id === clickedId);
-									const nextIndex = (currentIndex + 1) % sorted.length;
-									onSelectBlur(sorted[nextIndex].id);
+								if (clickedId === selectedBlurId && filteredBlurRegions.length > 1) {
+									const currentIndex = filteredBlurRegions.findIndex((a) => a.id === clickedId);
+									const nextIndex = (currentIndex + 1) % filteredBlurRegions.length;
+									onSelectBlur(filteredBlurRegions[nextIndex].id);
 								} else {
 									onSelectBlur(clickedId);
 								}
 							};
 
-							return sorted.map((blurRegion) => (
+							return sorted.map((item) => (
 								<AnnotationOverlay
-									key={`${blurRegion.id}-${overlaySize.width}-${overlaySize.height}-${blurRegion.blurData?.shape ?? "rectangle"}-${(blurRegion.blurData?.freehandPoints ?? []).map((p) => `${Math.round(p.x)}_${Math.round(p.y)}`).join("-")}`}
-									annotation={blurRegion}
-									isSelected={blurRegion.id === selectedBlurId}
+									key={
+										item.kind === "blur"
+											? `${item.region.id}-${overlaySize.width}-${overlaySize.height}-${item.region.blurData?.shape ?? "rectangle"}-${(item.region.blurData?.freehandPoints ?? []).map((p) => `${Math.round(p.x)}_${Math.round(p.y)}`).join("-")}`
+											: `${item.region.id}-${overlaySize.width}-${overlaySize.height}`
+									}
+									annotation={item.region}
+									isSelected={
+										item.kind === "blur"
+											? item.region.id === selectedBlurId
+											: item.region.id === selectedAnnotationId
+									}
 									containerWidth={overlaySize.width}
 									containerHeight={overlaySize.height}
-									onPositionChange={(id, position) => onBlurPositionChange?.(id, position)}
-									onSizeChange={(id, size) => onBlurSizeChange?.(id, size)}
-									onBlurDataChange={(id, blurData) => onBlurDataChange?.(id, blurData)}
-									onBlurDataCommit={onBlurDataCommit}
-									onClick={handleBlurClick}
-									zIndex={blurRegion.zIndex}
-									isSelectedBoost={blurRegion.id === selectedBlurId}
+									onPositionChange={(id, position) =>
+										item.kind === "blur"
+											? onBlurPositionChange?.(id, position)
+											: onAnnotationPositionChange?.(id, position)
+									}
+									onSizeChange={(id, size) =>
+										item.kind === "blur"
+											? onBlurSizeChange?.(id, size)
+											: onAnnotationSizeChange?.(id, size)
+									}
+									onBlurDataChange={
+										item.kind === "blur"
+											? (id, blurData) => onBlurDataChange?.(id, blurData)
+											: undefined
+									}
+									onBlurDataCommit={item.kind === "blur" ? onBlurDataCommit : undefined}
+									onClick={item.kind === "blur" ? handleBlurClick : handleAnnotationClick}
+									zIndex={item.region.zIndex}
+									isSelectedBoost={
+										item.kind === "blur"
+											? item.region.id === selectedBlurId
+											: item.region.id === selectedAnnotationId
+									}
 								/>
 							));
 						})()}
