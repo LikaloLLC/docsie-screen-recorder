@@ -97,7 +97,7 @@
 
             # Tell the npm `electron` package to use the Nix-provided binary
             # instead of downloading its own. vite-plugin-electron respects this.
-            ELECTRON_OVERRIDE_DIST_PATH = "${electron}/lib/electron";
+            ELECTRON_OVERRIDE_DIST_PATH = "${electron}/libexec/electron";
 
             # Playwright browser path for test:browser / test:e2e
             PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
