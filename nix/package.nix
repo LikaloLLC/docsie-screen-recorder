@@ -16,10 +16,14 @@ buildNpmPackage {
   src =
     let
       fs = lib.fileset;
+      # gitTracked fails when source is already a store path (path: flake inputs).
+      # Detect this and fall back to cleanSource which handles both cases.
+      isStorePath = builtins.storeDir == builtins.substring 0 (builtins.stringLength builtins.storeDir) (toString ../.);
+      baseFiles = if isStorePath then fs.fromSource (lib.cleanSource ../.) else fs.gitTracked ../.;
     in
     fs.toSource {
       root = ../.;
-      fileset = fs.difference (fs.gitTracked ../.) (
+      fileset = fs.difference baseFiles (
         fs.unions [
           ../nix
           ../flake.nix
