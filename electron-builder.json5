@@ -26,10 +26,12 @@
       "to": "assets/wallpapers"
     }
   ],
-  "publish": [{"provider": "github"}],
 
   "mac": {
-    "hardenedRuntime": false,
+    "notarize": false,
+    "hardenedRuntime": true,
+    "entitlements": "macos.entitlements",
+    "entitlementsInherit": "macos.entitlements",
     "target": [
       {
         "target": "dmg",

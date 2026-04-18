@@ -8,6 +8,13 @@
 			"manual": "Manual",
 			"auto": "Auto",
 			"autoDescription": "La cámara sigue la posición del cursor grabado"
+		},
+		"speed": {
+			"title": "Velocidad de zoom",
+			"instant": "Instantáneo",
+			"fast": "Rápido",
+			"smooth": "Suave",
+			"lazy": "Lento"
 		}
 	},
 	"speed": {
@@ -26,6 +33,7 @@
 		"selectPreset": "Seleccionar predefinido",
 		"pictureInPicture": "Imagen en imagen",
 		"verticalStack": "Apilado vertical",
+		"dualFrame": "Marco dual",
 		"webcamShape": "Forma de cámara",
 		"webcamSize": "Tamaño de cámara"
 	},
@@ -101,6 +109,7 @@
 		"typeText": "Texto",
 		"typeImage": "Imagen",
 		"typeArrow": "Flecha",
+		"typeBlur": "Desenfoque",
 		"textContent": "Contenido de texto",
 		"textPlaceholder": "Escribe tu texto...",
 		"fontStyle": "Estilo de fuente",
@@ -117,6 +126,18 @@
 		"arrowDirection": "Dirección de la flecha",
 		"strokeWidth": "Grosor del trazo: {{width}}px",
 		"arrowColor": "Color de la flecha",
+		"blurType": "Tipo de desenfoque",
+		"blurTypeBlur": "Desenfoque",
+		"blurTypeMosaic": "Desenfoque mosaico",
+		"blurColor": "Color del desenfoque",
+		"blurColorWhite": "Blanco",
+		"blurColorBlack": "Negro",
+		"blurShape": "Forma del desenfoque",
+		"blurIntensity": "Intensidad del desenfoque",
+		"mosaicBlockSize": "Tamano del bloque mosaico",
+		"blurShapeRectangle": "Rectángulo",
+		"blurShapeOval": "Óvalo",
+		"blurShapeFreehand": "Mano alzada",
 		"deleteAnnotation": "Eliminar anotación",
 		"shortcutsAndTips": "Atajos y consejos",
 		"tipMovePlayhead": "Mueve el cabezal de reproducción a la sección de anotación superpuesta y selecciona un elemento.",

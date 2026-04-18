@@ -8,6 +8,13 @@
 			"manual": "手动",
 			"auto": "自动",
 			"autoDescription": "摄像头跟随录制时的光标位置"
+		},
+		"speed": {
+			"title": "缩放速度",
+			"instant": "即时",
+			"fast": "快速",
+			"smooth": "平滑",
+			"lazy": "缓慢"
 		}
 	},
 	"speed": {
@@ -26,6 +33,7 @@
 		"selectPreset": "选择预设",
 		"pictureInPicture": "画中画",
 		"verticalStack": "垂直堆叠",
+		"dualFrame": "双画框",
 		"webcamShape": "摄像头形状",
 		"webcamSize": "摄像头大小"
 	},
@@ -101,6 +109,7 @@
 		"typeText": "文本",
 		"typeImage": "图片",
 		"typeArrow": "箭头",
+		"typeBlur": "模糊",
 		"textContent": "文本内容",
 		"textPlaceholder": "输入您的文本...",
 		"fontStyle": "字体样式",
@@ -117,6 +126,11 @@
 		"arrowDirection": "箭头方向",
 		"strokeWidth": "描边宽度：{{width}}px",
 		"arrowColor": "箭头颜色",
+		"blurShape": "模糊形状",
+		"blurIntensity": "模糊强度",
+		"blurShapeRectangle": "矩形",
+		"blurShapeOval": "椭圆",
+		"blurShapeFreehand": "自由手绘",
 		"deleteAnnotation": "删除标注",
 		"shortcutsAndTips": "快捷键与提示",
 		"tipMovePlayhead": "将播放头移动到重叠的标注区域并选择一个项目。",

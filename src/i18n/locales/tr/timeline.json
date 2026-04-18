@@ -4,13 +4,15 @@
 		"suggestZooms": "İmleçten Yakınlaştırma Öner",
 		"addTrim": "Kırpma Ekle (T)",
 		"addAnnotation": "Açıklama Ekle (A)",
-		"addSpeed": "Hız Ekle (S)"
+		"addSpeed": "Hız Ekle (S)",
+		"addBlur": "Bulanık ekle (B)"
 	},
 	"hints": {
 		"pressZoom": "Yakınlaştırma eklemek için Z tuşuna basın",
 		"pressTrim": "Kırpma eklemek için T tuşuna basın",
 		"pressAnnotation": "Açıklama eklemek için A tuşuna basın",
-		"pressSpeed": "Hız eklemek için S tuşuna basın"
+		"pressSpeed": "Hız eklemek için S tuşuna basın",
+		"pressBlur": "Bulanık bölge eklemek için B tuşuna basın"
 	},
 	"labels": {
 		"pan": "Kaydır",
@@ -20,7 +22,8 @@
 		"speedItem": "Hız {{index}}",
 		"annotationItem": "Açıklama",
 		"imageItem": "Görüntü",
-		"emptyText": "Boş metin"
+		"emptyText": "Boş metin",
+		"blurItem": "Bulanık {{index}}"
 	},
 	"emptyState": {
 		"noVideo": "Video Yüklenmedi",

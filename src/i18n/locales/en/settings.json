@@ -8,6 +8,13 @@
 			"manual": "Manual",
 			"auto": "Auto",
 			"autoDescription": "Camera follows the recorded cursor position"
+		},
+		"speed": {
+			"title": "Zoom Speed",
+			"instant": "Instant",
+			"fast": "Fast",
+			"smooth": "Smooth",
+			"lazy": "Lazy"
 		}
 	},
 	"speed": {
@@ -26,6 +33,7 @@
 		"selectPreset": "Select preset",
 		"pictureInPicture": "Picture in Picture",
 		"verticalStack": "Vertical Stack",
+		"dualFrame": "Dual Frame",
 		"webcamShape": "Camera Shape",
 		"webcamSize": "Webcam Size"
 	},
@@ -101,6 +109,7 @@
 		"typeText": "Text",
 		"typeImage": "Image",
 		"typeArrow": "Arrow",
+		"typeBlur": "Blur",
 		"textContent": "Text Content",
 		"textPlaceholder": "Enter your text...",
 		"fontStyle": "Font Style",
@@ -117,6 +126,18 @@
 		"arrowDirection": "Arrow Direction",
 		"strokeWidth": "Stroke Width: {{width}}px",
 		"arrowColor": "Arrow Color",
+		"blurType": "Blur Type",
+		"blurTypeBlur": "Blur",
+		"blurTypeMosaic": "Mosaic Blur",
+		"blurColor": "Blur Color",
+		"blurColorWhite": "White",
+		"blurColorBlack": "Black",
+		"blurShape": "Blur Shape",
+		"blurIntensity": "Blur Intensity",
+		"mosaicBlockSize": "Mosaic Block Size",
+		"blurShapeRectangle": "Rectangle",
+		"blurShapeOval": "Oval",
+		"blurShapeFreehand": "Freehand",
 		"deleteAnnotation": "Delete Annotation",
 		"shortcutsAndTips": "Shortcuts & Tips",
 		"tipMovePlayhead": "Move playhead to overlapping annotation section and select an item.",

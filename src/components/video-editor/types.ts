@@ -33,6 +33,8 @@ export interface ZoomRegion {
 	depth: ZoomDepth;
 	focus: ZoomFocus;
 	focusMode?: ZoomFocusMode;
+	zoomInDurationMs?: number;
+	zoomOutDurationMs?: number;
 }
 
 export interface CursorTelemetryPoint {
@@ -47,7 +49,7 @@ export interface TrimRegion {
 	endMs: number;
 }
 
-export type AnnotationType = "text" | "image" | "figure";
+export type AnnotationType = "text" | "image" | "figure" | "blur";
 
 export type ArrowDirection =
 	| "up"
@@ -63,6 +65,27 @@ export interface FigureData {
 	arrowDirection: ArrowDirection;
 	color: string;
 	strokeWidth: number;
+}
+
+export type BlurShape = "rectangle" | "oval" | "freehand";
+export type BlurType = "blur" | "mosaic";
+export type BlurColor = "white" | "black";
+
+export const MIN_BLUR_INTENSITY = 2;
+export const MAX_BLUR_INTENSITY = 40;
+export const DEFAULT_BLUR_INTENSITY = 12;
+export const MIN_BLUR_BLOCK_SIZE = 4;
+export const MAX_BLUR_BLOCK_SIZE = 48;
+export const DEFAULT_BLUR_BLOCK_SIZE = 12;
+
+export interface BlurData {
+	type: BlurType;
+	shape: BlurShape;
+	color: BlurColor;
+	intensity: number;
+	blockSize: number;
+	// Points are normalized (0-100) within the annotation bounds.
+	freehandPoints?: Array<{ x: number; y: number }>;
 }
 
 export interface AnnotationPosition {
@@ -99,6 +122,7 @@ export interface AnnotationRegion {
 	style: AnnotationTextStyle;
 	zIndex: number;
 	figureData?: FigureData;
+	blurData?: BlurData;
 }
 
 export const DEFAULT_ANNOTATION_POSITION: AnnotationPosition = {
@@ -126,6 +150,27 @@ export const DEFAULT_FIGURE_DATA: FigureData = {
 	arrowDirection: "right",
 	color: "#34B27B",
 	strokeWidth: 4,
+};
+
+export const DEFAULT_BLUR_FREEHAND_POINTS: Array<{ x: number; y: number }> = [
+	{ x: 10, y: 30 },
+	{ x: 25, y: 10 },
+	{ x: 55, y: 8 },
+	{ x: 82, y: 20 },
+	{ x: 90, y: 45 },
+	{ x: 78, y: 72 },
+	{ x: 52, y: 90 },
+	{ x: 22, y: 84 },
+	{ x: 8, y: 58 },
+];
+
+export const DEFAULT_BLUR_DATA: BlurData = {
+	type: "blur",
+	shape: "rectangle",
+	color: "white",
+	intensity: DEFAULT_BLUR_INTENSITY,
+	blockSize: DEFAULT_BLUR_BLOCK_SIZE,
+	freehandPoints: DEFAULT_BLUR_FREEHAND_POINTS,
 };
 
 export interface CropRegion {

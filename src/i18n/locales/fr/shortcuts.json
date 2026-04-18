@@ -18,6 +18,7 @@
 		"addTrim": "Ajouter une coupe",
 		"addSpeed": "Ajouter une vitesse",
 		"addAnnotation": "Ajouter une annotation",
+		"addBlur": "Ajouter un flou",
 		"addKeyframe": "Ajouter une image-clé",
 		"deleteSelected": "Supprimer la sélection",
 		"playPause": "Lecture / Pause"

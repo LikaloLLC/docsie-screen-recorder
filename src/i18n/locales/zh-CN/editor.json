@@ -1,4 +1,10 @@
 {
+	"newRecording": {
+		"title": "返回录屏",
+		"description": "当前会话已保存。",
+		"cancel": "取消",
+		"confirm": "确认"
+	},
 	"errors": {
 		"noVideoLoaded": "未加载视频",
 		"videoNotReady": "视频未就绪",

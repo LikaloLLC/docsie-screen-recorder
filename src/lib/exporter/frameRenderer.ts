@@ -78,6 +78,7 @@ interface FrameRenderConfig {
 	previewWidth?: number;
 	previewHeight?: number;
 	cursorTelemetry?: import("@/components/video-editor/types").CursorTelemetryPoint[];
+	platform: string;
 }
 
 interface AnimationState {
@@ -124,9 +125,11 @@ export class FrameRenderer {
 	private smoothedAutoFocus: { cx: number; cy: number } | null = null;
 	private prevAnimationTimeMs: number | null = null;
 	private prevTargetProgress = 0;
+	private isLinux = false;
 
 	constructor(config: FrameRenderConfig) {
 		this.config = config;
+		this.isLinux = config.platform === "linux";
 		this.animationState = {
 			scale: 1,
 			focusX: DEFAULT_FOCUS.cx,
@@ -187,8 +190,10 @@ export class FrameRenderer {
 		this.compositeCanvas = document.createElement("canvas");
 		this.compositeCanvas.width = this.config.width;
 		this.compositeCanvas.height = this.config.height;
+
+		// On Linux, getImageData() is called frequently causing frequent CPU readback
 		this.compositeCtx = this.compositeCanvas.getContext("2d", {
-			willReadFrequently: false,
+			willReadFrequently: this.isLinux,
 		});
 
 		if (!this.compositeCtx) {
@@ -507,7 +512,12 @@ export class FrameRenderer {
 		const previewWidth = this.config.previewWidth || 1920;
 		const previewHeight = this.config.previewHeight || 1080;
 		const canvasScaleFactor = Math.min(width / previewWidth, height / previewHeight);
-		const scaledBorderRadius = compositeLayout.screenCover ? 0 : borderRadius * canvasScaleFactor;
+		const scaledBorderRadius =
+			compositeLayout.screenBorderRadius != null
+				? compositeLayout.screenBorderRadius
+				: compositeLayout.screenCover
+					? 0
+					: borderRadius * canvasScaleFactor;
 
 		this.maskGraphics.clear();
 		this.maskGraphics.roundRect(0, 0, screenRect.width, screenRect.height, scaledBorderRadius);
@@ -535,16 +545,10 @@ export class FrameRenderer {
 	private updateAnimationState(timeMs: number): number {
 		if (!this.cameraContainer || !this.layoutCache) return 0;
 
-		const bmEx = this.layoutCache.maskRect;
-		const ssEx = this.layoutCache.stageSize;
-		const viewportRatio =
-			bmEx.width > 0 && bmEx.height > 0
-				? { widthRatio: ssEx.width / bmEx.width, heightRatio: ssEx.height / bmEx.height }
-				: undefined;
 		const { region, strength, blendedScale, transition } = findDominantRegion(
 			this.config.zoomRegions,
 			timeMs,
-			{ connectZooms: true, cursorTelemetry: this.config.cursorTelemetry, viewportRatio },
+			{ connectZooms: true, cursorTelemetry: this.config.cursorTelemetry },
 		);
 
 		const defaultFocus = DEFAULT_FOCUS;
@@ -727,7 +731,10 @@ export class FrameRenderer {
 	private compositeWithShadows(webcamFrame?: VideoFrame | null): void {
 		if (!this.compositeCanvas || !this.compositeCtx || !this.app) return;
 
-		const videoCanvas = this.readbackVideoCanvas();
+		const videoCanvas = this.isLinux
+			? this.readbackVideoCanvas()
+			: (this.app.canvas as HTMLCanvasElement);
+
 		const ctx = this.compositeCtx;
 		const w = this.compositeCanvas.width;
 		const h = this.compositeCanvas.height;
@@ -784,6 +791,22 @@ export class FrameRenderer {
 		if (webcamFrame && webcamRect) {
 			const preset = getWebcamLayoutPresetDefinition(this.config.webcamLayoutPreset);
 			const shape = webcamRect.maskShape ?? this.config.webcamMaskShape ?? "rectangle";
+			const sourceWidth =
+				("displayWidth" in webcamFrame && webcamFrame.displayWidth > 0
+					? webcamFrame.displayWidth
+					: webcamFrame.codedWidth) || webcamRect.width;
+			const sourceHeight =
+				("displayHeight" in webcamFrame && webcamFrame.displayHeight > 0
+					? webcamFrame.displayHeight
+					: webcamFrame.codedHeight) || webcamRect.height;
+			const sourceAspect = sourceWidth / sourceHeight;
+			const targetAspect = webcamRect.width / webcamRect.height;
+			const sourceCropWidth =
+				sourceAspect > targetAspect ? Math.round(sourceHeight * targetAspect) : sourceWidth;
+			const sourceCropHeight =
+				sourceAspect > targetAspect ? sourceHeight : Math.round(sourceWidth / targetAspect);
+			const sourceCropX = Math.max(0, Math.round((sourceWidth - sourceCropWidth) / 2));
+			const sourceCropY = Math.max(0, Math.round((sourceHeight - sourceCropHeight) / 2));
 			ctx.save();
 			drawCanvasClipPath(
 				ctx,
@@ -805,6 +828,10 @@ export class FrameRenderer {
 			ctx.clip();
 			ctx.drawImage(
 				webcamFrame as unknown as CanvasImageSource,
+				sourceCropX,
+				sourceCropY,
+				sourceCropWidth,
+				sourceCropHeight,
 				webcamRect.x,
 				webcamRect.y,
 				webcamRect.width,

@@ -4,13 +4,15 @@
 		"suggestZooms": "根据光标建议缩放",
 		"addTrim": "添加剪辑 (T)",
 		"addAnnotation": "添加标注 (A)",
-		"addSpeed": "添加速度 (S)"
+		"addSpeed": "添加速度 (S)",
+		"addBlur": "添加模糊 (B)"
 	},
 	"hints": {
 		"pressZoom": "按 Z 添加缩放",
 		"pressTrim": "按 T 添加剪辑",
 		"pressAnnotation": "按 A 添加标注",
-		"pressSpeed": "按 S 添加速度"
+		"pressSpeed": "按 S 添加速度",
+		"pressBlur": "按 B 添加模糊区域"
 	},
 	"labels": {
 		"pan": "平移",
@@ -20,7 +22,8 @@
 		"speedItem": "速度 {{index}}",
 		"annotationItem": "标注",
 		"imageItem": "图片",
-		"emptyText": "空文本"
+		"emptyText": "空文本",
+		"blurItem": "模糊 {{index}}"
 	},
 	"emptyState": {
 		"noVideo": "未加载视频",

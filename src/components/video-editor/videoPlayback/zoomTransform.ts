@@ -90,8 +90,10 @@ export function computeZoomTransform({
 	}
 
 	const progress = Math.min(1, Math.max(0, zoomProgress));
-	const focusStagePxX = baseMask.x + focusX * baseMask.width;
-	const focusStagePxY = baseMask.y + focusY * baseMask.height;
+	// Focus coordinates are stage-normalized (0-1 of full canvas),
+	// so map directly to stage pixels, not through baseMask.
+	const focusStagePxX = focusX * stageSize.width;
+	const focusStagePxY = focusY * stageSize.height;
 	const stageCenterX = stageSize.width / 2;
 	const stageCenterY = stageSize.height / 2;
 	const scale = 1 + (zoomScale - 1) * progress;
@@ -128,8 +130,8 @@ export function computeFocusFromTransform({
 	const focusStagePxY = (stageCenterY - y) / zoomScale;
 
 	return {
-		cx: (focusStagePxX - baseMask.x) / baseMask.width,
-		cy: (focusStagePxY - baseMask.y) / baseMask.height,
+		cx: focusStagePxX / stageSize.width,
+		cy: focusStagePxY / stageSize.height,
 	};
 }
 

@@ -1,4 +1,14 @@
-import type { AnnotationRegion, ArrowDirection } from "@/components/video-editor/types";
+import { type AnnotationRegion, type ArrowDirection } from "@/components/video-editor/types";
+import {
+	applyMosaicToImageData,
+	getBlurOverlayColor,
+	getNormalizedBlurIntensity,
+	getNormalizedMosaicBlockSize,
+	normalizeBlurType,
+} from "@/lib/blurEffects";
+
+let blurScratchCanvas: HTMLCanvasElement | null = null;
+let blurScratchCtx: CanvasRenderingContext2D | null = null;
 
 // SVG path data for each arrow direction
 const ARROW_PATHS: Record<ArrowDirection, string[]> = {
@@ -93,6 +103,101 @@ function renderArrow(
 
 	ctx.stroke();
 
+	ctx.restore();
+}
+
+function drawBlurPath(
+	ctx: CanvasRenderingContext2D,
+	annotation: AnnotationRegion,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+) {
+	const shape = annotation.blurData?.shape || "rectangle";
+	if (shape === "rectangle") {
+		ctx.beginPath();
+		ctx.rect(x, y, width, height);
+		return;
+	}
+
+	if (shape === "oval") {
+		ctx.beginPath();
+		ctx.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
+		return;
+	}
+
+	const points = annotation.blurData?.freehandPoints;
+	if (shape === "freehand" && points && points.length >= 3) {
+		ctx.beginPath();
+		ctx.moveTo(x + (points[0].x / 100) * width, y + (points[0].y / 100) * height);
+		for (let i = 1; i < points.length; i++) {
+			ctx.lineTo(x + (points[i].x / 100) * width, y + (points[i].y / 100) * height);
+		}
+		ctx.closePath();
+		return;
+	}
+
+	ctx.beginPath();
+	ctx.rect(x, y, width, height);
+}
+
+function renderBlur(
+	ctx: CanvasRenderingContext2D,
+	annotation: AnnotationRegion,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	scaleFactor: number,
+) {
+	const canvas = ctx.canvas;
+	const blurType = normalizeBlurType(annotation.blurData?.type);
+
+	const blurRadius = Math.max(
+		1,
+		Math.round(getNormalizedBlurIntensity(annotation.blurData) * scaleFactor),
+	);
+	const samplePadding =
+		blurType === "mosaic"
+			? Math.max(0, Math.ceil(getNormalizedMosaicBlockSize(annotation.blurData, scaleFactor)))
+			: Math.max(2, Math.ceil(blurRadius * 2));
+	const sx = Math.max(0, Math.floor(x) - samplePadding);
+	const sy = Math.max(0, Math.floor(y) - samplePadding);
+	const ex = Math.min(canvas.width, Math.ceil(x + width) + samplePadding);
+	const ey = Math.min(canvas.height, Math.ceil(y + height) + samplePadding);
+	const sw = Math.max(0, ex - sx);
+	const sh = Math.max(0, ey - sy);
+	if (sw <= 0 || sh <= 0) return;
+
+	if (!blurScratchCanvas || !blurScratchCtx) {
+		blurScratchCanvas = document.createElement("canvas");
+		blurScratchCtx = blurScratchCanvas.getContext("2d");
+	}
+	if (!blurScratchCanvas || !blurScratchCtx) return;
+
+	blurScratchCanvas.width = sw;
+	blurScratchCanvas.height = sh;
+	blurScratchCtx.clearRect(0, 0, sw, sh);
+	blurScratchCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+	if (blurType === "mosaic") {
+		const imageData = blurScratchCtx.getImageData(0, 0, sw, sh);
+		applyMosaicToImageData(
+			imageData,
+			getNormalizedMosaicBlockSize(annotation.blurData, scaleFactor),
+		);
+		blurScratchCtx.putImageData(imageData, 0, 0);
+	}
+
+	ctx.save();
+	drawBlurPath(ctx, annotation, x, y, width, height);
+	ctx.clip();
+	ctx.filter = blurType === "mosaic" ? "none" : `blur(${blurRadius}px)`;
+	ctx.drawImage(blurScratchCanvas, sx, sy);
+	ctx.filter = "none";
+	ctx.fillStyle = getBlurOverlayColor(annotation.blurData);
+	ctx.fillRect(sx, sy, sw, sh);
 	ctx.restore();
 }
 
@@ -268,7 +373,7 @@ export async function renderAnnotations(
 ): Promise<void> {
 	// Filter active annotations at current time
 	const activeAnnotations = annotations.filter(
-		(ann) => currentTimeMs >= ann.startMs && currentTimeMs <= ann.endMs,
+		(ann) => currentTimeMs >= ann.startMs && currentTimeMs < ann.endMs,
 	);
 
 	// Sort by z-index (lower first, so higher z-index draws on top)
@@ -303,6 +408,10 @@ export async function renderAnnotations(
 						scaleFactor,
 					);
 				}
+				break;
+
+			case "blur":
+				renderBlur(ctx, annotation, x, y, width, height, scaleFactor);
 				break;
 		}
 	}

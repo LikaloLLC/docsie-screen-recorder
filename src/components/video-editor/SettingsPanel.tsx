@@ -42,11 +42,13 @@ import { cn } from "@/lib/utils";
 import { type AspectRatio, isPortraitAspectRatio } from "@/utils/aspectRatioUtils";
 import { getTestId } from "@/utils/getTestId";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
+import { BlurSettingsPanel } from "./BlurSettingsPanel";
 import { CropControl } from "./CropControl";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import type {
 	AnnotationRegion,
 	AnnotationType,
+	BlurData,
 	CropRegion,
 	FigureData,
 	PlaybackSpeed,
@@ -208,7 +210,13 @@ interface SettingsPanelProps {
 	onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
 	onAnnotationFigureDataChange?: (id: string, figureData: FigureData) => void;
+	onAnnotationDuplicate?: (id: string) => void;
 	onAnnotationDelete?: (id: string) => void;
+	selectedBlurId?: string | null;
+	blurRegions?: AnnotationRegion[];
+	onBlurDataChange?: (id: string, blurData: BlurData) => void;
+	onBlurDataCommit?: () => void;
+	onBlurDelete?: (id: string) => void;
 	selectedSpeedId?: string | null;
 	selectedSpeedValue?: PlaybackSpeed | null;
 	onSpeedChange?: (speed: PlaybackSpeed) => void;
@@ -218,6 +226,9 @@ interface SettingsPanelProps {
 	onWebcamLayoutPresetChange?: (preset: WebcamLayoutPreset) => void;
 	webcamMaskShape?: import("./types").WebcamMaskShape;
 	onWebcamMaskShapeChange?: (shape: import("./types").WebcamMaskShape) => void;
+	selectedZoomInDuration?: number;
+	selectedZoomOutDuration?: number;
+	onZoomDurationChange?: (zoomIn: number, zoomOut: number) => void;
 	webcamSizePreset?: WebcamSizePreset;
 	onWebcamSizePresetChange?: (size: WebcamSizePreset) => void;
 	onWebcamSizePresetCommit?: () => void;
@@ -232,6 +243,13 @@ const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
 	{ depth: 4, label: "2.2×" },
 	{ depth: 5, label: "3.5×" },
 	{ depth: 6, label: "5×" },
+];
+
+const ZOOM_SPEED_OPTIONS = [
+	{ label: "Instant", zoomIn: 0, zoomOut: 0 },
+	{ label: "Fast", zoomIn: 500, zoomOut: 350 },
+	{ label: "Smooth", zoomIn: 1522, zoomOut: 1015 },
+	{ label: "Lazy", zoomIn: 3000, zoomOut: 2000 },
 ];
 
 export function SettingsPanel({
@@ -284,7 +302,13 @@ export function SettingsPanel({
 	onAnnotationTypeChange,
 	onAnnotationStyleChange,
 	onAnnotationFigureDataChange,
+	onAnnotationDuplicate,
 	onAnnotationDelete,
+	selectedBlurId,
+	blurRegions = [],
+	onBlurDataChange,
+	onBlurDataCommit,
+	onBlurDelete,
 	selectedSpeedId,
 	selectedSpeedValue,
 	onSpeedChange,
@@ -294,6 +318,9 @@ export function SettingsPanel({
 	onWebcamLayoutPresetChange,
 	webcamMaskShape = "rectangle",
 	onWebcamMaskShapeChange,
+	selectedZoomInDuration,
+	selectedZoomOutDuration,
+	onZoomDurationChange,
 	webcamSizePreset = DEFAULT_WEBCAM_SIZE_PRESET,
 	onWebcamSizePresetChange,
 	onWebcamSizePresetCommit,
@@ -342,6 +369,7 @@ export function SettingsPanel({
 	const cropSnapshotRef = useRef<CropRegion | null>(null);
 	const [cropAspectLocked, setCropAspectLocked] = useState(false);
 	const [cropAspectRatio, setCropAspectRatio] = useState("");
+	const isPortraitCanvas = isPortraitAspectRatio(aspectRatio);
 
 	const videoWidth = videoElement?.videoWidth || 1920;
 	const videoHeight = videoElement?.videoHeight || 1080;
@@ -520,6 +548,9 @@ export function SettingsPanel({
 	const selectedAnnotation = selectedAnnotationId
 		? annotationRegions.find((a) => a.id === selectedAnnotationId)
 		: null;
+	const selectedBlur = selectedBlurId
+		? blurRegions.find((region) => region.id === selectedBlurId)
+		: null;
 
 	// If an annotation is selected, show annotation settings instead
 	if (
@@ -540,7 +571,21 @@ export function SettingsPanel({
 						? (figureData) => onAnnotationFigureDataChange(selectedAnnotation.id, figureData)
 						: undefined
 				}
+				onDuplicate={
+					onAnnotationDuplicate ? () => onAnnotationDuplicate(selectedAnnotation.id) : undefined
+				}
 				onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
+			/>
+		);
+	}
+
+	if (selectedBlur && onBlurDataChange && onBlurDelete) {
+		return (
+			<BlurSettingsPanel
+				blurRegion={selectedBlur}
+				onBlurDataChange={(blurData) => onBlurDataChange(selectedBlur.id, blurData)}
+				onBlurDataCommit={onBlurDataCommit}
+				onDelete={() => onBlurDelete(selectedBlur.id)}
 			/>
 		);
 	}
@@ -619,6 +664,39 @@ export function SettingsPanel({
 									{t("zoom.focusMode.autoDescription")}
 								</p>
 							)}
+						</div>
+					)}
+
+					{zoomEnabled && (
+						<div className="mt-3">
+							<span className="text-sm font-medium text-slate-200 mb-2 block">
+								{t("zoom.speed.title") || "Zoom Speed"}
+							</span>
+							<div className="grid grid-cols-4 gap-1.5">
+								{ZOOM_SPEED_OPTIONS.map((opt) => {
+									const isActive =
+										selectedZoomInDuration !== undefined &&
+										selectedZoomOutDuration !== undefined &&
+										Math.round(selectedZoomInDuration) === Math.round(opt.zoomIn) &&
+										Math.round(selectedZoomOutDuration) === Math.round(opt.zoomOut);
+									return (
+										<Button
+											key={opt.label}
+											type="button"
+											onClick={() => onZoomDurationChange?.(opt.zoomIn, opt.zoomOut)}
+											className={cn(
+												"h-auto w-full rounded-lg border px-1 py-2 text-center shadow-sm transition-all",
+												"duration-200 ease-out cursor-pointer",
+												isActive
+													? "border-[#34B27B] bg-[#34B27B] text-white shadow-[#34B27B]/20"
+													: "border-white/5 bg-white/5 text-slate-400 hover:bg-white/10 hover:border-white/10 hover:text-slate-200",
+											)}
+										>
+											<span className="text-[10px] font-semibold">{opt.label}</span>
+										</Button>
+									);
+								})}
+							</div>
 						</div>
 					)}
 					{zoomEnabled && (
@@ -753,15 +831,17 @@ export function SettingsPanel({
 											<SelectValue placeholder={t("layout.selectPreset")} />
 										</SelectTrigger>
 										<SelectContent>
-											{WEBCAM_LAYOUT_PRESETS.filter(
-												(preset) =>
-													preset.value === "picture-in-picture" ||
-													isPortraitAspectRatio(aspectRatio),
-											).map((preset) => (
+											{WEBCAM_LAYOUT_PRESETS.filter((preset) => {
+												if (preset.value === "picture-in-picture") return true;
+												if (preset.value === "vertical-stack") return isPortraitCanvas;
+												return !isPortraitCanvas;
+											}).map((preset) => (
 												<SelectItem key={preset.value} value={preset.value} className="text-xs">
 													{preset.value === "picture-in-picture"
 														? t("layout.pictureInPicture")
-														: t("layout.verticalStack")}
+														: preset.value === "vertical-stack"
+															? t("layout.verticalStack")
+															: t("layout.dualFrame")}
 												</SelectItem>
 											))}
 										</SelectContent>
@@ -997,7 +1077,7 @@ export function SettingsPanel({
 						</AccordionTrigger>
 						<AccordionContent className="pb-3">
 							<Tabs defaultValue="image" className="w-full">
-								<TabsList className="mb-2 bg-white/5 border border-white/5 p-0.5 w-full grid grid-cols-3 h-7 rounded-lg">
+								<TabsList className="mb-2 bg-white/5 border border-white/5 p-0.5 w-full grid grid-cols-3 rounded-lg">
 									<TabsTrigger
 										value="image"
 										className="data-[state=active]:bg-[#34B27B] data-[state=active]:text-white text-slate-400 text-[10px] py-1 rounded-md transition-all"

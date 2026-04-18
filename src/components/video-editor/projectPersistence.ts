@@ -1,7 +1,8 @@
+import { normalizeBlurColor, normalizeBlurType } from "@/lib/blurEffects";
 import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
 import type { ProjectMedia } from "@/lib/recordingSession";
 import { normalizeProjectMedia } from "@/lib/recordingSession";
-import { ASPECT_RATIOS, type AspectRatio } from "@/utils/aspectRatioUtils";
+import { ASPECT_RATIOS, type AspectRatio, isPortraitAspectRatio } from "@/utils/aspectRatioUtils";
 import {
 	type AnnotationRegion,
 	type CropRegion,
@@ -9,6 +10,10 @@ import {
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
+	DEFAULT_BLUR_BLOCK_SIZE,
+	DEFAULT_BLUR_DATA,
+	DEFAULT_BLUR_FREEHAND_POINTS,
+	DEFAULT_BLUR_INTENSITY,
 	DEFAULT_CROP_REGION,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
@@ -17,7 +22,11 @@ import {
 	DEFAULT_WEBCAM_POSITION,
 	DEFAULT_WEBCAM_SIZE_PRESET,
 	DEFAULT_ZOOM_DEPTH,
+	MAX_BLUR_BLOCK_SIZE,
+	MAX_BLUR_INTENSITY,
 	MAX_PLAYBACK_SPEED,
+	MIN_BLUR_BLOCK_SIZE,
+	MIN_BLUR_INTENSITY,
 	MIN_PLAYBACK_SPEED,
 	type SpeedRegion,
 	type TrimRegion,
@@ -29,6 +38,7 @@ import {
 } from "./types";
 
 const WALLPAPER_COUNT = 18;
+const VALID_BLUR_SHAPES = new Set(["rectangle", "oval", "freehand"] as const);
 
 export const WALLPAPER_PATHS = Array.from(
 	{ length: WALLPAPER_COUNT },
@@ -70,6 +80,26 @@ export interface EditorProjectData {
 
 function isFiniteNumber(value: unknown): value is number {
 	return typeof value === "number" && Number.isFinite(value);
+}
+
+function computeNormalizedWebcamLayoutPreset(
+	webcamLayoutPreset: Partial<ProjectEditorState>["webcamLayoutPreset"],
+	normalizedAspectRatio: AspectRatio,
+): WebcamLayoutPreset {
+	switch (webcamLayoutPreset) {
+		case "picture-in-picture":
+			return webcamLayoutPreset;
+		case "vertical-stack":
+			return isPortraitAspectRatio(normalizedAspectRatio)
+				? webcamLayoutPreset
+				: DEFAULT_WEBCAM_LAYOUT_PRESET;
+		case "dual-frame":
+			return isPortraitAspectRatio(normalizedAspectRatio)
+				? DEFAULT_WEBCAM_LAYOUT_PRESET
+				: webcamLayoutPreset;
+		default:
+			return DEFAULT_WEBCAM_LAYOUT_PRESET;
+	}
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -179,6 +209,26 @@ export function resolveProjectMedia(
 
 export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): ProjectEditorState {
 	const validAspectRatios = new Set<AspectRatio>(ASPECT_RATIOS);
+	const normalizedAspectRatio: AspectRatio = validAspectRatios.has(
+		editor.aspectRatio as AspectRatio,
+	)
+		? (editor.aspectRatio as AspectRatio)
+		: "16:9";
+	const normalizedWebcamLayoutPreset = computeNormalizedWebcamLayoutPreset(
+		editor.webcamLayoutPreset,
+		normalizedAspectRatio,
+	);
+	const normalizedWebcamPosition: WebcamPosition | null =
+		normalizedWebcamLayoutPreset === "picture-in-picture" &&
+		editor.webcamPosition &&
+		typeof editor.webcamPosition === "object" &&
+		isFiniteNumber((editor.webcamPosition as WebcamPosition).cx) &&
+		isFiniteNumber((editor.webcamPosition as WebcamPosition).cy)
+			? {
+					cx: clamp((editor.webcamPosition as WebcamPosition).cx, 0, 1),
+					cy: clamp((editor.webcamPosition as WebcamPosition).cy, 0, 1),
+				}
+			: DEFAULT_WEBCAM_POSITION;
 
 	const normalizedZoomRegions: ZoomRegion[] = Array.isArray(editor.zoomRegions)
 		? editor.zoomRegions
@@ -254,12 +304,22 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 					const rawEnd = isFiniteNumber(region.endMs) ? Math.round(region.endMs) : rawStart + 1000;
 					const startMs = Math.max(0, Math.min(rawStart, rawEnd));
 					const endMs = Math.max(startMs + 1, rawEnd);
+					const blurShape =
+						typeof region.blurData?.shape === "string" &&
+						VALID_BLUR_SHAPES.has(region.blurData.shape)
+							? region.blurData.shape
+							: DEFAULT_BLUR_DATA.shape;
+					const blurType = normalizeBlurType(region.blurData?.type);
+					const blurColor = normalizeBlurColor(region.blurData?.color);
 
 					return {
 						id: region.id,
 						startMs,
 						endMs,
-						type: region.type === "image" || region.type === "figure" ? region.type : "text",
+						type:
+							region.type === "image" || region.type === "figure" || region.type === "blur"
+								? region.type
+								: "text",
 						content: typeof region.content === "string" ? region.content : "",
 						textContent: typeof region.textContent === "string" ? region.textContent : undefined,
 						imageContent: typeof region.imageContent === "string" ? region.imageContent : undefined,
@@ -306,6 +366,42 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 									...region.figureData,
 								}
 							: undefined,
+						blurData:
+							region.blurData && typeof region.blurData === "object"
+								? {
+										...DEFAULT_BLUR_DATA,
+										...region.blurData,
+										type: blurType,
+										shape: blurShape,
+										color: blurColor,
+										intensity: isFiniteNumber(region.blurData.intensity)
+											? clamp(region.blurData.intensity, MIN_BLUR_INTENSITY, MAX_BLUR_INTENSITY)
+											: DEFAULT_BLUR_INTENSITY,
+										blockSize: isFiniteNumber(region.blurData.blockSize)
+											? clamp(region.blurData.blockSize, MIN_BLUR_BLOCK_SIZE, MAX_BLUR_BLOCK_SIZE)
+											: DEFAULT_BLUR_BLOCK_SIZE,
+										freehandPoints: Array.isArray(region.blurData.freehandPoints)
+											? region.blurData.freehandPoints
+													.filter(
+														(
+															point,
+														): point is {
+															x: number;
+															y: number;
+														} =>
+															Boolean(
+																point &&
+																	isFiniteNumber((point as { x?: unknown }).x) &&
+																	isFiniteNumber((point as { y?: unknown }).y),
+															),
+													)
+													.map((point) => ({
+														x: clamp(point.x, 0, 100),
+														y: clamp(point.y, 0, 100),
+													}))
+											: DEFAULT_BLUR_FREEHAND_POINTS,
+									}
+								: undefined,
 					};
 				})
 		: [];
@@ -351,13 +447,8 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		trimRegions: normalizedTrimRegions,
 		speedRegions: normalizedSpeedRegions,
 		annotationRegions: normalizedAnnotationRegions,
-		aspectRatio:
-			editor.aspectRatio && validAspectRatios.has(editor.aspectRatio) ? editor.aspectRatio : "16:9",
-		webcamLayoutPreset:
-			editor.webcamLayoutPreset === "vertical-stack" ||
-			editor.webcamLayoutPreset === "picture-in-picture"
-				? editor.webcamLayoutPreset
-				: DEFAULT_WEBCAM_LAYOUT_PRESET,
+		aspectRatio: normalizedAspectRatio,
+		webcamLayoutPreset: normalizedWebcamLayoutPreset,
 		webcamMaskShape:
 			editor.webcamMaskShape === "rectangle" ||
 			editor.webcamMaskShape === "circle" ||
@@ -369,16 +460,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			typeof editor.webcamSizePreset === "number" && isFiniteNumber(editor.webcamSizePreset)
 				? Math.max(10, Math.min(50, editor.webcamSizePreset))
 				: DEFAULT_WEBCAM_SIZE_PRESET,
-		webcamPosition:
-			editor.webcamPosition &&
-			typeof editor.webcamPosition === "object" &&
-			isFiniteNumber((editor.webcamPosition as WebcamPosition).cx) &&
-			isFiniteNumber((editor.webcamPosition as WebcamPosition).cy)
-				? {
-						cx: clamp((editor.webcamPosition as WebcamPosition).cx, 0, 1),
-						cy: clamp((editor.webcamPosition as WebcamPosition).cy, 0, 1),
-					}
-				: DEFAULT_WEBCAM_POSITION,
+		webcamPosition: normalizedWebcamPosition,
 		exportQuality:
 			editor.exportQuality === "medium" || editor.exportQuality === "source"
 				? editor.exportQuality

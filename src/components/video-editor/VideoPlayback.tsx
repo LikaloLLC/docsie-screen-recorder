@@ -35,6 +35,7 @@ import {
 import { AnnotationOverlay } from "./AnnotationOverlay";
 import {
 	type AnnotationRegion,
+	type BlurData,
 	type SpeedRegion,
 	type TrimRegion,
 	ZOOM_DEPTH_SCALES,
@@ -101,6 +102,13 @@ interface VideoPlaybackProps {
 	onSelectAnnotation?: (id: string | null) => void;
 	onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
 	onAnnotationSizeChange?: (id: string, size: { width: number; height: number }) => void;
+	blurRegions?: AnnotationRegion[];
+	selectedBlurId?: string | null;
+	onSelectBlur?: (id: string | null) => void;
+	onBlurPositionChange?: (id: string, position: { x: number; y: number }) => void;
+	onBlurSizeChange?: (id: string, size: { width: number; height: number }) => void;
+	onBlurDataChange?: (id: string, blurData: BlurData) => void;
+	onBlurDataCommit?: () => void;
 	cursorTelemetry?: import("./types").CursorTelemetryPoint[];
 }
 
@@ -152,6 +160,13 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			onSelectAnnotation,
 			onAnnotationPositionChange,
 			onAnnotationSizeChange,
+			blurRegions = [],
+			selectedBlurId,
+			onSelectBlur,
+			onBlurPositionChange,
+			onBlurSizeChange,
+			onBlurDataChange,
+			onBlurDataCommit,
 			cursorTelemetry = [],
 		},
 		ref,
@@ -166,6 +181,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const timeUpdateAnimationRef = useRef<number | null>(null);
 		const [pixiReady, setPixiReady] = useState(false);
 		const [videoReady, setVideoReady] = useState(false);
+		const [overlaySize, setOverlaySize] = useState({ width: 800, height: 600 });
+		const [overlayElement, setOverlayElement] = useState<HTMLDivElement | null>(null);
 		const overlayRef = useRef<HTMLDivElement | null>(null);
 		const focusIndicatorRef = useRef<HTMLDivElement | null>(null);
 		const [webcamLayout, setWebcamLayout] = useState<StyledRenderRect | null>(null);
@@ -329,6 +346,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		useEffect(() => {
 			layoutVideoContentRef.current = layoutVideoContent;
 		}, [layoutVideoContent]);
+
+		const setOverlayRefs = useCallback((node: HTMLDivElement | null) => {
+			overlayRef.current = node;
+			setOverlayElement(node);
+		}, []);
 
 		const selectedZoom = useMemo(() => {
 			if (!selectedZoomId) return null;
@@ -623,7 +645,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		}, [selectedZoom, pixiReady, videoReady, updateOverlayForRegion]);
 
 		useEffect(() => {
-			const overlayEl = overlayRef.current;
+			if (!pixiReady || !videoReady) return;
+			const overlayEl = overlayElement;
 			if (!overlayEl) return;
 			if (!selectedZoom) {
 				overlayEl.style.cursor = "default";
@@ -632,7 +655,34 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			}
 			overlayEl.style.cursor = isPlaying ? "not-allowed" : "grab";
 			overlayEl.style.pointerEvents = isPlaying ? "none" : "auto";
-		}, [selectedZoom, isPlaying]);
+		}, [selectedZoom, isPlaying, pixiReady, videoReady, overlayElement]);
+
+		useEffect(() => {
+			const overlayEl = overlayElement;
+			if (!overlayEl) return;
+
+			const updateOverlaySize = () => {
+				const width = overlayEl.clientWidth || 800;
+				const height = overlayEl.clientHeight || 600;
+				setOverlaySize((prev) => {
+					if (prev.width === width && prev.height === height) return prev;
+					return { width, height };
+				});
+			};
+
+			updateOverlaySize();
+
+			if (typeof ResizeObserver !== "undefined") {
+				const observer = new ResizeObserver(() => {
+					updateOverlaySize();
+				});
+				observer.observe(overlayEl);
+				return () => observer.disconnect();
+			}
+
+			window.addEventListener("resize", updateOverlaySize);
+			return () => window.removeEventListener("resize", updateOverlaySize);
+		}, [overlayElement]);
 
 		useEffect(() => {
 			const container = containerRef.current;
@@ -865,22 +915,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			};
 
 			const ticker = () => {
-				const bm = baseMaskRef.current;
-				const ss = stageSizeRef.current;
-				const viewportRatio =
-					bm.width > 0 && bm.height > 0
-						? {
-								widthRatio: ss.width / bm.width,
-								heightRatio: ss.height / bm.height,
-							}
-						: undefined;
 				const { region, strength, blendedScale, transition } = findDominantRegion(
 					zoomRegionsRef.current,
 					currentTimeRef.current,
 					{
 						connectZooms: true,
 						cursorTelemetry: cursorTelemetryRef.current,
-						viewportRatio,
 					},
 				);
 
@@ -1287,7 +1327,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				{/* Only render overlay after PIXI and video are fully initialized */}
 				{pixiReady && videoReady && (
 					<div
-						ref={overlayRef}
+						ref={setOverlayRefs}
 						className="absolute inset-0 select-none"
 						style={{ pointerEvents: "none", zIndex: 30 }}
 						onPointerDown={handleOverlayPointerDown}
@@ -1301,47 +1341,114 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 							style={{ display: "none", pointerEvents: "none" }}
 						/>
 						{(() => {
-							const filtered = (annotationRegions || []).filter((annotation) => {
+							const filteredAnnotations = (annotationRegions || []).filter((annotation) => {
 								if (typeof annotation.startMs !== "number" || typeof annotation.endMs !== "number")
 									return false;
 
 								if (annotation.id === selectedAnnotationId) return true;
 
 								const timeMs = Math.round(currentTime * 1000);
-								return timeMs >= annotation.startMs && timeMs <= annotation.endMs;
+								return timeMs >= annotation.startMs && timeMs < annotation.endMs;
 							});
 
-							// Sort by z-index (lowest to highest) so higher z-index renders on top
-							const sorted = [...filtered].sort((a, b) => a.zIndex - b.zIndex);
+							const filteredBlurRegions = (blurRegions || []).filter((blurRegion) => {
+								if (typeof blurRegion.startMs !== "number" || typeof blurRegion.endMs !== "number")
+									return false;
+
+								if (blurRegion.id === selectedBlurId) return true;
+
+								const timeMs = Math.round(currentTime * 1000);
+								return timeMs >= blurRegion.startMs && timeMs < blurRegion.endMs;
+							});
+
+							const sorted = [
+								...filteredAnnotations.map((annotation) => ({
+									kind: "annotation" as const,
+									region: annotation,
+								})),
+								...filteredBlurRegions.map((blurRegion) => ({
+									kind: "blur" as const,
+									region: blurRegion,
+								})),
+							].sort((a, b) => a.region.zIndex - b.region.zIndex);
+							const previewSnapshotCanvas = (() => {
+								const app = appRef.current;
+								if (!app?.renderer?.extract) return null;
+								try {
+									return app.renderer.extract.canvas(app.stage);
+								} catch {
+									return null;
+								}
+							})();
 
 							// Handle click-through cycling: when clicking same annotation, cycle to next
 							const handleAnnotationClick = (clickedId: string) => {
 								if (!onSelectAnnotation) return;
 
 								// If clicking on already selected annotation and there are multiple overlapping
-								if (clickedId === selectedAnnotationId && sorted.length > 1) {
+								if (clickedId === selectedAnnotationId && filteredAnnotations.length > 1) {
 									// Find current index and cycle to next
-									const currentIndex = sorted.findIndex((a) => a.id === clickedId);
-									const nextIndex = (currentIndex + 1) % sorted.length;
-									onSelectAnnotation(sorted[nextIndex].id);
+									const currentIndex = filteredAnnotations.findIndex((a) => a.id === clickedId);
+									const nextIndex = (currentIndex + 1) % filteredAnnotations.length;
+									onSelectAnnotation(filteredAnnotations[nextIndex].id);
 								} else {
 									// First click or clicking different annotation
 									onSelectAnnotation(clickedId);
 								}
 							};
 
-							return sorted.map((annotation) => (
+							const handleBlurClick = (clickedId: string) => {
+								if (!onSelectBlur) return;
+
+								if (clickedId === selectedBlurId && filteredBlurRegions.length > 1) {
+									const currentIndex = filteredBlurRegions.findIndex((a) => a.id === clickedId);
+									const nextIndex = (currentIndex + 1) % filteredBlurRegions.length;
+									onSelectBlur(filteredBlurRegions[nextIndex].id);
+								} else {
+									onSelectBlur(clickedId);
+								}
+							};
+
+							return sorted.map((item) => (
 								<AnnotationOverlay
-									key={annotation.id}
-									annotation={annotation}
-									isSelected={annotation.id === selectedAnnotationId}
-									containerWidth={overlayRef.current?.clientWidth || 800}
-									containerHeight={overlayRef.current?.clientHeight || 600}
-									onPositionChange={(id, position) => onAnnotationPositionChange?.(id, position)}
-									onSizeChange={(id, size) => onAnnotationSizeChange?.(id, size)}
-									onClick={handleAnnotationClick}
-									zIndex={annotation.zIndex}
-									isSelectedBoost={annotation.id === selectedAnnotationId}
+									key={
+										item.kind === "blur"
+											? `${item.region.id}-${overlaySize.width}-${overlaySize.height}-${item.region.blurData?.type ?? "blur"}-${item.region.blurData?.shape ?? "rectangle"}-${item.region.blurData?.color ?? "white"}-${Math.round(item.region.blurData?.blockSize ?? 0)}-${Math.round(item.region.blurData?.intensity ?? 0)}-${(item.region.blurData?.freehandPoints ?? []).map((p) => `${Math.round(p.x)}_${Math.round(p.y)}`).join("-")}`
+											: `${item.region.id}-${overlaySize.width}-${overlaySize.height}`
+									}
+									annotation={item.region}
+									isSelected={
+										item.kind === "blur"
+											? item.region.id === selectedBlurId
+											: item.region.id === selectedAnnotationId
+									}
+									containerWidth={overlaySize.width}
+									containerHeight={overlaySize.height}
+									onPositionChange={(id, position) =>
+										item.kind === "blur"
+											? onBlurPositionChange?.(id, position)
+											: onAnnotationPositionChange?.(id, position)
+									}
+									onSizeChange={(id, size) =>
+										item.kind === "blur"
+											? onBlurSizeChange?.(id, size)
+											: onAnnotationSizeChange?.(id, size)
+									}
+									onBlurDataChange={
+										item.kind === "blur"
+											? (id, blurData) => onBlurDataChange?.(id, blurData)
+											: undefined
+									}
+									onBlurDataCommit={item.kind === "blur" ? onBlurDataCommit : undefined}
+									onClick={item.kind === "blur" ? handleBlurClick : handleAnnotationClick}
+									zIndex={item.region.zIndex}
+									isSelectedBoost={
+										item.kind === "blur"
+											? item.region.id === selectedBlurId
+											: item.region.id === selectedAnnotationId
+									}
+									previewSourceCanvas={previewSnapshotCanvas}
+									previewFrameVersion={Math.round(currentTime * 1000)}
 								/>
 							));
 						})()}
