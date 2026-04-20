@@ -70,6 +70,35 @@ interface Window {
 			message?: string;
 			error?: string;
 		}>;
+		docsieGetState: () => Promise<{
+			success: boolean;
+			state?: import("../src/lib/docsieIntegration").DocsieIntegrationState;
+			error?: string;
+		}>;
+		docsieSaveConfig: (
+			input: import("../src/lib/docsieIntegration").DocsieIntegrationConfigInput,
+		) => Promise<{
+			success: boolean;
+			state?: import("../src/lib/docsieIntegration").DocsieIntegrationState;
+			error?: string;
+		}>;
+		docsieListWorkspaces: () => Promise<{
+			success: boolean;
+			workspaces: import("../src/lib/docsieIntegration").DocsieWorkspace[];
+			error?: string;
+		}>;
+		docsieEstimateVideoToDocs: (
+			input: import("../src/lib/docsieIntegration").DocsieEstimateInput,
+		) => Promise<import("../src/lib/docsieIntegration").DocsieEstimateResult>;
+		docsieStartVideoToDocs: (
+			input: import("../src/lib/docsieIntegration").DocsieStartVideoToDocsInput,
+		) => Promise<import("../src/lib/docsieIntegration").DocsieStartVideoToDocsResult>;
+		docsieGetJobStatus: (
+			jobId: string,
+		) => Promise<import("../src/lib/docsieIntegration").DocsieVideoToDocsJobStatus>;
+		docsieGetJobResult: (
+			jobId: string,
+		) => Promise<import("../src/lib/docsieIntegration").DocsieVideoToDocsJobResult>;
 		onStopRecordingFromTray: (callback: () => void) => () => void;
 		openExternalUrl: (url: string) => Promise<{ success: boolean; error?: string }>;
 		saveExportedVideo: (

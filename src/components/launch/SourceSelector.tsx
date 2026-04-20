@@ -65,7 +65,7 @@ export function SourceSelector() {
 				style={{ minHeight: "100vh" }}
 			>
 				<div className="text-center">
-					<div className="animate-spin duration-500 rounded-[50%] h-6 w-6 border-2 border-b-transparent border-[#34B27B] mx-auto mb-2" />
+					<div className="animate-spin duration-500 rounded-[50%] h-6 w-6 border-2 border-b-transparent border-[#FF6738] mx-auto mb-2" />
 					<p className="text-xs text-zinc-400">{t("sourceSelector.loading")}</p>
 				</div>
 			</div>
@@ -107,20 +107,31 @@ export function SourceSelector() {
 	return (
 		<div className={`min-h-screen flex flex-col ${styles.glassContainer}`}>
 			<div className="flex-1 flex flex-col w-full px-4 pt-4">
+				<div className="mb-3 px-1">
+					<div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#FEA85E]">
+						Docsie
+					</div>
+					<div className="mt-1 flex items-end justify-between gap-3">
+						<div>
+							<h1 className="text-lg font-semibold text-[#FFF0E4]">Screen Recorder</h1>
+							<p className="text-xs text-[#FDD2A3]/70">Choose the screen or window to capture.</p>
+						</div>
+					</div>
+				</div>
 				<Tabs
 					defaultValue={screenSources.length === 0 ? "windows" : "screens"}
 					className="flex-1 flex flex-col"
 				>
-					<TabsList className="grid grid-cols-2 mb-3 bg-white/5 rounded-[14px] squircle ">
+					<TabsList className="grid grid-cols-2 mb-3 rounded-[14px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] squircle">
 						<TabsTrigger
 							value="screens"
-							className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-zinc-400 rounded-[12px] squircle text-xs py-1.5 transition-all"
+							className="data-[state=active]:bg-[rgba(255,103,56,0.18)] data-[state=active]:text-white text-[#FDD2A3]/70 rounded-[12px] squircle text-xs py-1.5 transition-all"
 						>
 							{t("sourceSelector.screens", { count: String(screenSources.length) })}
 						</TabsTrigger>
 						<TabsTrigger
 							value="windows"
-							className="data-[state=active]:bg-white/15 data-[state=active]:text-white text-zinc-400 rounded-[12px] squircle text-xs py-1.5 transition-all"
+							className="data-[state=active]:bg-[rgba(255,103,56,0.18)] data-[state=active]:text-white text-[#FDD2A3]/70 rounded-[12px] squircle text-xs py-1.5 transition-all"
 						>
 							{t("sourceSelector.windows", { count: String(windowSources.length) })}
 						</TabsTrigger>
@@ -147,14 +158,14 @@ export function SourceSelector() {
 				<Button
 					variant="ghost"
 					onClick={() => window.close()}
-					className="px-5 py-1 text-xs text-zinc-400 hover:text-white active:scale-95 transition-transform duration-150 hover:bg-white/5 rounded-full"
+					className="px-5 py-1 text-xs text-[#FDD2A3]/75 hover:text-white active:scale-95 transition-transform duration-150 hover:bg-white/5 rounded-full"
 				>
 					{tc("actions.cancel")}
 				</Button>
 				<Button
 					onClick={handleShare}
 					disabled={!selectedSource}
-					className="px-5 py-1 text-xs bg-[#34B27B] text-white active:scale-95 transition-transform duration-150 hover:bg-[#34B27B]/80 disabled:opacity-30 disabled:bg-zinc-700 rounded-full"
+					className="px-5 py-1 text-xs bg-[#FF6738] text-white active:scale-95 transition-transform duration-150 hover:bg-[#E85A2F] disabled:opacity-30 disabled:bg-[#5a3d34] rounded-full"
 				>
 					{tc("actions.share")}
 				</Button>

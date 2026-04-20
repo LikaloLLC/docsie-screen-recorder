@@ -21,18 +21,18 @@
 }
 
 .languageMenuScroll::-webkit-scrollbar-track {
-	background: rgba(255, 255, 255, 0.04);
+	background: rgba(178, 73, 52, 0.12);
 	border-radius: 999px;
 }
 
 .languageMenuScroll::-webkit-scrollbar-thumb {
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.2));
+	background: linear-gradient(180deg, rgba(255, 103, 56, 0.8), rgba(254, 168, 94, 0.55));
 	border-radius: 999px;
-	border: 1px solid rgba(255, 255, 255, 0.15);
+	border: 1px solid rgba(255, 244, 235, 0.18);
 }
 
 .languageMenuScroll::-webkit-scrollbar-thumb:hover {
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.3));
+	background: linear-gradient(180deg, rgba(255, 103, 56, 0.92), rgba(254, 168, 94, 0.72));
 }
 
 .languageMenuContainer {
@@ -47,9 +47,11 @@
 	width: 12rem;
 	padding: 0.375rem;
 	border-radius: 0.75rem;
-	border: 1px solid rgba(255, 255, 255, 0.14);
-	background: linear-gradient(160deg, rgba(28, 29, 42, 0.98), rgba(18, 19, 28, 0.98));
-	box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55);
+	border: 1px solid rgba(254, 168, 94, 0.18);
+	background: linear-gradient(160deg, rgba(45, 32, 28, 0.98), rgba(23, 17, 15, 0.98));
+	box-shadow:
+		0 20px 45px rgba(0, 0, 0, 0.45),
+		0 0 0 1px rgba(255, 103, 56, 0.06) inset;
 	backdrop-filter: blur(14px);
 	pointer-events: auto;
 	box-sizing: border-box;
@@ -72,12 +74,12 @@
 
 .languageMenuItem:hover,
 .languageMenuItem:focus-visible {
-	background: rgba(255, 255, 255, 0.1);
-	color: #ffffff;
+	background: rgba(255, 103, 56, 0.16);
+	color: #fff4eb;
 	outline: none;
 }
 
 .languageMenuItemActive {
-	background: rgba(255, 255, 255, 0.12);
-	color: #ffffff;
+	background: rgba(255, 103, 56, 0.2);
+	color: #fff4eb;
 }

@@ -11,6 +11,11 @@ import {
 	shell,
 	systemPreferences,
 } from "electron";
+import type {
+	DocsieEstimateInput,
+	DocsieIntegrationConfigInput,
+	DocsieStartVideoToDocsInput,
+} from "../../src/lib/docsieIntegration";
 import {
 	normalizeProjectMedia,
 	normalizeRecordingSession,
@@ -20,8 +25,17 @@ import {
 } from "../../src/lib/recordingSession";
 import { mainT } from "../i18n";
 import { RECORDINGS_DIR } from "../main";
+import {
+	estimateDocsieVideoToDocs,
+	getDocsieIntegrationState,
+	getDocsieVideoToDocsJobResult,
+	getDocsieVideoToDocsJobStatus,
+	listDocsieWorkspaces,
+	saveDocsieIntegrationConfig,
+	startDocsieVideoToDocs,
+} from "./docsie";
 
-const PROJECT_FILE_EXTENSION = "openscreen";
+const PROJECT_FILE_EXTENSION = "docsiescreen";
 const SHORTCUTS_FILE = path.join(app.getPath("userData"), "shortcuts.json");
 const RECORDING_SESSION_SUFFIX = ".session.json";
 const ALLOWED_IMPORT_VIDEO_EXTENSIONS = new Set([".webm", ".mp4", ".mov", ".avi", ".mkv"]);
@@ -777,6 +791,65 @@ export function registerIpcHandlers(
 				samples: [],
 			};
 		}
+	});
+
+	ipcMain.handle("docsie:get-state", async () => {
+		try {
+			return { success: true, state: await getDocsieIntegrationState() };
+		} catch (error) {
+			console.error("Failed to read Docsie integration state:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
+	ipcMain.handle("docsie:save-config", async (_, input: DocsieIntegrationConfigInput) => {
+		try {
+			return { success: true, state: await saveDocsieIntegrationConfig(input) };
+		} catch (error) {
+			console.error("Failed to save Docsie integration config:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
+	ipcMain.handle("docsie:list-workspaces", async () => {
+		try {
+			return { success: true, workspaces: await listDocsieWorkspaces() };
+		} catch (error) {
+			console.error("Failed to list Docsie workspaces:", error);
+			return { success: false, error: String(error), workspaces: [] };
+		}
+	});
+
+	ipcMain.handle("docsie:estimate-video-to-docs", async (_, input: DocsieEstimateInput) => {
+		return await estimateDocsieVideoToDocs(input);
+	});
+
+	ipcMain.handle("docsie:start-video-to-docs", async (_, input: DocsieStartVideoToDocsInput) => {
+		try {
+			const approvedVideoPath = await approveReadableVideoPath(input.videoPath);
+			if (!approvedVideoPath) {
+				return {
+					success: false,
+					error: "Selected video is not readable or is outside approved locations",
+				};
+			}
+
+			return await startDocsieVideoToDocs({
+				...input,
+				videoPath: approvedVideoPath,
+			});
+		} catch (error) {
+			console.error("Failed to start Docsie video-to-docs job:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
+	ipcMain.handle("docsie:get-job-status", async (_, jobId: string) => {
+		return await getDocsieVideoToDocsJobStatus(jobId);
+	});
+
+	ipcMain.handle("docsie:get-job-result", async (_, jobId: string) => {
+		return await getDocsieVideoToDocsJobResult(jobId);
 	});
 
 	ipcMain.handle("open-external-url", async (_, url: string) => {

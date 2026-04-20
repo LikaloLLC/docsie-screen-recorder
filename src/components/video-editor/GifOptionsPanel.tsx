@@ -54,7 +54,7 @@ export function GifOptionsPanel({
 					<SelectTrigger className="w-full bg-white/5 border-white/10 text-slate-200 hover:bg-white/10">
 						<SelectValue />
 					</SelectTrigger>
-					<SelectContent className="bg-[#1a1a1f] border-white/10 z-[100]">
+					<SelectContent className="bg-[#241917] border-white/10 z-[100]">
 						{GIF_FRAME_RATES.map((rate) => (
 							<SelectItem
 								key={rate.value}
@@ -81,7 +81,7 @@ export function GifOptionsPanel({
 					<SelectTrigger className="w-full bg-white/5 border-white/10 text-slate-200 hover:bg-white/10">
 						<SelectValue />
 					</SelectTrigger>
-					<SelectContent className="bg-[#1a1a1f] border-white/10 z-[100]">
+					<SelectContent className="bg-[#241917] border-white/10 z-[100]">
 						{sizePresetOptions.map((option) => (
 							<SelectItem
 								key={option.value}

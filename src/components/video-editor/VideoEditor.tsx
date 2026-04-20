@@ -1,5 +1,5 @@
 import type { Span } from "dnd-timeline";
-import { FolderOpen, Languages, Save, Video } from "lucide-react";
+import { FolderOpen, Languages, Save, Sparkles, Video } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ import {
 	getNativeAspectRatioValue,
 	isPortraitAspectRatio,
 } from "@/utils/aspectRatioUtils";
+import { DocsiePublishDialog } from "./DocsiePublishDialog";
 import { ExportDialog } from "./ExportDialog";
 import PlaybackControls from "./PlaybackControls";
 import {
@@ -130,6 +131,7 @@ export default function VideoEditor() {
 	const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
 	const [exportError, setExportError] = useState<string | null>(null);
 	const [showExportDialog, setShowExportDialog] = useState(false);
+	const [showDocsiePublishDialog, setShowDocsiePublishDialog] = useState(false);
 	const [showNewRecordingDialog, setShowNewRecordingDialog] = useState(false);
 	const [exportQuality, setExportQuality] = useState<ExportQuality>("good");
 	const [exportFormat, setExportFormat] = useState<ExportFormat>("mp4");
@@ -1691,7 +1693,7 @@ export default function VideoEditor() {
 					<button
 						type="button"
 						onClick={handleLoadProject}
-						className="px-3 py-1.5 rounded-md bg-[#34B27B] text-white text-sm hover:bg-[#34B27B]/90"
+						className="px-3 py-1.5 rounded-md bg-[#FF6738] text-white text-sm hover:bg-[#FF6738]/90"
 					>
 						Load Project File
 					</button>
@@ -1701,7 +1703,7 @@ export default function VideoEditor() {
 	}
 
 	return (
-		<div className="flex flex-col h-screen bg-[#09090b] text-slate-200 overflow-hidden selection:bg-[#34B27B]/30">
+		<div className="flex flex-col h-screen bg-[#17110f] text-[#fff0e4] overflow-hidden selection:bg-[#FF6738]/30">
 			<Dialog open={showNewRecordingDialog} onOpenChange={setShowNewRecordingDialog}>
 				<DialogContent
 					className="sm:max-w-[425px]"
@@ -1722,7 +1724,7 @@ export default function VideoEditor() {
 						<button
 							type="button"
 							onClick={handleNewRecordingConfirm}
-							className="px-4 py-2 rounded-md bg-[#34B27B] text-white hover:bg-[#34B27B]/90 text-sm font-medium transition-colors"
+							className="px-4 py-2 rounded-md bg-[#FF6738] text-white hover:bg-[#FF6738]/90 text-sm font-medium transition-colors"
 						>
 							{t("newRecording.confirm")}
 						</button>
@@ -1731,7 +1733,7 @@ export default function VideoEditor() {
 			</Dialog>
 
 			<div
-				className="h-10 flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-50"
+				className="h-10 flex-shrink-0 bg-[#17110f]/85 backdrop-blur-md border-b border-[rgba(254,168,94,0.12)] flex items-center justify-between px-6 z-50"
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
 				<div
@@ -1739,8 +1741,11 @@ export default function VideoEditor() {
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
 					<div
-						className={`flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 ${isMac ? "ml-14" : "ml-2"}`}
+						className={`rounded-full border border-[rgba(255,103,56,0.22)] bg-[linear-gradient(135deg,rgba(255,103,56,0.16),rgba(254,168,94,0.08))] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#fff0e4] ${isMac ? "ml-14" : "ml-2"}`}
 					>
+						Docsie
+					</div>
+					<div className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-[rgba(255,103,56,0.12)] transition-all duration-150">
 						<Languages size={14} />
 						<select
 							value={locale}
@@ -1749,7 +1754,7 @@ export default function VideoEditor() {
 							style={{ color: "inherit" }}
 						>
 							{availableLocales.map((loc) => (
-								<option key={loc} value={loc} className="bg-[#09090b] text-white">
+								<option key={loc} value={loc} className="bg-[#17110f] text-white">
 									{getLocaleName(loc)}
 								</option>
 							))}
@@ -1758,7 +1763,7 @@ export default function VideoEditor() {
 					<button
 						type="button"
 						onClick={() => setShowNewRecordingDialog(true)}
-						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 text-[11px] font-medium"
+						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-[rgba(255,103,56,0.12)] transition-all duration-150 text-[11px] font-medium"
 					>
 						<Video size={14} />
 						{t("newRecording.title")}
@@ -1766,7 +1771,7 @@ export default function VideoEditor() {
 					<button
 						type="button"
 						onClick={handleLoadProject}
-						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 text-[11px] font-medium"
+						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-[rgba(255,103,56,0.12)] transition-all duration-150 text-[11px] font-medium"
 					>
 						<FolderOpen size={14} />
 						{ts("project.load")}
@@ -1774,10 +1779,18 @@ export default function VideoEditor() {
 					<button
 						type="button"
 						onClick={handleSaveProject}
-						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-white/10 transition-all duration-150 text-[11px] font-medium"
+						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-[rgba(255,103,56,0.12)] transition-all duration-150 text-[11px] font-medium"
 					>
 						<Save size={14} />
 						{ts("project.save")}
+					</button>
+					<button
+						type="button"
+						onClick={() => setShowDocsiePublishDialog(true)}
+						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-[rgba(255,103,56,0.12)] transition-all duration-150 text-[11px] font-medium"
+					>
+						<Sparkles size={14} />
+						Video To Docs
 					</button>
 				</div>
 			</div>
@@ -1792,8 +1805,8 @@ export default function VideoEditor() {
 								ref={playerContainerRef}
 								className={
 									isFullscreen
-										? "fixed inset-0 z-[99999] w-full h-full flex flex-col items-center justify-center bg-[#09090b]"
-										: "w-full h-full flex flex-col items-center justify-center bg-black/40 rounded-2xl border border-white/5 shadow-2xl overflow-hidden relative"
+										? "fixed inset-0 z-[99999] w-full h-full flex flex-col items-center justify-center bg-[#17110f]"
+										: "w-full h-full flex flex-col items-center justify-center bg-[linear-gradient(180deg,rgba(255,103,56,0.06),rgba(0,0,0,0.22))] rounded-2xl border border-[rgba(254,168,94,0.12)] shadow-2xl overflow-hidden relative"
 								}
 							>
 								{/* Video preview */}
@@ -1877,13 +1890,13 @@ export default function VideoEditor() {
 							</div>
 						</Panel>
 
-						<PanelResizeHandle className="bg-[#09090b]/80 hover:bg-[#09090b] transition-colors rounded-full flex items-center justify-center">
+						<PanelResizeHandle className="bg-[#17110f]/80 hover:bg-[#241917] transition-colors rounded-full flex items-center justify-center">
 							<div className="w-8 h-1 bg-white/20 rounded-full"></div>
 						</PanelResizeHandle>
 
 						{/* Timeline section */}
 						<Panel defaultSize={30} maxSize={60} minSize={30}>
-							<div className="h-full bg-[#09090b] rounded-2xl border border-white/5 shadow-lg overflow-hidden flex flex-col">
+							<div className="h-full bg-[#17110f] rounded-2xl border border-[rgba(254,168,94,0.12)] shadow-lg overflow-hidden flex flex-col">
 								<TimelineEditor
 									videoDuration={duration}
 									currentTime={currentTime}
@@ -2067,6 +2080,12 @@ export default function VideoEditor() {
 				onShowInFolder={
 					exportedFilePath ? () => void handleShowExportedFile(exportedFilePath) : undefined
 				}
+			/>
+			<DocsiePublishDialog
+				isOpen={showDocsiePublishDialog}
+				onOpenChange={setShowDocsiePublishDialog}
+				videoPath={videoSourcePath ?? (videoPath ? fromFileUrl(videoPath) : null)}
+				videoDurationSeconds={duration || undefined}
 			/>
 		</div>
 	);

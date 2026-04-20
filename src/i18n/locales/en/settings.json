@@ -93,8 +93,8 @@
 		"chooseSaveLocation": "Choose Save Location"
 	},
 	"links": {
-		"reportBug": "Report Bug",
-		"starOnGithub": "Star on GitHub"
+		"reportBug": "Contact Docsie",
+		"starOnGithub": "Docsie.io"
 	},
 	"imageUpload": {
 		"invalidFileType": "Invalid file type",

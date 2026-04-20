@@ -1,4 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type {
+	DocsieEstimateInput,
+	DocsieIntegrationConfigInput,
+	DocsieStartVideoToDocsInput,
+} from "../src/lib/docsieIntegration";
 import type { RecordingSession, StoreRecordedSessionInput } from "../src/lib/recordingSession";
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -52,6 +57,27 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	getCursorTelemetry: (videoPath?: string) => {
 		return ipcRenderer.invoke("get-cursor-telemetry", videoPath);
+	},
+	docsieGetState: () => {
+		return ipcRenderer.invoke("docsie:get-state");
+	},
+	docsieSaveConfig: (input: DocsieIntegrationConfigInput) => {
+		return ipcRenderer.invoke("docsie:save-config", input);
+	},
+	docsieListWorkspaces: () => {
+		return ipcRenderer.invoke("docsie:list-workspaces");
+	},
+	docsieEstimateVideoToDocs: (input: DocsieEstimateInput) => {
+		return ipcRenderer.invoke("docsie:estimate-video-to-docs", input);
+	},
+	docsieStartVideoToDocs: (input: DocsieStartVideoToDocsInput) => {
+		return ipcRenderer.invoke("docsie:start-video-to-docs", input);
+	},
+	docsieGetJobStatus: (jobId: string) => {
+		return ipcRenderer.invoke("docsie:get-job-status", jobId);
+	},
+	docsieGetJobResult: (jobId: string) => {
+		return ipcRenderer.invoke("docsie:get-job-result", jobId);
 	},
 	onStopRecordingFromTray: (callback: () => void) => {
 		const listener = () => callback();

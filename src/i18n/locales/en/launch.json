@@ -36,7 +36,7 @@
 	"language": "Language",
 	"systemLanguagePrompt": {
 		"title": "Use your system language?",
-		"description": "We detected {{language}} as your system language. Do you want to switch OpenScreen to {{language}}?",
+		"description": "We detected {{language}} as your system language. Do you want to switch Docsie Screen Recorder to {{language}}?",
 		"switch": "Switch to {{language}}",
 		"keepDefault": "Keep current language"
 	}

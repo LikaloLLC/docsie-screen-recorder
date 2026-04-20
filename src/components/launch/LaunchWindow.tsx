@@ -62,18 +62,19 @@ function getIcon(name: IconName, className?: string) {
 }
 
 const hudGroupClasses =
-	"flex items-center gap-0.5 bg-white/5 rounded-full transition-colors duration-150 hover:bg-white/[0.08]";
+	"flex items-center gap-0.5 rounded-full border border-[rgba(254,168,94,0.08)] bg-white/[0.04] transition-colors duration-150 hover:bg-[rgba(255,103,56,0.12)]";
 
 const hudIconBtnClasses =
-	"flex items-center justify-center p-2 rounded-full transition-all duration-150 cursor-pointer text-white hover:bg-white/10 hover:scale-[1.08] active:scale-95";
+	"flex items-center justify-center p-2 rounded-full transition-all duration-150 cursor-pointer text-white hover:bg-[rgba(255,103,56,0.14)] hover:scale-[1.08] active:scale-95";
 
 const hudAuxIconBtnClasses =
-	"flex items-center justify-center p-1.5 rounded-full transition-colors duration-150 text-white/55 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed";
+	"flex items-center justify-center p-1.5 rounded-full transition-colors duration-150 text-white/55 hover:bg-[rgba(255,103,56,0.14)] disabled:opacity-30 disabled:cursor-not-allowed";
 
 const windowBtnClasses =
-	"flex items-center justify-center p-2 rounded-full transition-all duration-150 cursor-pointer opacity-50 hover:opacity-90 hover:bg-white/[0.08]";
+	"flex items-center justify-center p-2 rounded-full transition-all duration-150 cursor-pointer opacity-60 hover:opacity-100 hover:bg-[rgba(255,103,56,0.14)]";
 
-const hudSidebarClasses = "ml-0.5 pl-1.5 border-l border-white/10 flex items-center gap-0.5";
+const hudSidebarClasses =
+	"ml-0.5 pl-1.5 border-l border-[rgba(254,168,94,0.16)] flex items-center gap-0.5";
 
 export function LaunchWindow() {
 	const t = useScopedT("launch");
@@ -317,7 +318,7 @@ export function LaunchWindow() {
 		<div className={`w-screen h-screen overflow-x-hidden bg-transparent ${styles.electronDrag}`}>
 			{systemLocaleSuggestion && (
 				<div
-					className={`fixed top-8 left-1/2 z-30 w-[calc(100vw-1rem)] max-w-[520px] -translate-x-1/2 rounded-xl border border-white/15 bg-[rgba(20,20,28,0.95)] p-3 shadow-2xl backdrop-blur-xl text-white animate-in fade-in-0 zoom-in-95 duration-200 ${styles.electronNoDrag}`}
+					className={`fixed top-8 left-1/2 z-30 w-[calc(100vw-1rem)] max-w-[520px] -translate-x-1/2 rounded-xl border border-[rgba(254,168,94,0.22)] bg-[rgba(36,25,23,0.96)] p-3 shadow-2xl backdrop-blur-xl text-white animate-in fade-in-0 zoom-in-95 duration-200 ${styles.electronNoDrag}`}
 				>
 					<div className="text-[13px] font-semibold text-white">
 						{t("systemLanguagePrompt.title")}
@@ -341,7 +342,7 @@ export function LaunchWindow() {
 							type="button"
 							size="sm"
 							onClick={acceptSystemLocaleSuggestion}
-							className="h-7 text-xs bg-white text-[#10121b] hover:bg-white/90"
+							className="h-7 text-xs bg-[#FF6738] text-white hover:bg-[#E85A2F]"
 						>
 							{t("systemLanguagePrompt.switch", {
 								language: suggestedLanguageName,
@@ -359,7 +360,7 @@ export function LaunchWindow() {
 					{/* Mic selector */}
 					{showMicControls && (
 						<div
-							className={`flex items-center gap-2 px-3 py-1.5 h-[36px] bg-gradient-to-br from-[rgba(28,28,36,0.97)] to-[rgba(18,18,26,0.96)] backdrop-blur-[24px] border border-white/10 rounded-xl shadow-2xl transition-all duration-300 overflow-hidden ${!micExpanded ? "opacity-60 grayscale-[0.5]" : "opacity-100"}`}
+							className={`flex items-center gap-2 px-3 py-1.5 h-[36px] bg-gradient-to-br from-[rgba(45,32,28,0.97)] to-[rgba(23,17,15,0.96)] backdrop-blur-[24px] border border-[rgba(254,168,94,0.16)] rounded-xl shadow-2xl transition-all duration-300 overflow-hidden ${!micExpanded ? "opacity-60 grayscale-[0.5]" : "opacity-100"}`}
 							onMouseEnter={() => setIsMicHovered(true)}
 							onMouseLeave={() => setIsMicHovered(false)}
 							onFocus={() => setIsMicFocused(true)}
@@ -381,7 +382,11 @@ export function LaunchWindow() {
 									className={`w-full appearance-none bg-white/5 text-white text-[11px] rounded-lg pl-2 pr-6 py-1 border border-white/10 outline-none hover:bg-white/10 transition-colors cursor-pointer ${!micExpanded ? "sr-only" : ""}`}
 								>
 									{micDevices.map((device) => (
-										<option key={device.deviceId} value={device.deviceId} className="bg-[#1c1c24]">
+										<option
+											key={device.deviceId}
+											value={device.deviceId}
+											className="bg-[#241917] text-white"
+										>
 											{device.label}
 										</option>
 									))}
@@ -403,7 +408,7 @@ export function LaunchWindow() {
 					{/* Webcam selector */}
 					{showWebcamControls && (
 						<div
-							className={`flex items-center gap-2 px-3 py-1.5 h-[36px] bg-gradient-to-br from-[rgba(28,28,36,0.97)] to-[rgba(18,18,26,0.96)] backdrop-blur-[24px] border border-white/10 rounded-xl shadow-2xl transition-all duration-300 overflow-hidden ${!webcamExpanded ? "opacity-60 grayscale-[0.5]" : "opacity-100"}`}
+							className={`flex items-center gap-2 px-3 py-1.5 h-[36px] bg-gradient-to-br from-[rgba(45,32,28,0.97)] to-[rgba(23,17,15,0.96)] backdrop-blur-[24px] border border-[rgba(254,168,94,0.16)] rounded-xl shadow-2xl transition-all duration-300 overflow-hidden ${!webcamExpanded ? "opacity-60 grayscale-[0.5]" : "opacity-100"}`}
 							onMouseEnter={() => setIsWebcamHovered(true)}
 							onMouseLeave={() => setIsWebcamHovered(false)}
 							onFocus={() => setIsWebcamFocused(true)}
@@ -443,7 +448,7 @@ export function LaunchWindow() {
 													<option
 														key={device.deviceId}
 														value={device.deviceId}
-														className="bg-[#1c1c24]"
+														className="bg-[#241917] text-white"
 													>
 														{device.label}
 													</option>
@@ -479,11 +484,17 @@ export function LaunchWindow() {
 
 			{/* HUD bar — fixed at bottom center, viewport-relative, never moves */}
 			<div
-				className={`fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1.5 rounded-full shadow-hud-bar bg-gradient-to-br from-[rgba(28,28,36,0.97)] to-[rgba(18,18,26,0.96)] backdrop-blur-[16px] backdrop-saturate-[140%] border border-[rgba(80,80,120,0.25)]`}
+				className={`fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1.5 rounded-full shadow-hud-bar bg-gradient-to-br from-[rgba(45,32,28,0.97)] to-[rgba(23,17,15,0.96)] backdrop-blur-[16px] backdrop-saturate-[140%] border border-[rgba(254,168,94,0.16)]`}
 			>
 				{/* Drag handle */}
 				<div className={`flex items-center px-1 ${styles.electronDrag}`}>
 					{getIcon("drag", "text-white/30")}
+				</div>
+
+				<div
+					className={`rounded-full border border-[rgba(255,103,56,0.22)] bg-[linear-gradient(135deg,rgba(255,103,56,0.16),rgba(254,168,94,0.08))] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#fff0e4] ${styles.electronNoDrag}`}
+				>
+					Docsie
 				</div>
 
 				{/* Source selector */}
@@ -500,7 +511,7 @@ export function LaunchWindow() {
 				{/* Audio controls group */}
 				<div className={`${hudGroupClasses} ${styles.electronNoDrag}`}>
 					<button
-						className={`${hudIconBtnClasses} ${systemAudioEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
+						className={`${hudIconBtnClasses} ${systemAudioEnabled ? "drop-shadow-[0_0_6px_rgba(255,103,56,0.45)]" : ""}`}
 						onClick={() => !recording && setSystemAudioEnabled(!systemAudioEnabled)}
 						disabled={recording}
 						title={
@@ -508,21 +519,21 @@ export function LaunchWindow() {
 						}
 					>
 						{systemAudioEnabled
-							? getIcon("volumeOn", "text-green-400")
+							? getIcon("volumeOn", "text-[#FEA85E]")
 							: getIcon("volumeOff", "text-white/40")}
 					</button>
 					<button
-						className={`${hudIconBtnClasses} ${microphoneEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
+						className={`${hudIconBtnClasses} ${microphoneEnabled ? "drop-shadow-[0_0_6px_rgba(255,103,56,0.45)]" : ""}`}
 						onClick={toggleMicrophone}
 						disabled={recording}
 						title={microphoneEnabled ? t("audio.disableMicrophone") : t("audio.enableMicrophone")}
 					>
 						{microphoneEnabled
-							? getIcon("micOn", "text-green-400")
+							? getIcon("micOn", "text-[#FEA85E]")
 							: getIcon("micOff", "text-white/40")}
 					</button>
 					<button
-						className={`${hudIconBtnClasses} ${webcamEnabled ? "drop-shadow-[0_0_4px_rgba(74,222,128,0.4)]" : ""}`}
+						className={`${hudIconBtnClasses} ${webcamEnabled ? "drop-shadow-[0_0_6px_rgba(255,103,56,0.45)]" : ""}`}
 						onClick={async () => {
 							await setWebcamEnabled(!webcamEnabled);
 						}}
@@ -530,7 +541,7 @@ export function LaunchWindow() {
 						title={webcamEnabled ? t("webcam.disableWebcam") : t("webcam.enableWebcam")}
 					>
 						{webcamEnabled
-							? getIcon("webcamOn", "text-green-400")
+							? getIcon("webcamOn", "text-[#FEA85E]")
 							: getIcon("webcamOff", "text-white/40")}
 					</button>
 				</div>
@@ -542,7 +553,7 @@ export function LaunchWindow() {
 							? paused
 								? "bg-amber-500/10 hover:bg-amber-500/15"
 								: "bg-red-500/12 hover:bg-red-500/16"
-							: "bg-white/5 hover:bg-white/[0.08]"
+							: "bg-[rgba(255,103,56,0.12)] hover:bg-[rgba(255,103,56,0.18)]"
 					}`}
 					onClick={toggleRecording}
 					disabled={!hasSelectedSource && !recording}
@@ -618,7 +629,7 @@ export function LaunchWindow() {
 							aria-expanded={isLanguageMenuOpen}
 							aria-haspopup="menu"
 							onClick={() => setIsLanguageMenuOpen((open) => !open)}
-							className={`h-8 w-8 rounded-lg border border-white/10 bg-white/5 text-white/85 shadow-none transition-colors hover:bg-white/10 ${styles.electronNoDrag}`}
+							className={`h-8 w-8 rounded-lg border border-[rgba(254,168,94,0.16)] bg-white/[0.04] text-white/85 shadow-none transition-colors hover:bg-[rgba(255,103,56,0.14)] ${styles.electronNoDrag}`}
 						>
 							<div className="flex w-full items-center justify-center">
 								<Languages size={13} className="text-white/75" />
@@ -657,7 +668,7 @@ export function LaunchWindow() {
 											className={`${styles.languageMenuItem} ${loc === locale ? styles.languageMenuItemActive : ""}`}
 										>
 											<span className="truncate">{getLocaleName(loc)}</span>
-											{loc === locale ? <Check size={11} className="text-white/85" /> : null}
+											{loc === locale ? <Check size={11} className="text-[#FEA85E]" /> : null}
 										</button>
 									))}
 								</div>,
@@ -672,14 +683,14 @@ export function LaunchWindow() {
 							title={t("tooltips.hideHUD")}
 							onClick={sendHudOverlayHide}
 						>
-							{getIcon("minimize", "text-white")}
+							{getIcon("minimize", "text-[#fff0e4]")}
 						</button>
 						<button
 							className={windowBtnClasses}
 							title={t("tooltips.closeApp")}
 							onClick={sendHudOverlayClose}
 						>
-							{getIcon("close", "text-white")}
+							{getIcon("close", "text-[#fff0e4]")}
 						</button>
 					</div>
 				</div>

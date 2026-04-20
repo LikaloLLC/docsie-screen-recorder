@@ -1,9 +1,9 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.siddharthvaddem.openscreen",
+  "appId": "io.docsie.screenrecorder",
   "asar": true,
-  "productName": "Openscreen",
+  "productName": "Docsie - Screen Recorder",
   "npmRebuild": true,
   "buildDependenciesFromSource": true,
   "compression": "normal",
@@ -41,9 +41,9 @@
     "icon": "icons/icons/mac/icon.icns",
     "artifactName": "${productName}-Mac-${arch}-${version}-Installer.${ext}",
     "extendInfo": {
-      "NSAudioCaptureUsageDescription": "OpenScreen needs audio capture permission to record system audio.",
-      "NSMicrophoneUsageDescription": "OpenScreen needs microphone access to record voice audio.",
-      "NSCameraUsageDescription": "OpenScreen needs camera access to record webcam video.",
+      "NSAudioCaptureUsageDescription": "Docsie Screen Recorder needs audio capture permission to record system audio.",
+      "NSMicrophoneUsageDescription": "Docsie Screen Recorder needs microphone access to record voice audio.",
+      "NSCameraUsageDescription": "Docsie Screen Recorder needs camera access to record webcam video.",
       "NSCameraUseContinuityCameraDeviceType": true,
       "com.apple.security.device.audio-input": true
     }

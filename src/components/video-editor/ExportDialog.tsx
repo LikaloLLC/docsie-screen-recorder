@@ -94,13 +94,13 @@ export function ExportDialog({
 				className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 animate-in fade-in duration-200"
 				onClick={isExporting ? undefined : onClose}
 			/>
-			<div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#09090b] rounded-2xl shadow-2xl border border-white/10 p-8 w-[90vw] max-w-md animate-in zoom-in-95 duration-200">
+			<div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#17110f] rounded-2xl shadow-2xl border border-white/10 p-8 w-[90vw] max-w-md animate-in zoom-in-95 duration-200">
 				<div className="flex items-center justify-between mb-6">
 					<div className="flex items-center gap-4">
 						{showSuccess ? (
 							<>
-								<div className="w-12 h-12 rounded-full bg-[#34B27B]/20 flex items-center justify-center ring-1 ring-[#34B27B]/50">
-									<Download className="w-6 h-6 text-[#34B27B]" />
+								<div className="w-12 h-12 rounded-full bg-[#FF6738]/20 flex items-center justify-center ring-1 ring-[#FF6738]/50">
+									<Download className="w-6 h-6 text-[#FF6738]" />
 								</div>
 								<div className="flex flex-col gap-2">
 									<span className="text-xl font-bold text-slate-200 block">
@@ -128,8 +128,8 @@ export function ExportDialog({
 						) : (
 							<>
 								{isExporting ? (
-									<div className="w-12 h-12 rounded-full bg-[#34B27B]/10 flex items-center justify-center">
-										<Loader2 className="w-6 h-6 text-[#34B27B] animate-spin" />
+									<div className="w-12 h-12 rounded-full bg-[#FF6738]/10 flex items-center justify-center">
+										<Loader2 className="w-6 h-6 text-[#FF6738] animate-spin" />
 									</div>
 								) : (
 									<div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
@@ -195,13 +195,13 @@ export function ExportDialog({
 									// Show render progress if available, otherwise animated indeterminate bar
 									renderProgress !== undefined && renderProgress > 0 ? (
 										<div
-											className="h-full bg-[#34B27B] shadow-[0_0_10px_rgba(52,178,123,0.3)] transition-all duration-300 ease-out"
+											className="h-full bg-[#FF6738] shadow-[0_0_10px_rgba(255, 103, 56,0.3)] transition-all duration-300 ease-out"
 											style={{ width: `${renderProgress}%` }}
 										/>
 									) : (
 										<div className="h-full w-full relative overflow-hidden">
 											<div
-												className="absolute h-full w-1/3 bg-[#34B27B] shadow-[0_0_10px_rgba(52,178,123,0.3)]"
+												className="absolute h-full w-1/3 bg-[#FF6738] shadow-[0_0_10px_rgba(255, 103, 56,0.3)]"
 												style={{
 													animation: "indeterminate 1.5s ease-in-out infinite",
 												}}
@@ -216,7 +216,7 @@ export function ExportDialog({
 									)
 								) : (
 									<div
-										className="h-full bg-[#34B27B] shadow-[0_0_10px_rgba(52,178,123,0.3)] transition-all duration-300 ease-out"
+										className="h-full bg-[#FF6738] shadow-[0_0_10px_rgba(255, 103, 56,0.3)] transition-all duration-300 ease-out"
 										style={{ width: `${Math.min(progress.percentage, 100)}%` }}
 									/>
 								)}

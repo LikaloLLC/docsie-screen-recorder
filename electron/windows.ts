@@ -105,8 +105,8 @@ export function createEditorWindow(): BrowserWindow {
 		resizable: true,
 		alwaysOnTop: false,
 		skipTaskbar: false,
-		title: "OpenScreen",
-		backgroundColor: "#000000",
+		title: "Docsie - Screen Recorder",
+		backgroundColor: "#17110f",
 		show: !HEADLESS,
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),

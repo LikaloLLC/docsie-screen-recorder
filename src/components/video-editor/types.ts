@@ -148,7 +148,7 @@ export const DEFAULT_ANNOTATION_STYLE: AnnotationTextStyle = {
 
 export const DEFAULT_FIGURE_DATA: FigureData = {
 	arrowDirection: "right",
-	color: "#34B27B",
+	color: "#FF6738",
 	strokeWidth: 4,
 };
 
