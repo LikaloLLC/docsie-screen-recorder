@@ -33,10 +33,11 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 
 This repository is the **Docsie Screen Recorder** fork used for local recording, editing, and Docsie's existing Video-to-Docs workflow.
 
-- Private fork repo: [PhilippeTrounev/docsie-screen-recorder](https://github.com/PhilippeTrounev/docsie-screen-recorder)
+- Private fork repo: [LikaloLLC/docsie-screen-recorder](https://github.com/LikaloLLC/docsie-screen-recorder)
 - Upstream source: [siddharthvaddem/openscreen](https://github.com/siddharthvaddem/openscreen)
 - Current desktop auth notes: [DOCSIE_DESKTOP_AUTH.md](./DOCSIE_DESKTOP_AUTH.md)
 - Current editor/integration notes: [CLAUDE.md](./CLAUDE.md)
+- Mixed-license notes: [LICENSING.md](./LICENSING.md)
 
 ### Docsie Quick Start
 
@@ -79,6 +80,19 @@ If Gatekeeper blocks the app on first launch, remove quarantine and retry:
 ```bash
 xattr -dr com.apple.quarantine "release/1.3.0/mac-arm64/Docsie - Screen Recorder.app"
 ```
+
+### Licensing Model
+
+This fork is **not** relicensing the inherited upstream project.
+
+- The root project and inherited OpenScreen code remain under the upstream
+  [MIT License](./LICENSE).
+- New Docsie-only enterprise work should go under [enterprise/](./enterprise/)
+  and is intended to follow [enterprise/LICENSE.md](./enterprise/LICENSE.md).
+
+This is the same general repository pattern used by mixed-license/source-available
+projects: keep the original open-source base intact, and place separately
+licensed commercial extensions behind a clear directory boundary.
 
 ## Core Features
 - Record specific windows or your whole screen.
@@ -157,4 +171,11 @@ Contributions are welcome! If you’d like to help out or see what’s currently
 
 ## License
 
-This project is licensed under the [MIT License](./LICENSE). By using this software, you agree that the authors are not liable for any issues, damages, or claims arising from its use.
+This repository uses a mixed-license structure.
+
+- The inherited OpenScreen codebase and default root code remain under the
+  [MIT License](./LICENSE).
+- Docsie-only enterprise code under [enterprise/](./enterprise/) is intended to
+  follow [enterprise/LICENSE.md](./enterprise/LICENSE.md).
+
+Read [LICENSING.md](./LICENSING.md) before moving code across those boundaries.
