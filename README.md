@@ -14,15 +14,16 @@
   </a>
 </p>
 
-# <p align="center">OpenScreen</p>
+# <p align="center">Docsie Screen Recorder</p>
 
-<p align="center"><strong>OpenScreen is your free, open-source alternative to Screen Studio (sort of).</strong></p>
+<p align="center"><strong>A free screen recorder built on OpenScreen, with Docsie ecosystem enterprise extensions.</strong></p>
 
-If you don't want to pay $29/month for Screen Studio but want a much simpler version that does what most people seem to need, making beautiful product demos and walkthroughs, here's a free-to-use app for you. OpenScreen does not offer all Screen Studio features, but covers the basics well!
+Docsie Screen Recorder is the public Docsie fork of OpenScreen. The goal is simple:
 
-Screen Studio is an awesome product and this is definitely not a 1:1 clone. OpenScreen is a much simpler take, just the basics for folks who want control and don't want to pay. If you need all the fancy features, your best bet is to support Screen Studio (they really do a great job, haha). But if you just want something free (no gotchas) and open, this project does the job!
+- keep a strong free recorder and editor available in the open
+- build Docsie-specific enterprise features around documentation, workflows, AI, and the broader Docsie ecosystem
 
-OpenScreen is 100% free for personal and commercial use. Use it, modify it, distribute it. (Just be cool 😁 and give a shoutout if you feel like it !)
+This is not trying to erase the upstream project. The recorder/editor foundation comes from OpenScreen, while Docsie-specific extensions are being layered on top with a separate enterprise boundary.
 
 <p align="center">
 	<img src="public/preview3.png" alt="OpenScreen App Preview 3" style="height: 0.2467; margin-right: 12px;" />
@@ -31,9 +32,9 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 
 ## Docsie Fork
 
-This repository is the **Docsie Screen Recorder** fork used for local recording, editing, and Docsie's existing Video-to-Docs workflow.
+This repository is the **public Docsie Screen Recorder fork** used for local recording, editing, and Docsie's existing Video-to-Docs workflow.
 
-- Private fork repo: [LikaloLLC/docsie-screen-recorder](https://github.com/LikaloLLC/docsie-screen-recorder)
+- Public fork repo: [LikaloLLC/docsie-screen-recorder](https://github.com/LikaloLLC/docsie-screen-recorder)
 - Upstream source: [siddharthvaddem/openscreen](https://github.com/siddharthvaddem/openscreen)
 - Current desktop auth notes: [DOCSIE_DESKTOP_AUTH.md](./DOCSIE_DESKTOP_AUTH.md)
 - Current editor/integration notes: [CLAUDE.md](./CLAUDE.md)
@@ -162,7 +163,13 @@ _I'm new to open source, idk what I'm doing lol. If something is wrong please ra
 
 ## Documentation
 
-See the documentation here:
+Repo-specific docs:
+
+- [CLAUDE.md](./CLAUDE.md)
+- [DOCSIE_DESKTOP_AUTH.md](./DOCSIE_DESKTOP_AUTH.md)
+- [LICENSING.md](./LICENSING.md)
+
+Upstream background docs:
 [OpenScreen Docs](https://deepwiki.com/siddharthvaddem/openscreen)
 
 ## Contributing
