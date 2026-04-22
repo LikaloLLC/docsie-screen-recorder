@@ -12,7 +12,9 @@ import {
 	systemPreferences,
 	Tray,
 } from "electron";
+import type { DocsieDesktopAuthEvent } from "../src/lib/docsieIntegration";
 import { mainT, setMainLocale } from "./i18n";
+import { connectDocsieDesktopHandoff } from "./ipc/docsie";
 import { registerIpcHandlers } from "./ipc/handlers";
 import {
 	createCountdownOverlayWindow,
@@ -22,6 +24,12 @@ import {
 } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DOCSIE_PROTOCOL = "docsie-screen";
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+	app.quit();
+}
 
 // Use Screen & System Audio Recording permissions instead of CoreAudio Tap API on macOS.
 // CoreAudio Tap requires NSAudioCaptureUsageDescription in the parent app's Info.plist,
@@ -70,6 +78,8 @@ let tray: Tray | null = null;
 let selectedSourceName = "";
 const isMac = process.platform === "darwin";
 const trayIconSize = isMac ? 16 : 24;
+let pendingDesktopAuthUrl = extractDesktopAuthUrlFromArgv(process.argv);
+let pendingDesktopAuthEvent: DocsieDesktopAuthEvent | null = null;
 
 // Tray Icons
 const defaultTrayIcon = getTrayIcon("docsie-logo.png", trayIconSize);
@@ -77,6 +87,7 @@ const recordingTrayIcon = getTrayIcon("rec-button.png", trayIconSize);
 
 function createWindow() {
 	mainWindow = createHudOverlayWindow();
+	attachDesktopAuthEventFlush(mainWindow);
 }
 
 function showMainWindow() {
@@ -217,6 +228,123 @@ function getTrayIcon(filename: string, size: number) {
 		});
 }
 
+function registerDesktopProtocolClient() {
+	try {
+		if (process.platform === "win32" && !app.isPackaged && process.argv[1]) {
+			app.setAsDefaultProtocolClient(DOCSIE_PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
+			return;
+		}
+
+		app.setAsDefaultProtocolClient(DOCSIE_PROTOCOL);
+	} catch (error) {
+		console.warn("Failed to register Docsie desktop protocol handler:", error);
+	}
+}
+
+function extractDesktopAuthUrlFromArgv(argv: string[]) {
+	return argv.find((value) => value.startsWith(`${DOCSIE_PROTOCOL}://`)) ?? null;
+}
+
+function parseDesktopAuthUrl(rawUrl: string) {
+	let parsed: URL;
+	try {
+		parsed = new URL(rawUrl);
+	} catch {
+		throw new Error("Invalid Docsie desktop auth URL");
+	}
+
+	if (parsed.protocol !== `${DOCSIE_PROTOCOL}:`) {
+		throw new Error(`Unsupported protocol: ${parsed.protocol}`);
+	}
+
+	const route = parsed.hostname || parsed.pathname.replace(/^\/+/, "");
+	if (route !== "connect") {
+		throw new Error("Unsupported Docsie desktop auth route");
+	}
+
+	const handoffId = parsed.searchParams.get("handoff_id")?.trim();
+	const state = parsed.searchParams.get("state")?.trim();
+	const apiBaseUrl = parsed.searchParams.get("api_base_url")?.trim();
+
+	if (!handoffId || !state || !apiBaseUrl) {
+		throw new Error("Docsie desktop auth URL is missing required parameters");
+	}
+
+	return {
+		handoffId,
+		state,
+		apiBaseUrl,
+	};
+}
+
+function broadcastDesktopAuthEvent(event: DocsieDesktopAuthEvent) {
+	const windows = BrowserWindow.getAllWindows().filter((window) => !window.isDestroyed());
+	const readyWindows = windows.filter((window) => !window.webContents.isLoadingMainFrame());
+	if (!readyWindows.length) {
+		pendingDesktopAuthEvent = event;
+		return;
+	}
+
+	pendingDesktopAuthEvent = null;
+	for (const window of readyWindows) {
+		window.webContents.send("docsie:desktop-auth-event", event);
+	}
+}
+
+function attachDesktopAuthEventFlush(window: BrowserWindow | null) {
+	if (!window || window.isDestroyed()) {
+		return;
+	}
+
+	window.webContents.once("did-finish-load", () => {
+		if (!pendingDesktopAuthEvent || window.isDestroyed()) {
+			return;
+		}
+
+		window.webContents.send("docsie:desktop-auth-event", pendingDesktopAuthEvent);
+		pendingDesktopAuthEvent = null;
+	});
+}
+
+async function handleDesktopAuthUrl(rawUrl: string) {
+	pendingDesktopAuthUrl = rawUrl;
+	showMainWindow();
+
+	try {
+		const handoff = parseDesktopAuthUrl(rawUrl);
+		const result = await connectDocsieDesktopHandoff({
+			...handoff,
+			deviceName: app.getName(),
+		});
+
+		if (!result.success || !result.state) {
+			throw new Error(result.error ?? "Docsie desktop auth failed");
+		}
+
+		broadcastDesktopAuthEvent({
+			status: "success",
+			message:
+				result.organizationName && result.workspaceName
+					? `Connected to ${result.organizationName} / ${result.workspaceName}.`
+					: result.organizationName
+						? `Connected to ${result.organizationName}.`
+						: "Connected to Docsie.",
+			state: result.state,
+			organizationName: result.organizationName,
+			workspaceName: result.workspaceName,
+			returnUrl: result.returnUrl,
+		});
+	} catch (error) {
+		broadcastDesktopAuthEvent({
+			status: "error",
+			message: error instanceof Error ? error.message : String(error),
+			error: error instanceof Error ? error.message : String(error),
+		});
+	} finally {
+		pendingDesktopAuthUrl = null;
+	}
+}
+
 function updateTrayMenu(recording: boolean = false) {
 	if (!tray) return;
 	const trayIcon = recording ? recordingTrayIcon : defaultTrayIcon;
@@ -281,6 +409,7 @@ function createEditorWindowWrapper() {
 		mainWindow = null;
 	}
 	mainWindow = createEditorWindow();
+	attachDesktopAuthEventFlush(mainWindow);
 	editorHasUnsavedChanges = false;
 
 	mainWindow.on("close", (event) => {
@@ -363,8 +492,30 @@ app.on("activate", () => {
 	}
 });
 
+app.on("open-url", (event, url) => {
+	event.preventDefault();
+	if (app.isReady()) {
+		void handleDesktopAuthUrl(url);
+		return;
+	}
+
+	pendingDesktopAuthUrl = url;
+});
+
+app.on("second-instance", (_event, argv) => {
+	const protocolUrl = extractDesktopAuthUrlFromArgv(argv);
+	if (protocolUrl) {
+		void handleDesktopAuthUrl(protocolUrl);
+		return;
+	}
+
+	showMainWindow();
+});
+
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
+	registerDesktopProtocolClient();
+
 	// Allow microphone/media permission checks
 	session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
 		const allowed = ["media", "audioCapture", "microphone", "videoCapture", "camera"];
@@ -428,4 +579,8 @@ app.whenReady().then(async () => {
 		switchToHudWrapper,
 	);
 	createWindow();
+
+	if (pendingDesktopAuthUrl) {
+		void handleDesktopAuthUrl(pendingDesktopAuthUrl);
+	}
 });

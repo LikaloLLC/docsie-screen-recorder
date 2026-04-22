@@ -29,6 +29,57 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 	<img src="public/preview4.png" alt="OpenScreen App Preview 4" style="height: 0.1678; margin-right: 12px;" />
 </p>
 
+## Docsie Fork
+
+This repository is the **Docsie Screen Recorder** fork used for local recording, editing, and Docsie's existing Video-to-Docs workflow.
+
+- Private fork repo: [PhilippeTrounev/docsie-screen-recorder](https://github.com/PhilippeTrounev/docsie-screen-recorder)
+- Upstream source: [siddharthvaddem/openscreen](https://github.com/siddharthvaddem/openscreen)
+- Current desktop auth notes: [DOCSIE_DESKTOP_AUTH.md](./DOCSIE_DESKTOP_AUTH.md)
+- Current editor/integration notes: [CLAUDE.md](./CLAUDE.md)
+
+### Docsie Quick Start
+
+Recommended local runtime:
+
+- Node `22.22.1`
+- npm `10.9.4`
+
+Install and run locally:
+
+```bash
+npm install
+npm run dev
+```
+
+Build the macOS app:
+
+```bash
+npm run build:mac
+```
+
+Useful output paths after a mac build:
+
+- Apple Silicon app bundle: `release/1.3.0/mac-arm64/Docsie - Screen Recorder.app`
+- Intel app bundle: `release/1.3.0/mac/Docsie - Screen Recorder.app`
+- DMGs: `release/1.3.0/*.dmg`
+
+### macOS Permission Flow
+
+If the app opens but shows `Screens (0)` and `Windows (0)`, macOS screen capture permission is still blocked.
+
+1. Launch the app once.
+2. In the source picker, click `Open Settings`.
+3. Enable `Docsie - Screen Recorder` in `System Settings -> Privacy & Security -> Screen & System Audio Recording`.
+4. Fully quit the app.
+5. Reopen it.
+
+If Gatekeeper blocks the app on first launch, remove quarantine and retry:
+
+```bash
+xattr -dr com.apple.quarantine "release/1.3.0/mac-arm64/Docsie - Screen Recorder.app"
+```
+
 ## Core Features
 - Record specific windows or your whole screen.
 - Add automatic or manual zooms (adjustable depth levels) and customize their durarion and position.
@@ -43,19 +94,21 @@ OpenScreen is 100% free for personal and commercial use. Use it, modify it, dist
 
 ## Installation
 
-Download the latest installer for your platform from the [GitHub Releases](https://github.com/siddharthvaddem/openscreen/releases) page.
+For the Docsie fork, use the packaged builds under `release/<version>/` in this repo or the releases attached to the private fork.
+
+If you are developing locally, prefer the `Docsie Quick Start` section above instead of the packaged installers.
 
 ### macOS
 
-If you encounter issues with macOS Gatekeeper blocking the app (since it does not come with a developer certificate), you can bypass this by running the following command in your terminal after installation:
+If you encounter issues with macOS Gatekeeper blocking the app (the current build is not Developer ID signed or notarized), you can bypass this by running the following command in your terminal after installation:
 
 ```bash
-xattr -rd com.apple.quarantine /Applications/Openscreen.app
+xattr -rd com.apple.quarantine /Applications/Docsie\ -\ Screen\ Recorder.app
 ```
 
 Note: Give your terminal Full Disk Access in **System Settings > Privacy & Security** to grant you access and then run the above command.
 
-After running this command, proceed to **System Preferences > Security & Privacy** to grant the necessary permissions for "screen recording" and "accessibility". Once permissions are granted, you can launch the app.
+After running this command, proceed to **System Settings > Privacy & Security** to grant the necessary permissions for **Screen & System Audio Recording**. Once permissions are granted, fully quit and relaunch the app.
 
 ### Linux
 

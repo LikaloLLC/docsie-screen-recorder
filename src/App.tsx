@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { CountdownOverlay } from "./components/launch/CountdownOverlay.tsx";
 import { LaunchWindow } from "./components/launch/LaunchWindow";
 import { SourceSelector } from "./components/launch/SourceSelector";
@@ -31,6 +32,23 @@ export default function App() {
 		// Load custom fonts on app initialization
 		loadAllCustomFonts().catch((error) => {
 			console.error("Failed to load custom fonts:", error);
+		});
+	}, []);
+
+	useEffect(() => {
+		return window.electronAPI.onDocsieDesktopAuthEvent((event) => {
+			window.dispatchEvent(
+				new CustomEvent("docsie-desktop-auth-event", {
+					detail: event,
+				}),
+			);
+
+			if (event.status === "success") {
+				toast.success(event.message);
+				return;
+			}
+
+			toast.error(event.message);
 		});
 	}, []);
 

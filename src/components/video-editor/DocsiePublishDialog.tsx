@@ -155,6 +155,8 @@ export function DocsiePublishDialog({
 				setQuality(state.defaultQuality);
 				setLanguage(state.defaultLanguage);
 				setDocStyle(state.defaultDocStyle);
+				setRewriteInstructions(state.defaultRewriteInstructions ?? "");
+				setTemplateInstruction(state.defaultTemplateInstruction ?? "");
 				setAutoGenerate(state.autoGenerate);
 
 				if (state.hasToken && state.apiBaseUrl) {
@@ -268,6 +270,8 @@ export function DocsiePublishDialog({
 				defaultQuality: quality,
 				defaultLanguage: language,
 				defaultDocStyle: docStyle,
+				defaultRewriteInstructions: rewriteInstructions,
+				defaultTemplateInstruction: templateInstruction,
 				autoGenerate,
 			});
 

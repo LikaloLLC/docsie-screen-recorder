@@ -29,6 +29,7 @@ import {
 	VideoExporter,
 } from "@/lib/exporter";
 import { computeFrameStepTime } from "@/lib/frameStep";
+import type { DocsieDesktopAuthEvent } from "@/lib/docsieIntegration";
 import type { ProjectMedia } from "@/lib/recordingSession";
 import { matchesShortcut } from "@/lib/shortcuts";
 import { loadUserPreferences, saveUserPreferences } from "@/lib/userPreferences";
@@ -163,6 +164,23 @@ export default function VideoEditor() {
 	const nextAnnotationIdRef = useRef(1);
 	const nextAnnotationZIndexRef = useRef(1);
 	const exporterRef = useRef<VideoExporter | null>(null);
+
+	useEffect(() => {
+		const handleDesktopAuthEvent = (event: Event) => {
+			const customEvent = event as CustomEvent<DocsieDesktopAuthEvent>;
+			if (customEvent.detail?.status === "success") {
+				setShowDocsiePublishDialog(true);
+			}
+		};
+
+		window.addEventListener("docsie-desktop-auth-event", handleDesktopAuthEvent as EventListener);
+		return () => {
+			window.removeEventListener(
+				"docsie-desktop-auth-event",
+				handleDesktopAuthEvent as EventListener,
+			);
+		};
+	}, []);
 
 	const annotationOnlyRegions = useMemo(
 		() => annotationRegions.filter((region) => region.type !== "blur"),

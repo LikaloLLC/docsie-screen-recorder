@@ -24,11 +24,16 @@ export interface DocsieIntegrationConfigInput {
 	apiBaseUrl: string;
 	authMode: DocsieAuthMode;
 	token?: string;
+	organizationId?: string;
+	organizationName?: string;
 	workspaceId?: string;
 	workspaceName?: string;
 	defaultQuality?: DocsieVideoToDocsQuality;
 	defaultLanguage?: string;
 	defaultDocStyle?: DocsieVideoToDocsDocStyle;
+	defaultRewriteInstructions?: string;
+	defaultTemplateInstruction?: string;
+	targetDocumentationId?: string;
 	autoGenerate?: boolean;
 }
 
@@ -36,12 +41,47 @@ export interface DocsieIntegrationState {
 	apiBaseUrl: string;
 	authMode: DocsieAuthMode;
 	hasToken: boolean;
+	organizationId?: string;
+	organizationName?: string;
 	workspaceId?: string;
 	workspaceName?: string;
 	defaultQuality: DocsieVideoToDocsQuality;
 	defaultLanguage: string;
 	defaultDocStyle: DocsieVideoToDocsDocStyle;
+	defaultRewriteInstructions?: string;
+	defaultTemplateInstruction?: string;
+	targetDocumentationId?: string;
 	autoGenerate: boolean;
+}
+
+export interface DocsieDesktopHandoffInput {
+	handoffId: string;
+	state: string;
+	apiBaseUrl: string;
+	deviceName?: string;
+}
+
+export interface DocsieDesktopHandoffExchangeResult {
+	success: boolean;
+	state?: DocsieIntegrationState;
+	organizationId?: string;
+	organizationName?: string;
+	workspaceId?: string | null;
+	workspaceName?: string | null;
+	returnUrl?: string | null;
+	expiresAt?: string;
+	message?: string;
+	error?: string;
+}
+
+export interface DocsieDesktopAuthEvent {
+	status: "success" | "error";
+	message: string;
+	state?: DocsieIntegrationState;
+	organizationName?: string;
+	workspaceName?: string | null;
+	returnUrl?: string | null;
+	error?: string;
 }
 
 export interface DocsieEstimateInput {

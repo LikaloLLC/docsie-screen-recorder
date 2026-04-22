@@ -3,6 +3,8 @@ import path from "node:path";
 import { app, safeStorage } from "electron";
 import type {
 	DocsieAuthMode,
+	DocsieDesktopHandoffExchangeResult,
+	DocsieDesktopHandoffInput,
 	DocsieEstimateInput,
 	DocsieEstimateResult,
 	DocsieIntegrationConfigInput,
@@ -25,11 +27,16 @@ interface StoredDocsieConfig {
 	authMode: DocsieAuthMode;
 	tokenEncrypted?: string;
 	tokenPlaintext?: string;
+	organizationId?: string;
+	organizationName?: string;
 	workspaceId?: string;
 	workspaceName?: string;
 	defaultQuality?: string;
 	defaultLanguage?: string;
 	defaultDocStyle?: string;
+	defaultRewriteInstructions?: string;
+	defaultTemplateInstruction?: string;
+	targetDocumentationId?: string;
 	autoGenerate?: boolean;
 }
 
@@ -37,11 +44,16 @@ interface ResolvedDocsieConfig {
 	apiBaseUrl: string;
 	authMode: DocsieAuthMode;
 	token: string;
+	organizationId?: string;
+	organizationName?: string;
 	workspaceId?: string;
 	workspaceName?: string;
 	defaultQuality: string;
 	defaultLanguage: string;
 	defaultDocStyle: string;
+	defaultRewriteInstructions?: string;
+	defaultTemplateInstruction?: string;
+	targetDocumentationId?: string;
 	autoGenerate: boolean;
 }
 
@@ -120,11 +132,16 @@ async function readStoredDocsieConfig(): Promise<StoredDocsieConfig | null> {
 			authMode: parsed.authMode === "bearer" ? "bearer" : "apiKey",
 			tokenEncrypted: asString(parsed.tokenEncrypted),
 			tokenPlaintext: asString(parsed.tokenPlaintext),
+			organizationId: asString(parsed.organizationId),
+			organizationName: asString(parsed.organizationName),
 			workspaceId: asString(parsed.workspaceId),
 			workspaceName: asString(parsed.workspaceName),
 			defaultQuality: asString(parsed.defaultQuality),
 			defaultLanguage: asString(parsed.defaultLanguage),
 			defaultDocStyle: asString(parsed.defaultDocStyle),
+			defaultRewriteInstructions: asString(parsed.defaultRewriteInstructions),
+			defaultTemplateInstruction: asString(parsed.defaultTemplateInstruction),
+			targetDocumentationId: asString(parsed.targetDocumentationId),
 			autoGenerate: typeof parsed.autoGenerate === "boolean" ? parsed.autoGenerate : undefined,
 		};
 	} catch (error) {
@@ -141,6 +158,8 @@ function toDocsieState(stored: StoredDocsieConfig | null): DocsieIntegrationStat
 		apiBaseUrl: stored?.apiBaseUrl ?? "",
 		authMode: stored?.authMode ?? "apiKey",
 		hasToken: Boolean(stored && decryptToken(stored)),
+		organizationId: stored?.organizationId,
+		organizationName: stored?.organizationName,
 		workspaceId: stored?.workspaceId,
 		workspaceName: stored?.workspaceName,
 		defaultQuality:
@@ -148,6 +167,9 @@ function toDocsieState(stored: StoredDocsieConfig | null): DocsieIntegrationStat
 		defaultLanguage: stored?.defaultLanguage ?? DEFAULT_LANGUAGE,
 		defaultDocStyle:
 			(stored?.defaultDocStyle as DocsieIntegrationState["defaultDocStyle"]) ?? DEFAULT_DOC_STYLE,
+		defaultRewriteInstructions: stored?.defaultRewriteInstructions ?? "",
+		defaultTemplateInstruction: stored?.defaultTemplateInstruction ?? "",
+		targetDocumentationId: stored?.targetDocumentationId,
 		autoGenerate: stored?.autoGenerate ?? true,
 	};
 }
@@ -167,11 +189,16 @@ async function resolveDocsieConfig(): Promise<ResolvedDocsieConfig> {
 		apiBaseUrl: stored.apiBaseUrl,
 		authMode: stored.authMode ?? "apiKey",
 		token,
+		organizationId: stored.organizationId,
+		organizationName: stored.organizationName,
 		workspaceId: stored.workspaceId,
 		workspaceName: stored.workspaceName,
 		defaultQuality: stored.defaultQuality ?? DEFAULT_QUALITY,
 		defaultLanguage: stored.defaultLanguage ?? DEFAULT_LANGUAGE,
 		defaultDocStyle: stored.defaultDocStyle ?? DEFAULT_DOC_STYLE,
+		defaultRewriteInstructions: stored.defaultRewriteInstructions ?? "",
+		defaultTemplateInstruction: stored.defaultTemplateInstruction ?? "",
+		targetDocumentationId: stored.targetDocumentationId,
 		autoGenerate: stored.autoGenerate ?? true,
 	};
 }
@@ -373,11 +400,19 @@ export async function saveDocsieIntegrationConfig(
 	const persisted: StoredDocsieConfig = {
 		apiBaseUrl: normalizedApiBaseUrl,
 		authMode: input.authMode,
+		organizationId: asString(input.organizationId),
+		organizationName: asString(input.organizationName),
 		workspaceId: asString(input.workspaceId),
 		workspaceName: asString(input.workspaceName),
 		defaultQuality: input.defaultQuality ?? stored?.defaultQuality ?? DEFAULT_QUALITY,
 		defaultLanguage: asString(input.defaultLanguage) ?? stored?.defaultLanguage ?? DEFAULT_LANGUAGE,
 		defaultDocStyle: input.defaultDocStyle ?? stored?.defaultDocStyle ?? DEFAULT_DOC_STYLE,
+		defaultRewriteInstructions:
+			asString(input.defaultRewriteInstructions) ?? stored?.defaultRewriteInstructions ?? "",
+		defaultTemplateInstruction:
+			asString(input.defaultTemplateInstruction) ?? stored?.defaultTemplateInstruction ?? "",
+		targetDocumentationId:
+			asString(input.targetDocumentationId) ?? stored?.targetDocumentationId,
 		autoGenerate: input.autoGenerate ?? stored?.autoGenerate ?? true,
 		...encryptToken(nextToken),
 	};
@@ -390,6 +425,84 @@ export async function listDocsieWorkspaces(): Promise<DocsieWorkspace[]> {
 	const config = await resolveDocsieConfig();
 	const payload = await docsieJsonRequest(config, "/workspaces/");
 	return normalizeWorkspacePayload(payload);
+}
+
+export async function connectDocsieDesktopHandoff(
+	input: DocsieDesktopHandoffInput,
+): Promise<DocsieDesktopHandoffExchangeResult> {
+	try {
+		const apiBaseUrl = normalizeDocsieApiBaseUrl(input.apiBaseUrl);
+		const response = await fetch(`${apiBaseUrl}/desktop-auth/handoffs/exchange/`, {
+			method: "POST",
+			headers: {
+				Accept: "application/json",
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				handoff_id: input.handoffId,
+				state: input.state,
+				device_name: input.deviceName ?? app.getName(),
+			}),
+		});
+
+		const contentType = response.headers.get("content-type") ?? "";
+		const payload = contentType.includes("application/json")
+			? await response.json()
+			: await response.text();
+
+		if (!response.ok || !isRecord(payload)) {
+			const message =
+				isRecord(payload)
+					? asString(payload.detail) ?? asString(payload.error) ?? asString(payload.message)
+					: typeof payload === "string"
+						? payload
+						: null;
+			throw new Error(message ?? `Docsie desktop auth failed (${response.status})`);
+		}
+
+		const accessToken = asString(payload.access_token);
+		if (!accessToken) {
+			throw new Error("Docsie desktop auth did not return an access token");
+		}
+
+		const persisted: StoredDocsieConfig = {
+			apiBaseUrl,
+			authMode: "bearer",
+			organizationId: asString(payload.organization_id),
+			organizationName: asString(payload.organization_name),
+			workspaceId: asString(payload.workspace_id),
+			workspaceName: asString(payload.workspace_name),
+			defaultQuality: asString(payload.default_quality) ?? DEFAULT_QUALITY,
+			defaultLanguage: asString(payload.default_language) ?? DEFAULT_LANGUAGE,
+			defaultDocStyle: asString(payload.default_doc_style) ?? DEFAULT_DOC_STYLE,
+			defaultRewriteInstructions: asString(payload.default_rewrite_instructions) ?? "",
+			defaultTemplateInstruction: asString(payload.default_template_instruction) ?? "",
+			targetDocumentationId: asString(payload.target_documentation_id),
+			autoGenerate:
+				typeof payload.auto_generate === "boolean" ? payload.auto_generate : true,
+			...encryptToken(accessToken),
+		};
+
+		await fs.writeFile(DOCSIE_CONFIG_PATH, JSON.stringify(persisted, null, 2), "utf-8");
+		const nextState = toDocsieState(persisted);
+
+		return {
+			success: true,
+			state: nextState,
+			organizationId: persisted.organizationId,
+			organizationName: persisted.organizationName,
+			workspaceId: persisted.workspaceId ?? null,
+			workspaceName: persisted.workspaceName ?? null,
+			returnUrl: asNullableString(payload.return_url),
+			expiresAt: asString(payload.expires_at),
+			message: "Docsie Screen Recorder is connected.",
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
 }
 
 export async function estimateDocsieVideoToDocs(
@@ -497,8 +610,10 @@ export async function startDocsieVideoToDocs(
 				language: asString(input.language) ?? config.defaultLanguage,
 				workspace_id: workspaceId,
 				doc_style: input.docStyle ?? config.defaultDocStyle,
-				rewrite_instructions: asString(input.rewriteInstructions) ?? "",
-				template_instruction: asString(input.templateInstruction) ?? "",
+				rewrite_instructions:
+					asString(input.rewriteInstructions) ?? config.defaultRewriteInstructions ?? "",
+				template_instruction:
+					asString(input.templateInstruction) ?? config.defaultTemplateInstruction ?? "",
 				auto_generate: input.autoGenerate ?? config.autoGenerate,
 			}),
 		});

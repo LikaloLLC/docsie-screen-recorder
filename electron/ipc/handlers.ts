@@ -555,6 +555,20 @@ export function registerIpcHandlers(
 		return selectedSource;
 	});
 
+	ipcMain.handle("open-screen-capture-settings", async () => {
+		if (process.platform !== "darwin") {
+			return { success: false, error: "Screen capture settings shortcut is only supported on macOS" };
+		}
+
+		try {
+			await shell.openExternal("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture");
+			return { success: true };
+		} catch (error) {
+			console.error("Failed to open screen capture settings:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
 	ipcMain.handle("get-selected-source", () => {
 		return selectedSource;
 	});

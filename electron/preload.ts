@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
+	DocsieDesktopAuthEvent,
 	DocsieEstimateInput,
 	DocsieIntegrationConfigInput,
 	DocsieStartVideoToDocsInput,
@@ -19,6 +20,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	getSources: async (opts: Electron.SourcesOptions) => {
 		return await ipcRenderer.invoke("get-sources", opts);
+	},
+	openScreenCaptureSettings: () => {
+		return ipcRenderer.invoke("open-screen-capture-settings");
 	},
 	switchToEditor: () => {
 		return ipcRenderer.invoke("switch-to-editor");
@@ -78,6 +82,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	docsieGetJobResult: (jobId: string) => {
 		return ipcRenderer.invoke("docsie:get-job-result", jobId);
+	},
+	onDocsieDesktopAuthEvent: (callback: (event: DocsieDesktopAuthEvent) => void) => {
+		const listener = (_event: unknown, payload: DocsieDesktopAuthEvent) => callback(payload);
+		ipcRenderer.on("docsie:desktop-auth-event", listener);
+		return () => ipcRenderer.removeListener("docsie:desktop-auth-event", listener);
 	},
 	onStopRecordingFromTray: (callback: () => void) => {
 		const listener = () => callback();

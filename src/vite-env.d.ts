@@ -18,6 +18,7 @@ interface CursorTelemetryPoint {
 interface Window {
 	electronAPI: {
 		getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>;
+		openScreenCaptureSettings: () => Promise<{ success: boolean; error?: string }>;
 		switchToEditor: () => Promise<void>;
 		switchToHud: () => Promise<void>;
 		startNewRecording: () => Promise<{ success: boolean; error?: string }>;
@@ -92,6 +93,9 @@ interface Window {
 		docsieGetJobResult: (
 			jobId: string,
 		) => Promise<import("./lib/docsieIntegration").DocsieVideoToDocsJobResult>;
+		onDocsieDesktopAuthEvent: (
+			callback: (event: import("./lib/docsieIntegration").DocsieDesktopAuthEvent) => void,
+		) => () => void;
 		onStopRecordingFromTray: (callback: () => void) => () => void;
 		openExternalUrl: (url: string) => Promise<{ success: boolean; error?: string }>;
 		saveExportedVideo: (

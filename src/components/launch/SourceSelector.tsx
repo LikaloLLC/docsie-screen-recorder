@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { MdCheck } from "react-icons/md";
+import { toast } from "sonner";
 import { useScopedT } from "@/contexts/I18nContext";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
@@ -19,6 +20,7 @@ export function SourceSelector() {
 	const [sources, setSources] = useState<DesktopSource[]>([]);
 	const [selectedSource, setSelectedSource] = useState<DesktopSource | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [refreshToken, setRefreshToken] = useState(0);
 
 	useEffect(() => {
 		async function fetchSources() {
@@ -48,14 +50,22 @@ export function SourceSelector() {
 			}
 		}
 		fetchSources();
-	}, []);
+	}, [refreshToken]);
 
 	const screenSources = sources.filter((s) => s.id.startsWith("screen:"));
 	const windowSources = sources.filter((s) => s.id.startsWith("window:"));
+	const hasNoSources = !loading && sources.length === 0;
 
 	const handleSourceSelect = (source: DesktopSource) => setSelectedSource(source);
 	const handleShare = async () => {
 		if (selectedSource) await window.electronAPI.selectSource(selectedSource);
+	};
+	const handleRetry = () => setRefreshToken((value) => value + 1);
+	const handleOpenSettings = async () => {
+		const result = await window.electronAPI.openScreenCaptureSettings();
+		if (!result.success) {
+			toast.error(result.error ?? "Unable to open macOS screen capture settings");
+		}
 	};
 
 	if (loading) {
@@ -137,20 +147,51 @@ export function SourceSelector() {
 						</TabsTrigger>
 					</TabsList>
 					<div className="flex-1 min-h-0">
-						<TabsContent value="screens" className="h-full mt-0">
-							<div
-								className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll}`}
-							>
-								{screenSources.map(renderSourceCard)}
+						{hasNoSources ? (
+							<div className="h-[280px] rounded-[22px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] flex flex-col items-center justify-center px-6 text-center">
+								<div className="text-sm font-semibold text-[#FFF0E4]">
+									Screen recording permission is still blocked
+								</div>
+								<p className="mt-2 max-w-[360px] text-xs leading-5 text-[#FDD2A3]/70">
+									Open macOS Screen &amp; System Audio Recording settings, enable
+									<em> Docsie - Screen Recorder</em>, then fully quit and reopen the app.
+								</p>
+								<div className="mt-4 flex gap-2">
+									<Button
+										type="button"
+										onClick={handleOpenSettings}
+										className="px-4 py-1 text-xs bg-[#FF6738] text-white hover:bg-[#E85A2F] rounded-full"
+									>
+										Open Settings
+									</Button>
+									<Button
+										type="button"
+										variant="ghost"
+										onClick={handleRetry}
+										className="px-4 py-1 text-xs text-[#FDD2A3]/75 hover:text-white hover:bg-white/5 rounded-full"
+									>
+										Retry
+									</Button>
+								</div>
 							</div>
-						</TabsContent>
-						<TabsContent value="windows" className="h-full mt-0">
-							<div
-								className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll}`}
-							>
-								{windowSources.map(renderSourceCard)}
-							</div>
-						</TabsContent>
+						) : (
+							<>
+								<TabsContent value="screens" className="h-full mt-0">
+									<div
+										className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll}`}
+									>
+										{screenSources.map(renderSourceCard)}
+									</div>
+								</TabsContent>
+								<TabsContent value="windows" className="h-full mt-0">
+									<div
+										className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll}`}
+									>
+										{windowSources.map(renderSourceCard)}
+									</div>
+								</TabsContent>
+							</>
+						)}
 					</div>
 				</Tabs>
 			</div>

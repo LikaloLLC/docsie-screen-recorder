@@ -4,6 +4,12 @@
   "appId": "io.docsie.screenrecorder",
   "asar": true,
   "productName": "Docsie - Screen Recorder",
+  "protocols": [
+    {
+      "name": "Docsie Screen Recorder",
+      "schemes": ["docsie-screen"]
+    }
+  ],
   "npmRebuild": true,
   "buildDependenciesFromSource": true,
   "compression": "normal",
