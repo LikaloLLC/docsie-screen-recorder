@@ -94,6 +94,9 @@ interface Window {
 		docsieStartVideoToDocs: (
 			input: import("../src/lib/docsieIntegration").DocsieStartVideoToDocsInput,
 		) => Promise<import("../src/lib/docsieIntegration").DocsieStartVideoToDocsResult>;
+		docsieGenerateVideoToDocs: (
+			input: import("../src/lib/docsieIntegration").DocsieGenerateVideoToDocsInput,
+		) => Promise<import("../src/lib/docsieIntegration").DocsieGenerateVideoToDocsResult>;
 		docsieGetJobStatus: (
 			jobId: string,
 		) => Promise<import("../src/lib/docsieIntegration").DocsieVideoToDocsJobStatus>;

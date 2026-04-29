@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MdCheck } from "react-icons/md";
 import { toast } from "sonner";
+import { DocsieAuthGate } from "@/components/docsie/DocsieAuthGate";
 import { useScopedT } from "@/contexts/I18nContext";
+import { useDocsieAuthState } from "@/hooks/useDocsieAuthState";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import styles from "./SourceSelector.module.css";
@@ -20,37 +22,50 @@ export function SourceSelector() {
 	const [sources, setSources] = useState<DesktopSource[]>([]);
 	const [selectedSource, setSelectedSource] = useState<DesktopSource | null>(null);
 	const [loading, setLoading] = useState(true);
-	const [refreshToken, setRefreshToken] = useState(0);
+	const {
+		loading: authLoading,
+		isConnected,
+		state: docsieState,
+		refresh: refreshDocsieAuth,
+	} = useDocsieAuthState();
+
+	const loadSources = useCallback(async () => {
+		if (!isConnected) {
+			setSources([]);
+			setSelectedSource(null);
+			setLoading(false);
+			return;
+		}
+
+		setLoading(true);
+		try {
+			const rawSources = await window.electronAPI.getSources({
+				types: ["screen", "window"],
+				thumbnailSize: { width: 320, height: 180 },
+				fetchWindowIcons: true,
+			});
+			setSources(
+				rawSources.map((source) => ({
+					id: source.id,
+					name:
+						source.id.startsWith("window:") && source.name.includes(" — ")
+							? source.name.split(" — ")[1] || source.name
+							: source.name,
+					thumbnail: source.thumbnail,
+					display_id: source.display_id,
+					appIcon: source.appIcon,
+				})),
+			);
+		} catch (error) {
+			console.error("Error loading sources:", error);
+		} finally {
+			setLoading(false);
+		}
+	}, [isConnected]);
 
 	useEffect(() => {
-		async function fetchSources() {
-			setLoading(true);
-			try {
-				const rawSources = await window.electronAPI.getSources({
-					types: ["screen", "window"],
-					thumbnailSize: { width: 320, height: 180 },
-					fetchWindowIcons: true,
-				});
-				setSources(
-					rawSources.map((source) => ({
-						id: source.id,
-						name:
-							source.id.startsWith("window:") && source.name.includes(" — ")
-								? source.name.split(" — ")[1] || source.name
-								: source.name,
-						thumbnail: source.thumbnail,
-						display_id: source.display_id,
-						appIcon: source.appIcon,
-					})),
-				);
-			} catch (error) {
-				console.error("Error loading sources:", error);
-			} finally {
-				setLoading(false);
-			}
-		}
-		fetchSources();
-	}, [refreshToken]);
+		void loadSources();
+	}, [loadSources]);
 
 	const screenSources = sources.filter((s) => s.id.startsWith("screen:"));
 	const windowSources = sources.filter((s) => s.id.startsWith("window:"));
@@ -60,13 +75,33 @@ export function SourceSelector() {
 	const handleShare = async () => {
 		if (selectedSource) await window.electronAPI.selectSource(selectedSource);
 	};
-	const handleRetry = () => setRefreshToken((value) => value + 1);
+	const handleRetry = () => {
+		void loadSources();
+	};
 	const handleOpenSettings = async () => {
 		const result = await window.electronAPI.openScreenCaptureSettings();
 		if (!result.success) {
 			toast.error(result.error ?? "Unable to open macOS screen capture settings");
 		}
 	};
+
+	if (authLoading || !isConnected) {
+		return (
+			<div
+				className={`min-h-screen flex items-center justify-center px-4 ${styles.glassContainer}`}
+			>
+				<DocsieAuthGate
+					title="Connect Docsie before choosing a screen"
+					description="Recording is locked until this app is signed in to Docsie. Create an account if you are new, then come back here and pick what to capture."
+					variant="panel"
+					webAppUrl={docsieState?.apiBaseUrl}
+					loading={authLoading}
+					onRefresh={refreshDocsieAuth}
+					onClose={() => window.close()}
+				/>
+			</div>
+		);
+	}
 
 	if (loading) {
 		return (

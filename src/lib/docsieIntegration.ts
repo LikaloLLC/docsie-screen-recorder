@@ -1,5 +1,6 @@
 export type DocsieAuthMode = "apiKey" | "bearer";
 export type DocsieVideoToDocsQuality = "draft" | "standard" | "detailed" | "ultra";
+export type DocsieOutputFormat = "md" | "docx" | "pdf";
 export type DocsieVideoToDocsDocStyle =
 	| "guide"
 	| "sop"
@@ -18,6 +19,89 @@ export interface DocsieWorkspace {
 	name: string;
 	slug?: string;
 	documentationId?: string | null;
+}
+
+export interface DocsieDesktopConnectParams {
+	workspaceId?: string;
+	docStyle?: DocsieVideoToDocsDocStyle;
+	quality?: DocsieVideoToDocsQuality;
+	language?: string;
+	templateInstruction?: string;
+	rewriteInstructions?: string;
+	targetDocumentationId?: string;
+	autoGenerate?: boolean;
+}
+
+export const DEFAULT_DOCSIE_WEB_APP_URL = "https://app.docsie.io";
+
+export function getDocsieWebAppUrl(apiBaseUrl?: string | null) {
+	const candidate = typeof apiBaseUrl === "string" ? apiBaseUrl.trim() : "";
+	if (!candidate) {
+		return DEFAULT_DOCSIE_WEB_APP_URL;
+	}
+
+	try {
+		const parsed = new URL(candidate);
+		const normalized = parsed.pathname.replace(/\/+$/, "");
+		if (/\/api_v2\/(?:v3|003)$/.test(normalized)) {
+			parsed.pathname = normalized.replace(/\/api_v2\/(?:v3|003)$/, "") || "/";
+		}
+		return parsed.toString().replace(/\/+$/, "");
+	} catch {
+		return DEFAULT_DOCSIE_WEB_APP_URL;
+	}
+}
+
+export function buildDocsieDesktopConnectUrl(
+	webAppUrl: string,
+	params?: DocsieDesktopConnectParams,
+) {
+	const baseUrl = getDocsieWebAppUrl(webAppUrl);
+	const connectUrl = new URL("/o2/screen-recorder/connect/", `${baseUrl}/`);
+
+	if (params?.workspaceId?.trim()) {
+		connectUrl.searchParams.set("workspace_id", params.workspaceId.trim());
+	}
+	if (params?.docStyle?.trim()) {
+		connectUrl.searchParams.set("doc_style", params.docStyle.trim());
+	}
+	if (params?.quality?.trim()) {
+		connectUrl.searchParams.set("quality", params.quality.trim());
+	}
+	if (params?.language?.trim()) {
+		connectUrl.searchParams.set("language", params.language.trim());
+	}
+	if (params?.templateInstruction?.trim()) {
+		connectUrl.searchParams.set("template_instruction", params.templateInstruction.trim());
+	}
+	if (params?.rewriteInstructions?.trim()) {
+		connectUrl.searchParams.set("rewrite_instructions", params.rewriteInstructions.trim());
+	}
+	if (params?.targetDocumentationId?.trim()) {
+		connectUrl.searchParams.set("target_documentation_id", params.targetDocumentationId.trim());
+	}
+	if (typeof params?.autoGenerate === "boolean") {
+		connectUrl.searchParams.set("auto_generate", params.autoGenerate ? "true" : "false");
+	}
+
+	return connectUrl.toString();
+}
+
+export function buildDocsieDesktopLoginUrl(webAppUrl: string, params?: DocsieDesktopConnectParams) {
+	const baseUrl = getDocsieWebAppUrl(webAppUrl);
+	const loginUrl = new URL("/onboarding/v3/login/", `${baseUrl}/`);
+	loginUrl.searchParams.set("next", buildDocsieDesktopConnectUrl(baseUrl, params));
+	return loginUrl.toString();
+}
+
+export function buildDocsieDesktopSignupUrl(
+	webAppUrl: string,
+	params?: DocsieDesktopConnectParams,
+) {
+	const baseUrl = getDocsieWebAppUrl(webAppUrl);
+	const signupUrl = new URL("/onboarding/v3/", `${baseUrl}/`);
+	signupUrl.searchParams.set("next", buildDocsieDesktopConnectUrl(baseUrl, params));
+	return signupUrl.toString();
 }
 
 export interface DocsieIntegrationConfigInput {
@@ -110,6 +194,8 @@ export interface DocsieStartVideoToDocsInput {
 	docStyle?: DocsieVideoToDocsDocStyle;
 	rewriteInstructions?: string;
 	templateInstruction?: string;
+	targetDocumentationId?: string;
+	bookTitle?: string;
 	autoGenerate?: boolean;
 }
 
@@ -122,6 +208,26 @@ export interface DocsieStartVideoToDocsResult {
 	quality?: DocsieVideoToDocsQuality;
 	sourceType?: string | null;
 	creditsPerMinute?: number;
+	error?: string;
+}
+
+export interface DocsieGenerateVideoToDocsInput {
+	jobId: string;
+	docStyle?: DocsieVideoToDocsDocStyle;
+	rewriteInstructions?: string;
+	templateInstruction?: string;
+	targetLanguage?: string;
+	targetDocumentationId?: string;
+	bookTitle?: string;
+	outputFormats?: DocsieOutputFormat[];
+}
+
+export interface DocsieGenerateVideoToDocsResult {
+	success: boolean;
+	jobId?: string;
+	generateJobId?: string;
+	status?: string;
+	docStyle?: DocsieVideoToDocsDocStyle;
 	error?: string;
 }
 
@@ -165,6 +271,13 @@ export interface DocsieVideoToDocsJobResult {
 	transcriptionUrl?: string | null;
 	sections?: unknown[];
 	images?: unknown[];
+	documentationId?: string | null;
+	documentationName?: string | null;
+	bookId?: string | null;
+	bookName?: string | null;
+	articleId?: string | null;
+	articlesCreated?: number | null;
+	url?: string | null;
 	creditsCharged?: number | null;
 	creditBalanceAfter?: number | null;
 	rehostedImages?: number | null;

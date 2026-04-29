@@ -22,10 +22,12 @@ import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { getAvailableLocales, getLocaleName } from "@/i18n/loader";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useCameraDevices } from "../../hooks/useCameraDevices";
+import { useDocsieAuthState } from "../../hooks/useDocsieAuthState";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
 import { requestCameraAccess } from "../../lib/requestCameraAccess";
 import { formatTimePadded } from "../../utils/timeUtils";
+import { DocsieAuthGate } from "../docsie/DocsieAuthGate";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
 import { Button } from "../ui/button";
 import { Tooltip } from "../ui/tooltip";
@@ -111,6 +113,12 @@ export function LaunchWindow() {
 
 	const showMicControls = microphoneEnabled && !recording;
 	const showWebcamControls = webcamEnabled && !recording;
+	const {
+		loading: authLoading,
+		isConnected,
+		state: docsieState,
+		refresh: refreshDocsieAuth,
+	} = useDocsieAuthState();
 
 	const [isMicHovered, setIsMicHovered] = useState(false);
 	const [isMicFocused, setIsMicFocused] = useState(false);
@@ -313,6 +321,27 @@ export function LaunchWindow() {
 			setMicrophoneEnabled(!microphoneEnabled);
 		}
 	};
+
+	if (authLoading || !isConnected) {
+		return (
+			<div
+				className={`flex h-screen w-screen items-center justify-center overflow-hidden bg-transparent px-2 ${styles.electronDrag}`}
+			>
+				<div className={`w-full ${styles.electronNoDrag}`}>
+					<DocsieAuthGate
+						variant="hud"
+						title="Sign in to start recording"
+						description="Docsie Screen Recorder only unlocks after this desktop app is linked to your Docsie account."
+						webAppUrl={docsieState?.apiBaseUrl}
+						loading={authLoading}
+						onRefresh={refreshDocsieAuth}
+						onClose={sendHudOverlayHide}
+						closeLabel="Maybe later"
+					/>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className={`w-screen h-screen overflow-x-hidden bg-transparent ${styles.electronDrag}`}>

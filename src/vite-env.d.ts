@@ -87,6 +87,9 @@ interface Window {
 		docsieStartVideoToDocs: (
 			input: import("./lib/docsieIntegration").DocsieStartVideoToDocsInput,
 		) => Promise<import("./lib/docsieIntegration").DocsieStartVideoToDocsResult>;
+		docsieGenerateVideoToDocs: (
+			input: import("./lib/docsieIntegration").DocsieGenerateVideoToDocsInput,
+		) => Promise<import("./lib/docsieIntegration").DocsieGenerateVideoToDocsResult>;
 		docsieGetJobStatus: (
 			jobId: string,
 		) => Promise<import("./lib/docsieIntegration").DocsieVideoToDocsJobStatus>;

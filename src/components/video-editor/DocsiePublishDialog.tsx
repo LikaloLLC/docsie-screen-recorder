@@ -1,5 +1,13 @@
-import { ExternalLink, Loader2, RefreshCcw, Send } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+	ExternalLink,
+	Loader2,
+	LogIn,
+	RefreshCcw,
+	Send,
+	ShieldCheck,
+	Sparkles,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +29,7 @@ import type {
 	DocsieVideoToDocsQuality,
 	DocsieWorkspace,
 } from "@/lib/docsieIntegration";
+import { buildDocsieDesktopConnectUrl, getDocsieWebAppUrl } from "@/lib/docsieIntegration";
 import { cn } from "@/lib/utils";
 
 const QUALITY_OPTIONS: Array<{
@@ -75,7 +84,7 @@ function formatJobPhase(phase: PublishPhase) {
 		case "analysis":
 			return "Analyzing video";
 		case "generation":
-			return "Generating documentation";
+			return "Generating Docsie docs";
 		case "completed":
 			return "Completed";
 		case "failed":
@@ -96,6 +105,33 @@ function getEstimateText(estimate: DocsieEstimateResult | null) {
 	return typeof credits === "number" ? `${credits.toLocaleString()} credits` : null;
 }
 
+function buildDefaultBookTitle(videoPath: string | null) {
+	if (!videoPath) {
+		return "Video Documentation";
+	}
+
+	const basename = videoPath.split("/").pop() ?? "Video Documentation";
+	return basename.replace(/\.[^.]+$/, "") || "Video Documentation";
+}
+
+function buildApiBaseUrl(webAppUrl: string, currentApiBaseUrl: string) {
+	const current = currentApiBaseUrl.trim();
+	if (current) {
+		return current;
+	}
+
+	const base = getDocsieWebAppUrl(webAppUrl);
+	return new URL("/api_v2/003", `${base}/`).toString().replace(/\/+$/, "");
+}
+
+function getPrimaryResultUrl(jobResult: DocsieVideoToDocsJobResult | null) {
+	return jobResult?.url ?? jobResult?.resultUrl ?? null;
+}
+
+function getResultTitle(jobResult: DocsieVideoToDocsJobResult | null) {
+	return jobResult?.bookName ?? jobResult?.title ?? "Docsie result";
+}
+
 export function DocsiePublishDialog({
 	isOpen,
 	onOpenChange,
@@ -103,9 +139,12 @@ export function DocsiePublishDialog({
 	videoDurationSeconds,
 }: DocsiePublishDialogProps) {
 	const [apiBaseUrl, setApiBaseUrl] = useState("");
-	const [authMode, setAuthMode] = useState<DocsieAuthMode>("apiKey");
+	const [webAppUrl, setWebAppUrl] = useState(getDocsieWebAppUrl(""));
+	const [authMode, setAuthMode] = useState<DocsieAuthMode>("bearer");
 	const [tokenInput, setTokenInput] = useState("");
 	const [hasStoredToken, setHasStoredToken] = useState(false);
+	const [organizationName, setOrganizationName] = useState("");
+	const [storedWorkspaceName, setStoredWorkspaceName] = useState("");
 	const [workspaceId, setWorkspaceId] = useState("");
 	const [quality, setQuality] = useState<DocsieVideoToDocsQuality>("standard");
 	const [language, setLanguage] = useState("english");
@@ -113,6 +152,8 @@ export function DocsiePublishDialog({
 	const [autoGenerate, setAutoGenerate] = useState(true);
 	const [rewriteInstructions, setRewriteInstructions] = useState("");
 	const [templateInstruction, setTemplateInstruction] = useState("");
+	const [targetDocumentationId, setTargetDocumentationId] = useState("");
+	const [bookTitle, setBookTitle] = useState("Video Documentation");
 	const [workspaces, setWorkspaces] = useState<DocsieWorkspace[]>([]);
 	const [loadingState, setLoadingState] = useState(false);
 	const [savingConfig, setSavingConfig] = useState(false);
@@ -131,53 +172,80 @@ export function DocsiePublishDialog({
 		() => workspaces.find((workspace) => workspace.id === workspaceId) ?? null,
 		[workspaceId, workspaces],
 	);
+	const displayedWorkspaceName = selectedWorkspace?.name ?? storedWorkspaceName;
+	const hasConnectionCredentials = hasStoredToken || Boolean(tokenInput.trim());
+
+	const loadState = useCallback(async () => {
+		setLoadingState(true);
+		try {
+			const result = await window.electronAPI.docsieGetState();
+			if (!result.success || !result.state) {
+				return;
+			}
+
+			const state: DocsieIntegrationState = result.state;
+			setApiBaseUrl(state.apiBaseUrl);
+			setWebAppUrl(getDocsieWebAppUrl(state.apiBaseUrl));
+			setAuthMode(state.authMode);
+			setHasStoredToken(state.hasToken);
+			setOrganizationName(state.organizationName ?? "");
+			setWorkspaceId(state.workspaceId ?? "");
+			setStoredWorkspaceName(state.workspaceName ?? "");
+			setQuality(state.defaultQuality);
+			setLanguage(state.defaultLanguage);
+			setDocStyle(state.defaultDocStyle);
+			setRewriteInstructions(state.defaultRewriteInstructions ?? "");
+			setTemplateInstruction(state.defaultTemplateInstruction ?? "");
+			setTargetDocumentationId(state.targetDocumentationId ?? "");
+			setAutoGenerate(state.autoGenerate);
+
+			if (state.hasToken) {
+				const workspacesResult = await window.electronAPI.docsieListWorkspaces();
+				if (workspacesResult.success) {
+					setWorkspaces(workspacesResult.workspaces);
+					if (!state.workspaceId && workspacesResult.workspaces.length > 0) {
+						const firstWorkspace = workspacesResult.workspaces[0];
+						setWorkspaceId(firstWorkspace.id);
+						setStoredWorkspaceName(firstWorkspace.name);
+					}
+				}
+			}
+		} finally {
+			setLoadingState(false);
+		}
+	}, []);
 
 	useEffect(() => {
 		if (!isOpen) {
 			return;
 		}
 
-		let cancelled = false;
-
-		const loadState = async () => {
-			setLoadingState(true);
-			try {
-				const result = await window.electronAPI.docsieGetState();
-				if (!result.success || !result.state || cancelled) {
-					return;
-				}
-
-				const state: DocsieIntegrationState = result.state;
-				setApiBaseUrl(state.apiBaseUrl);
-				setAuthMode(state.authMode);
-				setHasStoredToken(state.hasToken);
-				setWorkspaceId(state.workspaceId ?? "");
-				setQuality(state.defaultQuality);
-				setLanguage(state.defaultLanguage);
-				setDocStyle(state.defaultDocStyle);
-				setRewriteInstructions(state.defaultRewriteInstructions ?? "");
-				setTemplateInstruction(state.defaultTemplateInstruction ?? "");
-				setAutoGenerate(state.autoGenerate);
-
-				if (state.hasToken && state.apiBaseUrl) {
-					const workspacesResult = await window.electronAPI.docsieListWorkspaces();
-					if (!cancelled && workspacesResult.success) {
-						setWorkspaces(workspacesResult.workspaces);
-					}
-				}
-			} finally {
-				if (!cancelled) {
-					setLoadingState(false);
-				}
-			}
-		};
-
 		void loadState();
+		setBookTitle(buildDefaultBookTitle(videoPath));
+	}, [isOpen, loadState, videoPath]);
 
-		return () => {
-			cancelled = true;
+	useEffect(() => {
+		if (!isOpen) {
+			return;
+		}
+
+		const handleDesktopAuthEvent = (event: Event) => {
+			const customEvent = event as CustomEvent<{ status?: string; message?: string }>;
+			if (customEvent.detail?.status !== "success") {
+				return;
+			}
+
+			void loadState();
 		};
-	}, [isOpen]);
+
+		window.addEventListener("docsie-desktop-auth-event", handleDesktopAuthEvent as EventListener);
+		return () => {
+			window.removeEventListener(
+				"docsie-desktop-auth-event",
+				handleDesktopAuthEvent as EventListener,
+			);
+		};
+	}, [isOpen, loadState]);
 
 	useEffect(() => {
 		if (!isOpen || !activeJobId || phase === "completed" || phase === "failed") {
@@ -206,7 +274,7 @@ export function DocsiePublishDialog({
 				setGenerationJobId(queuedGenerateJobId);
 				setActiveJobId(queuedGenerateJobId);
 				setPhase("generation");
-				setBusyMessage("Docsie analysis finished. Starting AI rewrite.");
+				setBusyMessage("Analysis finished. Docsie is generating and saving the documentation.");
 				return;
 			}
 
@@ -238,7 +306,7 @@ export function DocsiePublishDialog({
 					setGenerationJobId(followUpGenerateJobId);
 					setActiveJobId(followUpGenerateJobId);
 					setPhase("generation");
-					setBusyMessage("Analysis completed. Waiting for rewritten documentation.");
+					setBusyMessage("Analysis completed. Docsie is generating and saving the documentation.");
 					return;
 				}
 
@@ -262,16 +330,18 @@ export function DocsiePublishDialog({
 		setSavingConfig(true);
 		try {
 			const result = await window.electronAPI.docsieSaveConfig({
-				apiBaseUrl,
+				apiBaseUrl: buildApiBaseUrl(webAppUrl, apiBaseUrl),
 				authMode,
 				token: tokenInput,
+				organizationName,
 				workspaceId,
-				workspaceName: selectedWorkspace?.name,
+				workspaceName: selectedWorkspace?.name ?? storedWorkspaceName,
 				defaultQuality: quality,
 				defaultLanguage: language,
 				defaultDocStyle: docStyle,
 				defaultRewriteInstructions: rewriteInstructions,
 				defaultTemplateInstruction: templateInstruction,
+				targetDocumentationId: targetDocumentationId.trim() || undefined,
 				autoGenerate,
 			});
 
@@ -279,7 +349,13 @@ export function DocsiePublishDialog({
 				throw new Error(result.error ?? "Failed to save Docsie settings");
 			}
 
+			setApiBaseUrl(result.state.apiBaseUrl);
+			setWebAppUrl(getDocsieWebAppUrl(result.state.apiBaseUrl));
 			setHasStoredToken(result.state.hasToken);
+			setOrganizationName(result.state.organizationName ?? organizationName);
+			setStoredWorkspaceName(
+				result.state.workspaceName ?? selectedWorkspace?.name ?? storedWorkspaceName,
+			);
 			setTokenInput("");
 			return result.state;
 		} finally {
@@ -287,7 +363,33 @@ export function DocsiePublishDialog({
 		}
 	};
 
+	const handleConnect = async () => {
+		const launchUrl = buildDocsieDesktopConnectUrl(webAppUrl, {
+			workspaceId,
+			docStyle,
+			quality,
+			language,
+			templateInstruction,
+			rewriteInstructions,
+			targetDocumentationId,
+			autoGenerate,
+		});
+
+		const result = await window.electronAPI.openExternalUrl(launchUrl);
+		if (!result.success) {
+			toast.error(result.error ?? "Failed to open Docsie sign-in");
+			return;
+		}
+
+		toast.success("Opened Docsie sign-in in your browser");
+	};
+
 	const handleRefreshWorkspaces = async () => {
+		if (!hasConnectionCredentials) {
+			toast.error("Connect to Docsie or provide an API token first");
+			return;
+		}
+
 		setLoadingWorkspaces(true);
 		try {
 			await persistConfig();
@@ -298,7 +400,9 @@ export function DocsiePublishDialog({
 
 			setWorkspaces(result.workspaces);
 			if (!workspaceId && result.workspaces.length > 0) {
-				setWorkspaceId(result.workspaces[0].id);
+				const firstWorkspace = result.workspaces[0];
+				setWorkspaceId(firstWorkspace.id);
+				setStoredWorkspaceName(firstWorkspace.name);
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -309,6 +413,11 @@ export function DocsiePublishDialog({
 	};
 
 	const handleEstimate = async () => {
+		if (!hasConnectionCredentials) {
+			toast.error("Connect to Docsie or provide an API token first");
+			return;
+		}
+
 		setLoadingEstimate(true);
 		try {
 			await persistConfig();
@@ -336,6 +445,10 @@ export function DocsiePublishDialog({
 			toast.error("No video available to send to Docsie");
 			return;
 		}
+		if (!hasConnectionCredentials) {
+			toast.error("Connect to Docsie before sending this recording");
+			return;
+		}
 
 		setBusyMessage("Uploading the current recording to Docsie.");
 		setJobStatus(null);
@@ -355,6 +468,8 @@ export function DocsiePublishDialog({
 				docStyle,
 				rewriteInstructions,
 				templateInstruction,
+				targetDocumentationId: targetDocumentationId.trim() || undefined,
+				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
 				autoGenerate,
 			});
 
@@ -365,7 +480,11 @@ export function DocsiePublishDialog({
 			setAnalysisJobId(result.jobId);
 			setActiveJobId(result.jobId);
 			setPhase("analysis");
-			setBusyMessage("Docsie accepted the recording. Waiting for analysis.");
+			setBusyMessage(
+				autoGenerate
+					? "Docsie accepted the recording. Analysis is running before documentation generation."
+					: "Docsie accepted the recording. Analysis is running.",
+			);
 			toast.success("Recording sent to Docsie");
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -375,7 +494,49 @@ export function DocsiePublishDialog({
 		}
 	};
 
-	const handleOpenResult = async (url: string | null | undefined) => {
+	const handleGenerate = async () => {
+		if (!analysisJobId) {
+			toast.error("Run the Docsie analysis step first");
+			return;
+		}
+		if (!hasConnectionCredentials) {
+			toast.error("Connect to Docsie before generating documentation");
+			return;
+		}
+
+		setBusyMessage("Starting Docsie documentation generation.");
+		try {
+			await persistConfig();
+			const result = await window.electronAPI.docsieGenerateVideoToDocs({
+				jobId: analysisJobId,
+				docStyle,
+				rewriteInstructions,
+				templateInstruction,
+				targetLanguage: language,
+				targetDocumentationId: targetDocumentationId.trim() || undefined,
+				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
+				outputFormats: ["md"],
+			});
+
+			if (!result.success || !result.generateJobId) {
+				throw new Error(result.error ?? "Failed to start Docsie generation");
+			}
+
+			setGenerationJobId(result.generateJobId);
+			setActiveJobId(result.generateJobId);
+			setPhase("generation");
+			setBusyMessage("Docsie is generating and saving the documentation.");
+			toast.success("Docsie documentation generation started");
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			setPhase("failed");
+			setBusyMessage(message);
+			toast.error(message);
+		}
+	};
+
+	const handleOpenResult = async () => {
+		const url = getPrimaryResultUrl(jobResult);
 		if (!url) {
 			return;
 		}
@@ -394,6 +555,8 @@ export function DocsiePublishDialog({
 		phase === "generation";
 	const estimateText = getEstimateText(estimate);
 	const resultPreview = jobResult?.markdown?.slice(0, 1200) ?? "";
+	const canManuallyGenerate =
+		phase === "completed" && !autoGenerate && Boolean(analysisJobId) && !generationJobId;
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -402,10 +565,10 @@ export function DocsiePublishDialog({
 				style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 			>
 				<DialogHeader>
-					<DialogTitle className="text-[#fff0e4]">Send To Docsie</DialogTitle>
+					<DialogTitle className="text-[#fff0e4]">Publish To Docsie</DialogTitle>
 					<DialogDescription className="text-[#c6b4a8]">
-						Upload the current recording to Docsie Video to Docs, then follow analysis and
-						generation jobs from inside the editor.
+						Sign in with Docsie, choose where the recording should live, and run the video-to-docs
+						pipeline from inside the editor.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -416,80 +579,73 @@ export function DocsiePublishDialog({
 								<div>
 									<div className="text-sm font-semibold text-[#fff0e4]">Connection</div>
 									<div className="text-xs text-[#c6b4a8]">
-										Use the tested Docsie external API flow.
+										Use the Docsie browser handoff instead of pasting credentials into the app.
 									</div>
 								</div>
-								{loadingState && <Loader2 className="h-4 w-4 animate-spin text-[#FEA85E]" />}
+								{loadingState ? <Loader2 className="h-4 w-4 animate-spin text-[#FEA85E]" /> : null}
 							</div>
 
-							<div className="grid gap-3 md:grid-cols-2">
-								<div className="space-y-1.5 md:col-span-2">
+							<div className="grid gap-3 md:grid-cols-[1fr_auto]">
+								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										API Base URL
+										Docsie URL
 									</label>
 									<Input
-										value={apiBaseUrl}
-										onChange={(event) => setApiBaseUrl(event.target.value)}
-										placeholder="https://app.docsie.io/api_v2/v3"
+										value={webAppUrl}
+										onChange={(event) => setWebAppUrl(event.target.value)}
+										placeholder="https://app.docsie.io"
 										className="border-white/10 bg-[#120d0c] text-[#fff0e4]"
 									/>
 								</div>
-
-								<div className="space-y-1.5">
-									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Auth Mode
-									</label>
-									<select
-										value={authMode}
-										onChange={(event) => setAuthMode(event.target.value as DocsieAuthMode)}
-										className="flex h-10 w-full rounded-md border border-white/10 bg-[#120d0c] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+								<div className="flex items-end">
+									<Button
+										type="button"
+										onClick={() => void handleConnect()}
+										className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
 									>
-										<option value="apiKey">Api-Key</option>
-										<option value="bearer">Bearer</option>
-									</select>
+										<LogIn className="mr-2 h-4 w-4" />
+										{hasStoredToken ? "Reconnect" : "Sign In"}
+									</Button>
 								</div>
+							</div>
 
-								<div className="space-y-1.5">
-									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Token
-									</label>
-									<Input
-										type="password"
-										value={tokenInput}
-										onChange={(event) => setTokenInput(event.target.value)}
-										placeholder={
+							<div className="mt-3 rounded-xl border border-white/10 bg-[#120d0c] p-3">
+								<div className="flex items-start gap-3">
+									<div
+										className={cn(
+											"mt-0.5 rounded-full p-1.5",
 											hasStoredToken
-												? "Leave blank to keep the saved token"
-												: "Paste Docsie API token"
-										}
-										className="border-white/10 bg-[#120d0c] text-[#fff0e4]"
-									/>
+												? "bg-[rgba(75,181,67,0.18)] text-[#8ce18b]"
+												: "bg-white/10 text-[#c6b4a8]",
+										)}
+									>
+										<ShieldCheck className="h-4 w-4" />
+									</div>
+									<div className="space-y-1">
+										<div className="text-sm font-medium text-[#fff0e4]">
+											{hasStoredToken
+												? organizationName
+													? `Connected to ${organizationName}`
+													: "Connected to Docsie"
+												: "Not connected yet"}
+										</div>
+										<div className="text-xs text-[#c6b4a8]">
+											{hasStoredToken
+												? displayedWorkspaceName
+													? `Current workspace: ${displayedWorkspaceName}`
+													: "Choose a workspace below before publishing."
+												: "Launch the browser handoff to authorize this recorder for your Docsie organization."}
+										</div>
+									</div>
 								</div>
 							</div>
 
 							<div className="mt-4 flex flex-wrap gap-2">
 								<Button
 									type="button"
-									onClick={() => {
-										void persistConfig()
-											.then(() => toast.success("Docsie settings saved"))
-											.catch((error) => {
-												toast.error(
-													error instanceof Error ? error.message : "Failed to save Docsie settings",
-												);
-											});
-									}}
-									disabled={savingConfig}
-									className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
-								>
-									{savingConfig ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-									Save Settings
-								</Button>
-								<Button
-									type="button"
 									variant="secondary"
 									onClick={() => void handleRefreshWorkspaces()}
-									disabled={loadingWorkspaces}
+									disabled={loadingWorkspaces || !hasConnectionCredentials}
 									className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 								>
 									{loadingWorkspaces ? (
@@ -499,7 +655,73 @@ export function DocsiePublishDialog({
 									)}
 									Load Workspaces
 								</Button>
+								<Button
+									type="button"
+									variant="secondary"
+									onClick={() => {
+										void persistConfig()
+											.then(() => toast.success("Docsie defaults saved"))
+											.catch((error) => {
+												toast.error(
+													error instanceof Error ? error.message : "Failed to save Docsie defaults",
+												);
+											});
+									}}
+									disabled={savingConfig || !hasConnectionCredentials}
+									className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+								>
+									{savingConfig ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+									Save Defaults
+								</Button>
 							</div>
+
+							<details className="mt-4 rounded-xl border border-white/10 bg-[#120d0c] p-3">
+								<summary className="cursor-pointer text-sm font-medium text-[#fff0e4]">
+									Advanced API fallback
+								</summary>
+								<div className="mt-3 grid gap-3 md:grid-cols-2">
+									<div className="space-y-1.5 md:col-span-2">
+										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+											API Base URL
+										</label>
+										<Input
+											value={apiBaseUrl}
+											onChange={(event) => setApiBaseUrl(event.target.value)}
+											placeholder="https://app.docsie.io/api_v2/003"
+											className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Auth Mode
+										</label>
+										<select
+											value={authMode}
+											onChange={(event) => setAuthMode(event.target.value as DocsieAuthMode)}
+											className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+										>
+											<option value="bearer">Bearer</option>
+											<option value="apiKey">Api-Key</option>
+										</select>
+									</div>
+									<div className="space-y-1.5">
+										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Token
+										</label>
+										<Input
+											type="password"
+											value={tokenInput}
+											onChange={(event) => setTokenInput(event.target.value)}
+											placeholder={
+												hasStoredToken
+													? "Leave blank to keep the saved token"
+													: "Paste Docsie API token"
+											}
+											className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+										/>
+									</div>
+								</div>
+							</details>
 						</div>
 
 						<div className="rounded-2xl border border-[rgba(254,168,94,0.14)] bg-[#201715] p-4">
@@ -513,7 +735,13 @@ export function DocsiePublishDialog({
 									</label>
 									<select
 										value={workspaceId}
-										onChange={(event) => setWorkspaceId(event.target.value)}
+										onChange={(event) => {
+											setWorkspaceId(event.target.value);
+											const nextWorkspace = workspaces.find(
+												(workspace) => workspace.id === event.target.value,
+											);
+											setStoredWorkspaceName(nextWorkspace?.name ?? storedWorkspaceName);
+										}}
 										className="flex h-10 w-full rounded-md border border-white/10 bg-[#120d0c] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 									>
 										<option value="">Select a workspace</option>
@@ -569,6 +797,28 @@ export function DocsiePublishDialog({
 										))}
 									</select>
 								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Book Title
+									</label>
+									<Input
+										value={bookTitle}
+										onChange={(event) => setBookTitle(event.target.value)}
+										placeholder="Video Documentation"
+										className="border-white/10 bg-[#120d0c] text-[#fff0e4]"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Target Shelf ID
+									</label>
+									<Input
+										value={targetDocumentationId}
+										onChange={(event) => setTargetDocumentationId(event.target.value)}
+										placeholder="Optional documentation shelf ID"
+										className="border-white/10 bg-[#120d0c] text-[#fff0e4]"
+									/>
+								</div>
 							</div>
 
 							<div className="mt-3 rounded-xl border border-white/10 bg-[#120d0c] p-3">
@@ -576,8 +826,8 @@ export function DocsiePublishDialog({
 									<div>
 										<div className="text-sm font-medium text-[#fff0e4]">Auto-generate docs</div>
 										<div className="text-xs text-[#c6b4a8]">
-											After analysis, automatically run the AI rewrite step with the selected
-											template and style.
+											Run the rewrite and Docsie import step automatically after analysis. Turn this
+											off only if you want to stop after raw analysis.
 										</div>
 									</div>
 									<button
@@ -640,7 +890,7 @@ export function DocsiePublishDialog({
 									type="button"
 									variant="secondary"
 									onClick={() => void handleEstimate()}
-									disabled={loadingEstimate || !videoPath}
+									disabled={loadingEstimate || !videoPath || !hasConnectionCredentials}
 									className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 								>
 									{loadingEstimate ? (
@@ -691,7 +941,7 @@ export function DocsiePublishDialog({
 							<div className="space-y-3">
 								<div className="rounded-xl border border-white/10 bg-[#120d0c] p-3">
 									<div className="text-xs text-[#c6b4a8]">
-										{busyMessage ?? "Ready to send the current video to Docsie."}
+										{busyMessage ?? "Ready to send the current video through Docsie Video to Docs."}
 									</div>
 									{jobStatus?.status ? (
 										<div className="mt-2 text-sm text-[#fff0e4]">
@@ -719,31 +969,68 @@ export function DocsiePublishDialog({
 									</div>
 								</div>
 
-								{jobResult?.title || jobResult?.sessionId || resultPreview ? (
+								{jobResult?.creditsCharged || jobResult?.creditBalanceAfter ? (
+									<div className="grid gap-3 sm:grid-cols-2">
+										<div className="rounded-xl border border-white/10 bg-[#120d0c] p-3">
+											<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
+												Credits Charged
+											</div>
+											<div className="mt-1 text-sm text-[#fff0e4]">
+												{jobResult.creditsCharged?.toLocaleString() ?? "Pending"}
+											</div>
+										</div>
+										<div className="rounded-xl border border-white/10 bg-[#120d0c] p-3">
+											<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
+												Balance After
+											</div>
+											<div className="mt-1 text-sm text-[#fff0e4]">
+												{jobResult.creditBalanceAfter?.toLocaleString() ?? "Pending"}
+											</div>
+										</div>
+									</div>
+								) : null}
+
+								{jobResult?.title ||
+								jobResult?.bookName ||
+								jobResult?.sessionId ||
+								jobResult?.documentationName ||
+								resultPreview ? (
 									<div className="rounded-xl border border-white/10 bg-[#120d0c] p-3">
 										<div className="flex items-start justify-between gap-3">
 											<div>
 												<div className="text-sm font-semibold text-[#fff0e4]">
-													{jobResult?.title ?? "Docsie result"}
+													{getResultTitle(jobResult)}
 												</div>
+												{jobResult?.documentationName ? (
+													<div className="mt-1 text-xs text-[#c6b4a8]">
+														Shelf: {jobResult.documentationName}
+													</div>
+												) : null}
 												{jobResult?.sessionId ? (
 													<div className="mt-1 text-xs text-[#c6b4a8]">
 														Session ID: {jobResult.sessionId}
 													</div>
 												) : null}
 											</div>
-											{jobResult?.resultUrl ? (
+											{getPrimaryResultUrl(jobResult) ? (
 												<Button
 													type="button"
 													variant="secondary"
-													onClick={() => void handleOpenResult(jobResult.resultUrl)}
+													onClick={() => void handleOpenResult()}
 													className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 												>
 													<ExternalLink className="mr-2 h-4 w-4" />
-													Open Result
+													Open In Docsie
 												</Button>
 											) : null}
 										</div>
+										{jobResult?.articlesCreated ? (
+											<div className="mt-3 rounded-lg border border-white/10 bg-[#17110f] px-3 py-2 text-xs text-[#e8d6ca]">
+												Docsie created {jobResult.articlesCreated} article
+												{jobResult.articlesCreated === 1 ? "" : "s"}
+												{jobResult.bookName ? ` in ${jobResult.bookName}.` : "."}
+											</div>
+										) : null}
 										{resultPreview ? (
 											<pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-[#17110f] p-3 text-xs text-[#e8d6ca]">
 												{resultPreview}
@@ -765,10 +1052,22 @@ export function DocsiePublishDialog({
 					>
 						Close
 					</Button>
+					{canManuallyGenerate ? (
+						<Button
+							type="button"
+							variant="secondary"
+							onClick={() => void handleGenerate()}
+							disabled={isWorking}
+							className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+						>
+							<Sparkles className="mr-2 h-4 w-4" />
+							Generate Docs
+						</Button>
+					) : null}
 					<Button
 						type="button"
 						onClick={() => void handleStart()}
-						disabled={!videoPath || isWorking}
+						disabled={!videoPath || isWorking || !hasConnectionCredentials}
 						className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
 					>
 						{isWorking ? (

@@ -13,6 +13,7 @@ import {
 } from "electron";
 import type {
 	DocsieEstimateInput,
+	DocsieGenerateVideoToDocsInput,
 	DocsieIntegrationConfigInput,
 	DocsieStartVideoToDocsInput,
 } from "../../src/lib/docsieIntegration";
@@ -27,6 +28,7 @@ import { mainT } from "../i18n";
 import { RECORDINGS_DIR } from "../main";
 import {
 	estimateDocsieVideoToDocs,
+	generateDocsieVideoToDocs,
 	getDocsieIntegrationState,
 	getDocsieVideoToDocsJobResult,
 	getDocsieVideoToDocsJobStatus,
@@ -557,11 +559,16 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("open-screen-capture-settings", async () => {
 		if (process.platform !== "darwin") {
-			return { success: false, error: "Screen capture settings shortcut is only supported on macOS" };
+			return {
+				success: false,
+				error: "Screen capture settings shortcut is only supported on macOS",
+			};
 		}
 
 		try {
-			await shell.openExternal("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture");
+			await shell.openExternal(
+				"x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+			);
 			return { success: true };
 		} catch (error) {
 			console.error("Failed to open screen capture settings:", error);
@@ -857,6 +864,18 @@ export function registerIpcHandlers(
 			return { success: false, error: String(error) };
 		}
 	});
+
+	ipcMain.handle(
+		"docsie:generate-video-to-docs",
+		async (_, input: DocsieGenerateVideoToDocsInput) => {
+			try {
+				return await generateDocsieVideoToDocs(input);
+			} catch (error) {
+				console.error("Failed to generate Docsie documentation:", error);
+				return { success: false, error: String(error) };
+			}
+		},
+	);
 
 	ipcMain.handle("docsie:get-job-status", async (_, jobId: string) => {
 		return await getDocsieVideoToDocsJobStatus(jobId);

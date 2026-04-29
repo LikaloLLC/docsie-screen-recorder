@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type {
 	DocsieDesktopAuthEvent,
 	DocsieEstimateInput,
+	DocsieGenerateVideoToDocsInput,
 	DocsieIntegrationConfigInput,
 	DocsieStartVideoToDocsInput,
 } from "../src/lib/docsieIntegration";
@@ -76,6 +77,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	docsieStartVideoToDocs: (input: DocsieStartVideoToDocsInput) => {
 		return ipcRenderer.invoke("docsie:start-video-to-docs", input);
+	},
+	docsieGenerateVideoToDocs: (input: DocsieGenerateVideoToDocsInput) => {
+		return ipcRenderer.invoke("docsie:generate-video-to-docs", input);
 	},
 	docsieGetJobStatus: (jobId: string) => {
 		return ipcRenderer.invoke("docsie:get-job-status", jobId);

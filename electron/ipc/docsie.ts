@@ -7,6 +7,8 @@ import type {
 	DocsieDesktopHandoffInput,
 	DocsieEstimateInput,
 	DocsieEstimateResult,
+	DocsieGenerateVideoToDocsInput,
+	DocsieGenerateVideoToDocsResult,
 	DocsieIntegrationConfigInput,
 	DocsieIntegrationState,
 	DocsieStartVideoToDocsInput,
@@ -372,6 +374,13 @@ function normalizeJobResult(payload: unknown): DocsieVideoToDocsJobResult {
 		transcriptionUrl: asNullableString(payload.transcription_url),
 		sections: Array.isArray(payload.sections) ? payload.sections : [],
 		images: Array.isArray(payload.images) ? payload.images : [],
+		documentationId: asNullableString(payload.documentation_id),
+		documentationName: asNullableString(payload.documentation_name),
+		bookId: asNullableString(payload.book_id),
+		bookName: asNullableString(payload.book_name),
+		articleId: asNullableString(payload.article_id),
+		articlesCreated: asNumber(payload.articles_created),
+		url: asNullableString(payload.url),
 		creditsCharged: asNumber(payload.credits_charged),
 		creditBalanceAfter: asNumber(payload.credit_balance_after),
 		rehostedImages: asNumber(payload.rehosted_images),
@@ -411,8 +420,7 @@ export async function saveDocsieIntegrationConfig(
 			asString(input.defaultRewriteInstructions) ?? stored?.defaultRewriteInstructions ?? "",
 		defaultTemplateInstruction:
 			asString(input.defaultTemplateInstruction) ?? stored?.defaultTemplateInstruction ?? "",
-		targetDocumentationId:
-			asString(input.targetDocumentationId) ?? stored?.targetDocumentationId,
+		targetDocumentationId: asString(input.targetDocumentationId) ?? stored?.targetDocumentationId,
 		autoGenerate: input.autoGenerate ?? stored?.autoGenerate ?? true,
 		...encryptToken(nextToken),
 	};
@@ -451,12 +459,11 @@ export async function connectDocsieDesktopHandoff(
 			: await response.text();
 
 		if (!response.ok || !isRecord(payload)) {
-			const message =
-				isRecord(payload)
-					? asString(payload.detail) ?? asString(payload.error) ?? asString(payload.message)
-					: typeof payload === "string"
-						? payload
-						: null;
+			const message = isRecord(payload)
+				? (asString(payload.detail) ?? asString(payload.error) ?? asString(payload.message))
+				: typeof payload === "string"
+					? payload
+					: null;
 			throw new Error(message ?? `Docsie desktop auth failed (${response.status})`);
 		}
 
@@ -478,8 +485,7 @@ export async function connectDocsieDesktopHandoff(
 			defaultRewriteInstructions: asString(payload.default_rewrite_instructions) ?? "",
 			defaultTemplateInstruction: asString(payload.default_template_instruction) ?? "",
 			targetDocumentationId: asString(payload.target_documentation_id),
-			autoGenerate:
-				typeof payload.auto_generate === "boolean" ? payload.auto_generate : true,
+			autoGenerate: typeof payload.auto_generate === "boolean" ? payload.auto_generate : true,
 			...encryptToken(accessToken),
 		};
 
@@ -503,6 +509,21 @@ export async function connectDocsieDesktopHandoff(
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
+}
+
+function normalizeGenerateResult(payload: unknown): DocsieGenerateVideoToDocsResult {
+	if (!isRecord(payload)) {
+		return { success: false, error: "Unexpected Docsie generate response" };
+	}
+
+	return {
+		success: true,
+		jobId: asString(payload.job_id),
+		generateJobId: asString(payload.generate_job_id),
+		status: asString(payload.status),
+		docStyle:
+			(asString(payload.doc_style) as DocsieGenerateVideoToDocsResult["docStyle"]) ?? undefined,
+	};
 }
 
 export async function estimateDocsieVideoToDocs(
@@ -549,6 +570,7 @@ export async function startDocsieVideoToDocs(
 		const fileBuffer = await fs.readFile(normalizedVideoPath);
 		const mimeType = getMimeTypeForVideo(normalizedVideoPath);
 		const basename = path.basename(normalizedVideoPath);
+		const defaultBookTitle = path.parse(normalizedVideoPath).name || "Video Documentation";
 		const remoteName = sanitizeFilenameSegment(
 			`docsie-screen-${Date.now()}-${basename || `recording${path.extname(normalizedVideoPath)}`}`,
 		);
@@ -614,6 +636,9 @@ export async function startDocsieVideoToDocs(
 					asString(input.rewriteInstructions) ?? config.defaultRewriteInstructions ?? "",
 				template_instruction:
 					asString(input.templateInstruction) ?? config.defaultTemplateInstruction ?? "",
+				target_documentation_id:
+					asString(input.targetDocumentationId) ?? config.targetDocumentationId ?? "",
+				book_title: asString(input.bookTitle) ?? defaultBookTitle,
 				auto_generate: input.autoGenerate ?? config.autoGenerate,
 			}),
 		});
@@ -633,6 +658,44 @@ export async function startDocsieVideoToDocs(
 			sourceType: asNullableString(submitPayload.source_type),
 			creditsPerMinute: asNumber(submitPayload.credits_per_minute) ?? undefined,
 		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
+export async function generateDocsieVideoToDocs(
+	input: DocsieGenerateVideoToDocsInput,
+): Promise<DocsieGenerateVideoToDocsResult> {
+	try {
+		const config = await resolveDocsieConfig();
+		const jobId = asString(input.jobId);
+		if (!jobId) {
+			throw new Error("Docsie analysis job ID is required");
+		}
+
+		const payload = await docsieJsonRequest(config, `/video-to-docs/${jobId}/generate/`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				doc_style: input.docStyle ?? config.defaultDocStyle,
+				rewrite_instructions:
+					asString(input.rewriteInstructions) ?? config.defaultRewriteInstructions ?? "",
+				template_instruction:
+					asString(input.templateInstruction) ?? config.defaultTemplateInstruction ?? "",
+				target_language: asString(input.targetLanguage) ?? config.defaultLanguage,
+				target_documentation_id:
+					asString(input.targetDocumentationId) ?? config.targetDocumentationId ?? "",
+				book_title: asString(input.bookTitle) ?? "Video Documentation",
+				output_formats: input.outputFormats?.length ? input.outputFormats : ["md"],
+			}),
+		});
+
+		return normalizeGenerateResult(payload);
 	} catch (error) {
 		return {
 			success: false,
