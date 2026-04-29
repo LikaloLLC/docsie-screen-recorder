@@ -1,3 +1,11 @@
+.electronDrag {
+	-webkit-app-region: drag;
+}
+
+.electronNoDrag {
+	-webkit-app-region: no-drag;
+}
+
 .glassContainer {
 	background:
 		radial-gradient(circle at top, rgba(254, 168, 94, 0.2), transparent 42%),
@@ -14,6 +22,54 @@
 		0 0px 16px 0 rgba(0, 0, 0, 0.32),
 		0 1px 3px 0 rgba(0, 0, 0, 0.18) inset; */
 	border: 1.5px solid rgba(254, 168, 94, 0.18);
+}
+
+.windowHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.brandMark {
+	width: 4.75rem;
+	height: auto;
+	display: block;
+	filter: drop-shadow(0 0 10px rgba(243, 125, 69, 0.15));
+}
+
+.windowControls {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.windowControlButton {
+	width: 2rem;
+	height: 2rem;
+	border-radius: 9999px;
+	border: 1px solid rgba(254, 168, 94, 0.14);
+	background: rgba(255, 255, 255, 0.04);
+	color: rgba(253, 210, 163, 0.78);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition:
+		background-color 0.16s ease,
+		color 0.16s ease,
+		transform 0.16s ease,
+		border-color 0.16s ease;
+}
+
+.windowControlButton:hover {
+	background: rgba(255, 103, 56, 0.12);
+	color: #fff0e4;
+	border-color: rgba(255, 103, 56, 0.2);
+	transform: translateY(-1px);
+}
+
+.windowControlButton:active {
+	transform: translateY(0);
 }
 
 .sourceCard {

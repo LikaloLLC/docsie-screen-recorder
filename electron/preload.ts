@@ -37,6 +37,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	openSourceSelector: () => {
 		return ipcRenderer.invoke("open-source-selector");
 	},
+	minimizeCurrentWindow: () => {
+		return ipcRenderer.invoke("minimize-current-window");
+	},
+	closeCurrentWindow: () => {
+		return ipcRenderer.invoke("close-current-window");
+	},
 	selectSource: (source: ProcessedDesktopSource) => {
 		return ipcRenderer.invoke("select-source", source);
 	},
@@ -86,6 +92,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	docsieGetJobResult: (jobId: string) => {
 		return ipcRenderer.invoke("docsie:get-job-result", jobId);
+	},
+	docsieGetBackgroundJob: (jobId: string) => {
+		return ipcRenderer.invoke("docsie:get-background-job", jobId);
 	},
 	onDocsieDesktopAuthEvent: (callback: (event: DocsieDesktopAuthEvent) => void) => {
 		const listener = (_event: unknown, payload: DocsieDesktopAuthEvent) => callback(payload);

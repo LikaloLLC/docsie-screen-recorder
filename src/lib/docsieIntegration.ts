@@ -231,6 +231,14 @@ export interface DocsieGenerateVideoToDocsResult {
 	error?: string;
 }
 
+export interface DocsieAsyncJobResult {
+	success: boolean;
+	jobId?: string;
+	status?: string;
+	result?: Record<string, unknown> | null;
+	error?: string;
+}
+
 export interface DocsieVideoToDocsJobStatus {
 	success: boolean;
 	jobId?: string;

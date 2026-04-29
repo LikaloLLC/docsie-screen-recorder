@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { FiMinus, FiX } from "react-icons/fi";
 import { MdCheck } from "react-icons/md";
 import { toast } from "sonner";
 import { DocsieAuthGate } from "@/components/docsie/DocsieAuthGate";
@@ -84,11 +85,23 @@ export function SourceSelector() {
 			toast.error(result.error ?? "Unable to open macOS screen capture settings");
 		}
 	};
+	const handleMinimize = async () => {
+		const result = await window.electronAPI.minimizeCurrentWindow();
+		if (!result.success) {
+			toast.error(result.error ?? "Unable to minimize the source selector");
+		}
+	};
+	const handleClose = async () => {
+		const result = await window.electronAPI.closeCurrentWindow();
+		if (!result.success) {
+			toast.error(result.error ?? "Unable to close the source selector");
+		}
+	};
 
 	if (authLoading || !isConnected) {
 		return (
 			<div
-				className={`min-h-screen flex items-center justify-center px-4 ${styles.glassContainer}`}
+				className={`min-h-screen flex items-center justify-center px-4 ${styles.glassContainer} ${styles.electronDrag}`}
 			>
 				<DocsieAuthGate
 					title="Connect Docsie before choosing a screen"
@@ -97,7 +110,8 @@ export function SourceSelector() {
 					webAppUrl={docsieState?.apiBaseUrl}
 					loading={authLoading}
 					onRefresh={refreshDocsieAuth}
-					onClose={() => window.close()}
+					onClose={handleClose}
+					interactiveClassName={styles.electronNoDrag}
 				/>
 			</div>
 		);
@@ -150,16 +164,34 @@ export function SourceSelector() {
 	};
 
 	return (
-		<div className={`min-h-screen flex flex-col ${styles.glassContainer}`}>
+		<div className={`min-h-screen flex flex-col ${styles.glassContainer} ${styles.electronDrag}`}>
 			<div className="flex-1 flex flex-col w-full px-4 pt-4">
 				<div className="mb-3 px-1">
-					<div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#FEA85E]">
-						Docsie
-					</div>
-					<div className="mt-1 flex items-end justify-between gap-3">
+					<div className={styles.windowHeader}>
 						<div>
+							<img src="/docsie_orange.svg" alt="Docsie" className={styles.brandMark} />
 							<h1 className="text-lg font-semibold text-[#FFF0E4]">Screen Recorder</h1>
 							<p className="text-xs text-[#FDD2A3]/70">Choose the screen or window to capture.</p>
+						</div>
+						<div className={`${styles.windowControls} ${styles.electronNoDrag}`}>
+							<button
+								type="button"
+								onClick={() => void handleMinimize()}
+								className={styles.windowControlButton}
+								aria-label="Minimize source selector"
+								title="Minimize"
+							>
+								<FiMinus size={14} />
+							</button>
+							<button
+								type="button"
+								onClick={() => void handleClose()}
+								className={styles.windowControlButton}
+								aria-label="Close source selector"
+								title="Close"
+							>
+								<FiX size={14} />
+							</button>
 						</div>
 					</div>
 				</div>
@@ -167,7 +199,9 @@ export function SourceSelector() {
 					defaultValue={screenSources.length === 0 ? "windows" : "screens"}
 					className="flex-1 flex flex-col"
 				>
-					<TabsList className="grid grid-cols-2 mb-3 rounded-[14px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] squircle">
+					<TabsList
+						className={`grid grid-cols-2 mb-3 rounded-[14px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] squircle ${styles.electronNoDrag}`}
+					>
 						<TabsTrigger
 							value="screens"
 							className="data-[state=active]:bg-[rgba(255,103,56,0.18)] data-[state=active]:text-white text-[#FDD2A3]/70 rounded-[12px] squircle text-xs py-1.5 transition-all"
@@ -183,7 +217,9 @@ export function SourceSelector() {
 					</TabsList>
 					<div className="flex-1 min-h-0">
 						{hasNoSources ? (
-							<div className="h-[280px] rounded-[22px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] flex flex-col items-center justify-center px-6 text-center">
+							<div
+								className={`h-[280px] rounded-[22px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] flex flex-col items-center justify-center px-6 text-center`}
+							>
 								<div className="text-sm font-semibold text-[#FFF0E4]">
 									Screen recording permission is still blocked
 								</div>
@@ -195,7 +231,7 @@ export function SourceSelector() {
 									<Button
 										type="button"
 										onClick={handleOpenSettings}
-										className="px-4 py-1 text-xs bg-[#FF6738] text-white hover:bg-[#E85A2F] rounded-full"
+										className={`px-4 py-1 text-xs bg-[#FF6738] text-white hover:bg-[#E85A2F] rounded-full ${styles.electronNoDrag}`}
 									>
 										Open Settings
 									</Button>
@@ -203,9 +239,17 @@ export function SourceSelector() {
 										type="button"
 										variant="ghost"
 										onClick={handleRetry}
-										className="px-4 py-1 text-xs text-[#FDD2A3]/75 hover:text-white hover:bg-white/5 rounded-full"
+										className={`px-4 py-1 text-xs text-[#FDD2A3]/75 hover:text-white hover:bg-white/5 rounded-full ${styles.electronNoDrag}`}
 									>
 										Retry
+									</Button>
+									<Button
+										type="button"
+										variant="ghost"
+										onClick={() => void handleMinimize()}
+										className={`px-4 py-1 text-xs text-[#FDD2A3]/75 hover:text-white hover:bg-white/5 rounded-full ${styles.electronNoDrag}`}
+									>
+										Minimize
 									</Button>
 								</div>
 							</div>
@@ -213,14 +257,14 @@ export function SourceSelector() {
 							<>
 								<TabsContent value="screens" className="h-full mt-0">
 									<div
-										className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll}`}
+										className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
 									>
 										{screenSources.map(renderSourceCard)}
 									</div>
 								</TabsContent>
 								<TabsContent value="windows" className="h-full mt-0">
 									<div
-										className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll}`}
+										className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
 									>
 										{windowSources.map(renderSourceCard)}
 									</div>
@@ -230,10 +274,10 @@ export function SourceSelector() {
 					</div>
 				</Tabs>
 			</div>
-			<div className="p-3 justify-center flex gap-2">
+			<div className={`p-3 justify-center flex gap-2 ${styles.electronNoDrag}`}>
 				<Button
 					variant="ghost"
-					onClick={() => window.close()}
+					onClick={() => void handleClose()}
 					className="px-5 py-1 text-xs text-[#FDD2A3]/75 hover:text-white active:scale-95 transition-transform duration-150 hover:bg-white/5 rounded-full"
 				>
 					{tc("actions.cancel")}

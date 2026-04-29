@@ -327,7 +327,7 @@ export function LaunchWindow() {
 			<div
 				className={`flex h-screen w-screen items-center justify-center overflow-hidden bg-transparent px-2 ${styles.electronDrag}`}
 			>
-				<div className={`w-full ${styles.electronNoDrag}`}>
+				<div className="w-full">
 					<DocsieAuthGate
 						variant="hud"
 						title="Sign in to start recording"
@@ -337,6 +337,7 @@ export function LaunchWindow() {
 						onRefresh={refreshDocsieAuth}
 						onClose={sendHudOverlayHide}
 						closeLabel="Maybe later"
+						interactiveClassName={styles.electronNoDrag}
 					/>
 				</div>
 			</div>

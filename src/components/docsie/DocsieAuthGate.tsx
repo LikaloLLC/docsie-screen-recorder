@@ -21,6 +21,7 @@ interface DocsieAuthGateProps {
 	onRefresh?: () => Promise<void> | void;
 	onClose?: () => void;
 	closeLabel?: string;
+	interactiveClassName?: string;
 }
 
 export function DocsieAuthGate({
@@ -33,6 +34,7 @@ export function DocsieAuthGate({
 	onRefresh,
 	onClose,
 	closeLabel = "Close",
+	interactiveClassName,
 }: DocsieAuthGateProps) {
 	const resolvedWebAppUrl = getDocsieWebAppUrl(webAppUrl);
 	const signInUrl = buildDocsieDesktopLoginUrl(resolvedWebAppUrl, connectParams);
@@ -91,6 +93,7 @@ export function DocsieAuthGate({
 					className={cn(
 						"rounded-full bg-[#FF6738] text-white hover:bg-[#E85A2F]",
 						compact ? "h-8 px-3 text-[11px]" : "px-4",
+						interactiveClassName,
 					)}
 				>
 					<LogIn className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
@@ -105,6 +108,7 @@ export function DocsieAuthGate({
 					className={cn(
 						"rounded-full border-[rgba(254,168,94,0.18)] bg-transparent text-[#FFF0E4] hover:bg-white/5 hover:text-white",
 						compact ? "h-8 px-3 text-[11px]" : "px-4",
+						interactiveClassName,
 					)}
 				>
 					<UserPlus className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
@@ -120,6 +124,7 @@ export function DocsieAuthGate({
 						className={cn(
 							"rounded-full text-[#FDD2A3]/75 hover:bg-white/5 hover:text-white",
 							compact ? "h-8 px-3 text-[11px]" : "px-4",
+							interactiveClassName,
 						)}
 					>
 						{loading ? (
@@ -139,6 +144,7 @@ export function DocsieAuthGate({
 						className={cn(
 							"rounded-full text-[#FDD2A3]/55 hover:bg-white/5 hover:text-white",
 							compact ? "h-8 px-3 text-[11px]" : "px-4",
+							interactiveClassName,
 						)}
 					>
 						{closeLabel}

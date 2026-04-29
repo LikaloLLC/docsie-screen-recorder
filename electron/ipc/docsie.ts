@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { app, safeStorage } from "electron";
 import type {
+	DocsieAsyncJobResult,
 	DocsieAuthMode,
 	DocsieDesktopHandoffExchangeResult,
 	DocsieDesktopHandoffInput,
@@ -526,6 +527,19 @@ function normalizeGenerateResult(payload: unknown): DocsieGenerateVideoToDocsRes
 	};
 }
 
+function normalizeAsyncJobResult(payload: unknown): DocsieAsyncJobResult {
+	if (!isRecord(payload)) {
+		return { success: false, error: "Unexpected Docsie job response" };
+	}
+
+	return {
+		success: true,
+		jobId: asString(payload.id),
+		status: asString(payload.status),
+		result: isRecord(payload.result) ? payload.result : null,
+	};
+}
+
 export async function estimateDocsieVideoToDocs(
 	input: DocsieEstimateInput,
 ): Promise<DocsieEstimateResult> {
@@ -727,6 +741,20 @@ export async function getDocsieVideoToDocsJobResult(
 		const config = await resolveDocsieConfig();
 		const payload = await docsieJsonRequest(config, `/video-to-docs/${jobId}/result/`);
 		return normalizeJobResult(payload);
+	} catch (error) {
+		return {
+			success: false,
+			jobId,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
+export async function getDocsieBackgroundJob(jobId: string): Promise<DocsieAsyncJobResult> {
+	try {
+		const config = await resolveDocsieConfig();
+		const payload = await docsieJsonRequest(config, `/jobs/${jobId}/`);
+		return normalizeAsyncJobResult(payload);
 	} catch (error) {
 		return {
 			success: false,

@@ -29,6 +29,7 @@ import { RECORDINGS_DIR } from "../main";
 import {
 	estimateDocsieVideoToDocs,
 	generateDocsieVideoToDocs,
+	getDocsieBackgroundJob,
 	getDocsieIntegrationState,
 	getDocsieVideoToDocsJobResult,
 	getDocsieVideoToDocsJobStatus,
@@ -621,6 +622,26 @@ export function registerIpcHandlers(
 		createSourceSelectorWindow();
 	});
 
+	ipcMain.handle("minimize-current-window", (event) => {
+		const targetWindow = BrowserWindow.fromWebContents(event.sender);
+		if (!targetWindow) {
+			return { success: false, error: "Window not found" };
+		}
+
+		targetWindow.minimize();
+		return { success: true };
+	});
+
+	ipcMain.handle("close-current-window", (event) => {
+		const targetWindow = BrowserWindow.fromWebContents(event.sender);
+		if (!targetWindow) {
+			return { success: false, error: "Window not found" };
+		}
+
+		targetWindow.close();
+		return { success: true };
+	});
+
 	ipcMain.handle("switch-to-editor", () => {
 		const mainWin = getMainWindow();
 		if (mainWin) {
@@ -883,6 +904,10 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("docsie:get-job-result", async (_, jobId: string) => {
 		return await getDocsieVideoToDocsJobResult(jobId);
+	});
+
+	ipcMain.handle("docsie:get-background-job", async (_, jobId: string) => {
+		return await getDocsieBackgroundJob(jobId);
 	});
 
 	ipcMain.handle("open-external-url", async (_, url: string) => {

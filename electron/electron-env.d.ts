@@ -30,6 +30,8 @@ interface Window {
 		switchToHud: () => Promise<void>;
 		startNewRecording: () => Promise<{ success: boolean; error?: string }>;
 		openSourceSelector: () => Promise<void>;
+		minimizeCurrentWindow: () => Promise<{ success: boolean; error?: string }>;
+		closeCurrentWindow: () => Promise<{ success: boolean; error?: string }>;
 		selectSource: (source: ProcessedDesktopSource) => Promise<ProcessedDesktopSource | null>;
 		getSelectedSource: () => Promise<ProcessedDesktopSource | null>;
 		requestCameraAccess: () => Promise<{
@@ -103,6 +105,9 @@ interface Window {
 		docsieGetJobResult: (
 			jobId: string,
 		) => Promise<import("../src/lib/docsieIntegration").DocsieVideoToDocsJobResult>;
+		docsieGetBackgroundJob: (
+			jobId: string,
+		) => Promise<import("../src/lib/docsieIntegration").DocsieAsyncJobResult>;
 		onDocsieDesktopAuthEvent: (
 			callback: (event: import("../src/lib/docsieIntegration").DocsieDesktopAuthEvent) => void,
 		) => () => void;
