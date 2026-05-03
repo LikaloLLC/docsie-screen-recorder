@@ -50,6 +50,7 @@ jobs:
       publish_target: ${{ steps.meta.outputs.publish_target }}
       publish_to_github: ${{ steps.meta.outputs.publish_to_github }}
       publish_to_s3: ${{ steps.meta.outputs.publish_to_s3 }}
+      s3_auth_mode: ${{ steps.meta.outputs.s3_auth_mode }}
       mac_arch_matrix: ${{ steps.meta.outputs.mac_arch_matrix }}
       mac_signing_enabled: ${{ steps.meta.outputs.mac_signing_enabled }}
       mac_notarization_enabled: ${{ steps.meta.outputs.mac_notarization_enabled }}
@@ -135,7 +136,14 @@ jobs:
           fi
 
           S3_CONFIGURED=false
-          if [[ -n "$RELEASE_S3_BUCKET" ]] && ([[ -n "$AWS_ROLE_TO_ASSUME" ]] || [[ -n "$AWS_ACCESS_KEY_ID" && -n "$AWS_SECRET_ACCESS_KEY" ]]); then
+          S3_AUTH_MODE=none
+          if [[ -n "$AWS_ROLE_TO_ASSUME" ]]; then
+            S3_AUTH_MODE=oidc
+          elif [[ -n "$AWS_ACCESS_KEY_ID" && -n "$AWS_SECRET_ACCESS_KEY" ]]; then
+            S3_AUTH_MODE=static
+          fi
+
+          if [[ -n "$RELEASE_S3_BUCKET" ]] && [[ "$S3_AUTH_MODE" != "none" ]]; then
             S3_CONFIGURED=true
           fi
 
@@ -162,6 +170,7 @@ jobs:
           echo "publish_target=$PUBLISH_TARGET" >> "$GITHUB_OUTPUT"
           echo "publish_to_github=$PUBLISH_TO_GITHUB" >> "$GITHUB_OUTPUT"
           echo "publish_to_s3=$PUBLISH_TO_S3" >> "$GITHUB_OUTPUT"
+          echo "s3_auth_mode=$S3_AUTH_MODE" >> "$GITHUB_OUTPUT"
           echo "mac_arch_matrix=$MAC_ARCH_MATRIX" >> "$GITHUB_OUTPUT"
           echo "mac_signing_enabled=$MAC_SIGNING_ENABLED" >> "$GITHUB_OUTPUT"
           echo "mac_notarization_enabled=$MAC_NOTARIZATION_ENABLED" >> "$GITHUB_OUTPUT"
@@ -430,14 +439,14 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Configure AWS credentials with OIDC
-        if: ${{ needs.prepare.outputs.publish_to_s3 == 'true' && secrets.AWS_ROLE_TO_ASSUME != '' }}
+        if: ${{ needs.prepare.outputs.publish_to_s3 == 'true' && needs.prepare.outputs.s3_auth_mode == 'oidc' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ vars.AWS_REGION != '' && vars.AWS_REGION || 'us-east-1' }}
 
       - name: Configure AWS credentials with static keys
-        if: ${{ needs.prepare.outputs.publish_to_s3 == 'true' && secrets.AWS_ROLE_TO_ASSUME == '' }}
+        if: ${{ needs.prepare.outputs.publish_to_s3 == 'true' && needs.prepare.outputs.s3_auth_mode == 'static' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
