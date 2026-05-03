@@ -39,6 +39,7 @@ This repository is the **public Docsie Screen Recorder fork** used for local rec
 - Current desktop auth notes: [DOCSIE_DESKTOP_AUTH.md](./DOCSIE_DESKTOP_AUTH.md)
 - Current editor/integration notes: [CLAUDE.md](./CLAUDE.md)
 - Mixed-license notes: [LICENSING.md](./LICENSING.md)
+- Release process: [RELEASING.md](./RELEASING.md)
 
 ### Docsie Quick Start
 
@@ -65,6 +66,14 @@ Useful output paths after a mac build:
 - Apple Silicon app bundle: `release/1.3.0/mac-arm64/Docsie - Screen Recorder.app`
 - Intel app bundle: `release/1.3.0/mac/Docsie - Screen Recorder.app`
 - DMGs: `release/1.3.0/*.dmg`
+
+Create a tagged multi-platform release:
+
+```bash
+npm run release:tag
+```
+
+That triggers the GitHub Actions release workflow, which builds Windows, Linux, and macOS installers on native runners and publishes them to GitHub Releases. Optional S3 mirroring is documented in [RELEASING.md](./RELEASING.md).
 
 ### macOS Permission Flow
 
@@ -168,6 +177,7 @@ Repo-specific docs:
 - [CLAUDE.md](./CLAUDE.md)
 - [DOCSIE_DESKTOP_AUTH.md](./DOCSIE_DESKTOP_AUTH.md)
 - [LICENSING.md](./LICENSING.md)
+- [RELEASING.md](./RELEASING.md)
 
 Upstream background docs:
 [OpenScreen Docs](https://deepwiki.com/siddharthvaddem/openscreen)

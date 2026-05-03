@@ -23,6 +23,8 @@
 		"build:mac": "tsc && vite build && electron-builder --mac",
 		"build:win": "tsc && vite build && electron-builder --win",
 		"build:linux": "tsc && vite build && electron-builder --linux AppImage deb",
+		"release:local": "node scripts/release.mjs local",
+		"release:tag": "node scripts/release.mjs tag",
 		"test": "vitest --run",
 		"test:watch": "vitest",
 		"build-vite": "tsc && vite build",
