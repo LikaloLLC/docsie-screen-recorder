@@ -18,6 +18,23 @@
 
 <p align="center"><strong>A free screen recorder built on OpenScreen, with Docsie ecosystem enterprise extensions.</strong></p>
 
+## Download
+
+Latest release: **[v1.3.0](https://github.com/LikaloLLC/docsie-screen-recorder/releases/latest)**
+
+| Platform | Download |
+|----------|----------|
+| macOS (Apple Silicon) | [docsie-screen-recorder-mac-arm64-1.3.0.dmg](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/docsie-screen-recorder-mac-arm64-1.3.0.dmg) |
+| macOS (Intel) | [docsie-screen-recorder-mac-x64-1.3.0.dmg](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/docsie-screen-recorder-mac-x64-1.3.0.dmg) |
+| Windows (installer) | [Docsie.Screen.Recorder.Setup.1.3.0.exe](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder.Setup.1.3.0.exe) |
+| Windows (portable) | [Docsie.Screen.Recorder.exe](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder.exe) |
+| Linux (AppImage) | [Docsie.Screen.Recorder-Linux-1.3.0.AppImage](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder-Linux-1.3.0.AppImage) |
+| Linux (.deb) | [Docsie.Screen.Recorder-Linux-1.3.0.deb](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder-Linux-1.3.0.deb) |
+
+Checksums: [SHA256SUMS.txt](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/SHA256SUMS.txt)
+
+---
+
 Docsie Screen Recorder is the public Docsie fork of OpenScreen. The goal is simple:
 
 - keep a strong free recorder and editor available in the open
@@ -40,21 +57,6 @@ This repository is the **public Docsie Screen Recorder fork** used for local rec
 - Current editor/integration notes: [CLAUDE.md](./CLAUDE.md)
 - Mixed-license notes: [LICENSING.md](./LICENSING.md)
 - Release process: [RELEASING.md](./RELEASING.md)
-
-### Download
-
-Latest release: **[v1.3.0](https://github.com/LikaloLLC/docsie-screen-recorder/releases/latest)**
-
-| Platform | Download |
-|----------|----------|
-| macOS (Apple Silicon) | [docsie-screen-recorder-mac-arm64-1.3.0.dmg](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/docsie-screen-recorder-mac-arm64-1.3.0.dmg) |
-| macOS (Intel) | [docsie-screen-recorder-mac-x64-1.3.0.dmg](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/docsie-screen-recorder-mac-x64-1.3.0.dmg) |
-| Windows (installer) | [Docsie.Screen.Recorder.Setup.1.3.0.exe](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder.Setup.1.3.0.exe) |
-| Windows (portable) | [Docsie.Screen.Recorder.exe](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder.exe) |
-| Linux (AppImage) | [Docsie.Screen.Recorder-Linux-1.3.0.AppImage](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder-Linux-1.3.0.AppImage) |
-| Linux (.deb) | [Docsie.Screen.Recorder-Linux-1.3.0.deb](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder-Linux-1.3.0.deb) |
-
-Checksums: [SHA256SUMS.txt](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/SHA256SUMS.txt)
 
 ### Docsie Quick Start
 
