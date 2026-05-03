@@ -25,6 +25,10 @@ interface Window {
 		openSourceSelector: () => Promise<void>;
 		minimizeCurrentWindow: () => Promise<{ success: boolean; error?: string }>;
 		closeCurrentWindow: () => Promise<{ success: boolean; error?: string }>;
+		setCurrentWindowSize: (
+			width: number,
+			height: number,
+		) => Promise<{ success: boolean; error?: string }>;
 		selectSource: (source: ProcessedDesktopSource) => Promise<ProcessedDesktopSource | null>;
 		getSelectedSource: () => Promise<ProcessedDesktopSource | null>;
 		requestCameraAccess: () => Promise<{
@@ -114,6 +118,17 @@ interface Window {
 			path?: string;
 			message?: string;
 			canceled?: boolean;
+		}>;
+		saveTextFile: (
+			textContent: string,
+			fileName: string,
+			filters?: Array<{ name: string; extensions: string[] }>,
+		) => Promise<{
+			success: boolean;
+			path?: string;
+			message?: string;
+			canceled?: boolean;
+			error?: string;
 		}>;
 		openVideoFilePicker: () => Promise<{ success: boolean; path?: string; canceled?: boolean }>;
 		setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>;

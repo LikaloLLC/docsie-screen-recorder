@@ -43,6 +43,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	closeCurrentWindow: () => {
 		return ipcRenderer.invoke("close-current-window");
 	},
+	setCurrentWindowSize: (width: number, height: number) => {
+		return ipcRenderer.invoke("set-current-window-size", width, height);
+	},
 	selectSource: (source: ProcessedDesktopSource) => {
 		return ipcRenderer.invoke("select-source", source);
 	},
@@ -111,6 +114,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	saveExportedVideo: (videoData: ArrayBuffer, fileName: string) => {
 		return ipcRenderer.invoke("save-exported-video", videoData, fileName);
+	},
+	saveTextFile: (
+		textContent: string,
+		fileName: string,
+		filters?: Array<{ name: string; extensions: string[] }>,
+	) => {
+		return ipcRenderer.invoke("save-text-file", textContent, fileName, filters);
 	},
 	openVideoFilePicker: () => {
 		return ipcRenderer.invoke("open-video-file-picker");

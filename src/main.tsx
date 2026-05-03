@@ -7,6 +7,7 @@ import "./index.css";
 const windowType = new URLSearchParams(window.location.search).get("windowType") || "";
 if (
 	windowType === "hud-overlay" ||
+	windowType === "launch" ||
 	windowType === "source-selector" ||
 	windowType === "countdown-overlay"
 ) {

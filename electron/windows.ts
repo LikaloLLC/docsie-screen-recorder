@@ -86,6 +86,55 @@ export function createHudOverlayWindow(): BrowserWindow {
 }
 
 /**
+ * Creates the primary launch window for the recorder. Unlike the floating HUD,
+ * this window behaves like a normal app surface and appears in the dock/app switcher.
+ */
+export function createLaunchWindow(): BrowserWindow {
+	const primaryDisplay = screen.getPrimaryDisplay();
+	const { workArea } = primaryDisplay;
+	const windowWidth = 640;
+	const windowHeight = 260;
+	const x = Math.floor(workArea.x + (workArea.width - windowWidth) / 2);
+	const y = Math.floor(workArea.y + (workArea.height - windowHeight) / 2);
+
+	const win = new BrowserWindow({
+		width: windowWidth,
+		height: windowHeight,
+		x,
+		y,
+		frame: false,
+		transparent: true,
+		resizable: false,
+		alwaysOnTop: false,
+		skipTaskbar: false,
+		hasShadow: true,
+		title: "Docsie Screen Recorder",
+		backgroundColor: "#00000000",
+		show: !HEADLESS,
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			backgroundThrottling: false,
+		},
+	});
+
+	win.webContents.on("did-finish-load", () => {
+		win?.webContents.send("main-process-message", new Date().toLocaleString());
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=launch");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "launch" },
+		});
+	}
+
+	return win;
+}
+
+/**
  * Creates the main editor window. Starts maximised with a hidden title bar on
  * macOS. This window is not always-on-top and appears in the taskbar/dock.
  */
@@ -105,7 +154,7 @@ export function createEditorWindow(): BrowserWindow {
 		resizable: true,
 		alwaysOnTop: false,
 		skipTaskbar: false,
-		title: "Docsie - Screen Recorder",
+		title: "Docsie Screen Recorder",
 		backgroundColor: "#17110f",
 		show: !HEADLESS,
 		webPreferences: {
@@ -154,6 +203,7 @@ export function createSourceSelectorWindow(): BrowserWindow {
 		alwaysOnTop: true,
 		transparent: true,
 		backgroundColor: "#00000000",
+		title: "Docsie Screen Recorder",
 		webPreferences: {
 			preload: path.join(__dirname, "preload.mjs"),
 			nodeIntegration: false,

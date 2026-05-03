@@ -21,7 +21,12 @@ export default function App() {
 			setWindowType(type);
 		}
 
-		if (type === "hud-overlay" || type === "source-selector" || type === "countdown-overlay") {
+		if (
+			type === "hud-overlay" ||
+			type === "launch" ||
+			type === "source-selector" ||
+			type === "countdown-overlay"
+		) {
 			document.body.style.background = "transparent";
 			document.documentElement.style.background = "transparent";
 			document.getElementById("root")?.style.setProperty("background", "transparent");
@@ -55,6 +60,7 @@ export default function App() {
 	const content = (() => {
 		switch (windowType) {
 			case "hud-overlay":
+			case "launch":
 				return <LaunchWindow />;
 			case "source-selector":
 				return <SourceSelector />;

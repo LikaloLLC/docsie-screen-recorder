@@ -6,10 +6,8 @@ import {
 	Loader2,
 	LogIn,
 	RefreshCcw,
-	Send,
 	ShieldCheck,
 	Sparkles,
-	UserPlus,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -69,7 +67,7 @@ const DOC_STYLE_OPTIONS: DocsieVideoToDocsDocStyle[] = [
 const GENERATION_OUTPUT_FORMATS: DocsieOutputFormat[] = ["md", "docx", "pdf"];
 const EXPORT_FORMATS = ["docx", "pdf"] as const;
 
-type PublishPhase = "idle" | "analysis" | "generation" | "completed" | "failed";
+type PublishPhase = "idle" | "starting" | "analysis" | "generation" | "completed" | "failed";
 type ExportFormat = (typeof EXPORT_FORMATS)[number];
 type ExportArtifactStatus = "queued" | "processing" | "ready" | "failed";
 
@@ -99,6 +97,8 @@ function asString(value: unknown): string | null {
 
 function formatJobPhase(phase: PublishPhase) {
 	switch (phase) {
+		case "starting":
+			return "Starting conversion";
 		case "analysis":
 			return "Analyzing video";
 		case "generation":
@@ -124,14 +124,6 @@ function formatDuration(value?: number) {
 	const minutes = Math.floor(value / 60);
 	const seconds = Math.round(value % 60);
 	return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
-}
-
-function formatNumber(value?: number | null) {
-	if (typeof value !== "number" || Number.isNaN(value)) {
-		return null;
-	}
-
-	return value.toLocaleString();
 }
 
 function getEstimateText(estimate: DocsieEstimateResult | null) {
@@ -174,6 +166,12 @@ function getResultTitle(jobResult: DocsieVideoToDocsJobResult | null) {
 
 function normalizeMarkdownFileName(title: string) {
 	return `${title.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "docsie-result"}.md`;
+}
+
+function getDocsiePersistenceLabel(jobResult: DocsieVideoToDocsJobResult | null) {
+	return [jobResult?.documentationName ?? jobResult?.bookName ?? null, jobResult?.articleId ?? null]
+		.filter(Boolean)
+		.join(" • ");
 }
 
 function normalizeExportArtifacts(
@@ -222,73 +220,6 @@ function getExportLabel(format: ExportFormat) {
 	return format.toUpperCase();
 }
 
-function getStepState(
-	step: "analysis" | "generation" | "exports",
-	phase: PublishPhase,
-	autoGenerate: boolean,
-	exportArtifacts: Partial<Record<ExportFormat, ExportArtifact>>,
-) {
-	if (phase === "failed") {
-		return step === "analysis" || step === "generation" ? "failed" : "waiting";
-	}
-
-	if (step === "analysis") {
-		if (phase === "idle") return "waiting";
-		if (phase === "analysis") return "active";
-		return "done";
-	}
-
-	if (step === "generation") {
-		if (!autoGenerate) return "skipped";
-		if (phase === "idle" || phase === "analysis") return "waiting";
-		if (phase === "generation") return "active";
-		return "done";
-	}
-
-	const hasExports = Object.keys(exportArtifacts).length > 0;
-	const allReady =
-		hasExports && Object.values(exportArtifacts).every((artifact) => artifact?.status === "ready");
-	const anyFailed = Object.values(exportArtifacts).some(
-		(artifact) => artifact?.status === "failed",
-	);
-	const anyProcessing = Object.values(exportArtifacts).some(
-		(artifact) => artifact?.status === "processing" || artifact?.status === "queued",
-	);
-
-	if (!autoGenerate) return "skipped";
-	if (phase === "completed" && allReady) return "done";
-	if (phase === "completed" && anyFailed) return "failed";
-	if ((phase === "generation" || phase === "completed") && (anyProcessing || hasExports))
-		return "active";
-	return "waiting";
-}
-
-function StepPill({
-	label,
-	state,
-}: {
-	label: string;
-	state: "waiting" | "active" | "done" | "failed" | "skipped";
-}) {
-	return (
-		<div
-			className={cn(
-				"rounded-xl border px-3 py-2 text-xs font-medium",
-				state === "done" &&
-					"border-[rgba(75,181,67,0.22)] bg-[rgba(75,181,67,0.12)] text-[#8ce18b]",
-				state === "active" &&
-					"border-[rgba(254,168,94,0.22)] bg-[rgba(254,168,94,0.12)] text-[#fff0e4]",
-				state === "failed" &&
-					"border-[rgba(255,103,56,0.22)] bg-[rgba(255,103,56,0.12)] text-[#ffb8a1]",
-				state === "skipped" && "border-white/10 bg-[#120d0c] text-[#8f7e73]",
-				state === "waiting" && "border-white/10 bg-[#120d0c] text-[#c6b4a8]",
-			)}
-		>
-			{label}
-		</div>
-	);
-}
-
 export function DocsiePublishDialog({
 	isOpen,
 	onOpenChange,
@@ -312,7 +243,6 @@ export function DocsiePublishDialog({
 	const [targetDocumentationId, setTargetDocumentationId] = useState("");
 	const [bookTitle, setBookTitle] = useState("Video Documentation");
 	const [workspaces, setWorkspaces] = useState<DocsieWorkspace[]>([]);
-	const [loadingState, setLoadingState] = useState(false);
 	const [savingConfig, setSavingConfig] = useState(false);
 	const [loadingWorkspaces, setLoadingWorkspaces] = useState(false);
 	const [loadingEstimate, setLoadingEstimate] = useState(false);
@@ -327,65 +257,58 @@ export function DocsiePublishDialog({
 	const [exportArtifacts, setExportArtifacts] = useState<
 		Partial<Record<ExportFormat, ExportArtifact>>
 	>({});
+	const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
 	const selectedWorkspace = useMemo(
 		() => workspaces.find((workspace) => workspace.id === workspaceId) ?? null,
 		[workspaceId, workspaces],
 	);
-	const selectedQuality = useMemo(
-		() => QUALITY_OPTIONS.find((option) => option.value === quality) ?? QUALITY_OPTIONS[1],
-		[quality],
-	);
 	const displayedWorkspaceName = selectedWorkspace?.name ?? storedWorkspaceName;
 	const hasConnectionCredentials = hasStoredToken || Boolean(tokenInput.trim());
 	const estimateText = getEstimateText(estimate);
-	const resultPreview = jobResult?.markdown?.slice(0, 1400) ?? "";
+	const markdownReady = Boolean(jobResult?.markdown);
 	const canManuallyGenerate =
 		phase === "completed" && !autoGenerate && Boolean(analysisJobId) && !generationJobId;
 	const isWorking =
 		savingConfig ||
 		loadingWorkspaces ||
 		loadingEstimate ||
+		phase === "starting" ||
 		phase === "analysis" ||
 		phase === "generation";
 
 	const loadState = useCallback(async () => {
-		setLoadingState(true);
-		try {
-			const result = await window.electronAPI.docsieGetState();
-			if (!result.success || !result.state) {
-				return;
-			}
+		const result = await window.electronAPI.docsieGetState();
+		if (!result.success || !result.state) {
+			return;
+		}
 
-			const state: DocsieIntegrationState = result.state;
-			setApiBaseUrl(state.apiBaseUrl);
-			setWebAppUrl(getDocsieWebAppUrl(state.apiBaseUrl));
-			setAuthMode(state.authMode);
-			setHasStoredToken(state.hasToken);
-			setOrganizationName(state.organizationName ?? "");
-			setWorkspaceId(state.workspaceId ?? "");
-			setStoredWorkspaceName(state.workspaceName ?? "");
-			setQuality(state.defaultQuality);
-			setLanguage(state.defaultLanguage);
-			setDocStyle(state.defaultDocStyle);
-			setRewriteInstructions(state.defaultRewriteInstructions ?? "");
-			setTemplateInstruction(state.defaultTemplateInstruction ?? "");
-			setTargetDocumentationId(state.targetDocumentationId ?? "");
-			setAutoGenerate(state.autoGenerate);
+		const state: DocsieIntegrationState = result.state;
+		setApiBaseUrl(state.apiBaseUrl);
+		setWebAppUrl(getDocsieWebAppUrl(state.apiBaseUrl));
+		setAuthMode(state.authMode);
+		setHasStoredToken(state.hasToken);
+		setOrganizationName(state.organizationName ?? "");
+		setWorkspaceId(state.workspaceId ?? "");
+		setStoredWorkspaceName(state.workspaceName ?? "");
+		setQuality(state.defaultQuality);
+		setLanguage(state.defaultLanguage);
+		setDocStyle(state.defaultDocStyle);
+		setRewriteInstructions(state.defaultRewriteInstructions ?? "");
+		setTemplateInstruction(state.defaultTemplateInstruction ?? "");
+		setTargetDocumentationId(state.targetDocumentationId ?? "");
+		setAutoGenerate(state.autoGenerate);
 
-			if (state.hasToken) {
-				const workspacesResult = await window.electronAPI.docsieListWorkspaces();
-				if (workspacesResult.success) {
-					setWorkspaces(workspacesResult.workspaces);
-					if (!state.workspaceId && workspacesResult.workspaces.length > 0) {
-						const firstWorkspace = workspacesResult.workspaces[0];
-						setWorkspaceId(firstWorkspace.id);
-						setStoredWorkspaceName(firstWorkspace.name);
-					}
+		if (state.hasToken) {
+			const workspacesResult = await window.electronAPI.docsieListWorkspaces();
+			if (workspacesResult.success) {
+				setWorkspaces(workspacesResult.workspaces);
+				if (!state.workspaceId && workspacesResult.workspaces.length > 0) {
+					const firstWorkspace = workspacesResult.workspaces[0];
+					setWorkspaceId(firstWorkspace.id);
+					setStoredWorkspaceName(firstWorkspace.name);
 				}
 			}
-		} finally {
-			setLoadingState(false);
 		}
 	}, []);
 
@@ -812,7 +735,7 @@ export function DocsiePublishDialog({
 		setAnalysisJobId(null);
 		setGenerationJobId(null);
 		setActiveJobId(null);
-		setPhase("idle");
+		setPhase("starting");
 
 		try {
 			await persistConfig();
@@ -912,15 +835,20 @@ export function DocsiePublishDialog({
 			return;
 		}
 
-		const blob = new Blob([jobResult.markdown], { type: "text/markdown;charset=utf-8" });
-		const objectUrl = URL.createObjectURL(blob);
-		const anchor = document.createElement("a");
-		anchor.href = objectUrl;
-		anchor.download = normalizeMarkdownFileName(getResultTitle(jobResult));
-		document.body.append(anchor);
-		anchor.click();
-		anchor.remove();
-		window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+		void window.electronAPI
+			.saveTextFile(jobResult.markdown, normalizeMarkdownFileName(getResultTitle(jobResult)), [
+				{ name: "Markdown", extensions: ["md", "markdown"] },
+			])
+			.then((result) => {
+				if (!result.success) {
+					if (!result.canceled) {
+						toast.error(result.message ?? "Failed to save markdown");
+					}
+					return;
+				}
+
+				toast.success("Markdown saved");
+			});
 	}, [jobResult]);
 
 	const handleCopyMarkdown = useCallback(async () => {
@@ -941,698 +869,647 @@ export function DocsiePublishDialog({
 			? `Connected to ${organizationName}`
 			: "Connected to Docsie"
 		: "Docsie login required";
+	const showAnalysisScreen = phase !== "idle" || Boolean(jobResult) || Boolean(activeJobId);
+	const showAdvancedOutputs = isWorking || phase === "completed" || phase === "failed";
+	const recordingSummary = videoPath ? videoPath.split("/").pop() : "No loaded recording";
+	const docsiePersistenceLabel = getDocsiePersistenceLabel(jobResult);
+	const primaryActionLabel = !hasStoredToken
+		? "Log In To Docsie"
+		: phase === "completed" && getPrimaryResultUrl(jobResult)
+			? "Open In Docsie"
+			: "Convert Video To Docs";
+	const compactSummary = [
+		hasStoredToken
+			? displayedWorkspaceName || organizationName || "Docsie connected"
+			: "Sign in required",
+		recordingSummary,
+		typeof videoDurationSeconds === "number" && videoDurationSeconds > 0
+			? formatDuration(videoDurationSeconds)
+			: null,
+		estimateText,
+	]
+		.filter(Boolean)
+		.join(" • ");
+
+	const handlePrimaryAction = useCallback(async () => {
+		if (!hasStoredToken) {
+			await handleConnect();
+			return;
+		}
+		if (phase === "completed" && getPrimaryResultUrl(jobResult)) {
+			await handleOpenResult();
+			return;
+		}
+		if (isWorking) {
+			return;
+		}
+		await handleStart();
+	}, [handleConnect, handleOpenResult, handleStart, hasStoredToken, isWorking, jobResult, phase]);
 
 	return (
-		<Dialog open={isOpen} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-[1040px] border border-[rgba(254,168,94,0.18)] bg-[#17110f] text-[#fff0e4]">
-				<DialogHeader>
-					<DialogTitle className="text-[#fff0e4]">Convert Video To Docs</DialogTitle>
-					<DialogDescription className="text-[#c6b4a8]">
-						Send this recording through Docsie, let the existing video-to-docs pipeline run, then
-						bring the finished outputs back here.
-					</DialogDescription>
-				</DialogHeader>
-
-				<div className="grid gap-4 lg:grid-cols-[1.12fr_0.88fr]">
-					<div className="space-y-4">
-						<div className="rounded-3xl border border-[rgba(254,168,94,0.16)] bg-[radial-gradient(circle_at_top,rgba(255,103,56,0.18),transparent_42%),linear-gradient(135deg,#241917_0%,#17110f_100%)] p-5">
-							<div className="flex flex-wrap items-start justify-between gap-4">
-								<div className="space-y-2">
+		<>
+			<Dialog open={isOpen} onOpenChange={onOpenChange}>
+				<DialogContent
+					className={cn(
+						"flex max-h-[90vh] flex-col overflow-hidden border border-[rgba(254,168,94,0.18)] bg-[#17110f] text-[#fff0e4]",
+						showAnalysisScreen ? "sm:max-w-[720px]" : "sm:max-w-[640px]",
+					)}
+				>
+					<DialogHeader className="space-y-1 pr-8">
+						<DialogTitle className="text-[#fff0e4]">Video To Docs</DialogTitle>
+						<DialogDescription className="text-[#8f7e73]">
+							{showAnalysisScreen ? "Analysis" : "Launch"}
+						</DialogDescription>
+					</DialogHeader>
+					<div className="min-h-0 flex-1 overflow-y-auto pr-1">
+						{showAnalysisScreen ? (
+							<div className="space-y-4">
+								<div className="rounded-3xl border border-[rgba(254,168,94,0.16)] bg-[radial-gradient(circle_at_top,rgba(255,103,56,0.18),transparent_42%),linear-gradient(135deg,#241917_0%,#17110f_100%)] p-6">
 									<div className="flex items-center gap-3">
 										<div
 											className={cn(
 												"rounded-full border p-2.5",
-												hasStoredToken
+												phase === "completed"
 													? "border-[rgba(75,181,67,0.28)] bg-[rgba(75,181,67,0.12)] text-[#8ce18b]"
-													: "border-[rgba(254,168,94,0.18)] bg-[rgba(254,168,94,0.08)] text-[#FEA85E]",
+													: phase === "failed"
+														? "border-[rgba(255,103,56,0.28)] bg-[rgba(255,103,56,0.12)] text-[#ffb8a1]"
+														: "border-[rgba(254,168,94,0.18)] bg-[rgba(254,168,94,0.08)] text-[#FEA85E]",
 											)}
 										>
-											<ShieldCheck className="h-5 w-5" />
+											{phase === "completed" ? (
+												<CheckCircle2 className="h-5 w-5" />
+											) : isWorking ? (
+												<Loader2 className="h-5 w-5 animate-spin" />
+											) : phase === "failed" ? (
+												<ShieldCheck className="h-5 w-5" />
+											) : (
+												<Sparkles className="h-5 w-5" />
+											)}
 										</div>
 										<div>
-											<div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#FEA85E]">
-												Docsie Conversion
+											<div className="text-lg font-semibold text-[#fff0e4]">
+												{formatJobPhase(phase)}
 											</div>
-											<div className="text-xl font-semibold text-[#fff0e4]">
-												{hasStoredToken ? "Ready to convert this recording" : "Sign in to continue"}
+											<div className="text-sm text-[#c6b4a8]">
+												{busyMessage ?? "Docsie is preparing the current recording."}
 											</div>
 										</div>
 									</div>
-									<p className="max-w-[42rem] text-sm leading-6 text-[#d8c4b5]">
-										{hasStoredToken
-											? "One click should run analysis, generation, and export creation. The internal tuning still exists, but it is tucked under advanced settings."
-											: "The recorder should use your Docsie session, not ask for raw API setup. Connect it once, then convert recordings into docs from here."}
-									</p>
-								</div>
 
-								<div className="flex flex-wrap gap-2">
-									{hasStoredToken ? (
-										<Button
-											type="button"
-											variant="secondary"
-											onClick={() => void handleConnect()}
-											className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-										>
-											<RefreshCcw className="mr-2 h-4 w-4" />
-											Reconnect
-										</Button>
-									) : (
-										<>
+									<div className="mt-4 text-sm text-[#c6b4a8]">
+										{recordingSummary}
+										{typeof videoDurationSeconds === "number" && videoDurationSeconds > 0
+											? ` • ${formatDuration(videoDurationSeconds)}`
+											: ""}
+										{estimateText ? ` • ${estimateText}` : ""}
+									</div>
+									{jobStatus?.status ? (
+										<div className="mt-2 text-xs uppercase tracking-[0.16em] text-[#8f7e73]">
+											Status: {jobStatus.status}
+										</div>
+									) : null}
+
+									<div className="mt-5 grid gap-2 sm:grid-cols-3">
+										{[
+											{
+												label: "Analyze",
+												active:
+													phase === "starting" ||
+													phase === "analysis" ||
+													phase === "generation" ||
+													phase === "completed",
+												done:
+													phase === "analysis" || phase === "generation" || phase === "completed",
+											},
+											{
+												label: "Generate",
+												active: phase === "generation" || phase === "completed",
+												done: phase === "completed" || Boolean(generationJobId),
+											},
+											{
+												label: "Exports",
+												active: phase === "completed",
+												done: Object.values(exportArtifacts).some(
+													(artifact) => artifact?.status === "ready",
+												),
+											},
+										].map((step) => (
+											<div
+												key={step.label}
+												className={cn(
+													"min-w-0 rounded-full border px-3 py-2 text-center text-xs font-medium uppercase tracking-[0.14em]",
+													step.done
+														? "border-[rgba(75,181,67,0.28)] bg-[rgba(75,181,67,0.1)] text-[#8ce18b]"
+														: step.active
+															? "border-[rgba(254,168,94,0.22)] bg-[rgba(254,168,94,0.08)] text-[#fff0e4]"
+															: "border-white/10 bg-[#17110f] text-[#8f7e73]",
+												)}
+											>
+												{step.label}
+											</div>
+										))}
+									</div>
+
+									{phase === "completed" && getPrimaryResultUrl(jobResult) ? (
+										<div className="mt-5 flex flex-wrap gap-2">
 											<Button
 												type="button"
-												onClick={() => void handleConnect()}
+												onClick={() => void handleOpenResult()}
 												className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
 											>
-												<LogIn className="mr-2 h-4 w-4" />
-												Sign In
+												<ExternalLink className="mr-2 h-4 w-4" />
+												Open In Docsie
 											</Button>
 											<Button
 												type="button"
 												variant="secondary"
-												onClick={() => void handleCreateAccount()}
+												onClick={() => setShowSettingsDialog(true)}
 												className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 											>
-												<UserPlus className="mr-2 h-4 w-4" />
-												Create Account
-											</Button>
-										</>
-									)}
-								</div>
-							</div>
-
-							<div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-								<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-3">
-									<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Connection
-									</div>
-									<div className="mt-1 text-sm font-medium text-[#fff0e4]">{connectionSummary}</div>
-									<div className="mt-1 text-xs text-[#c6b4a8]">
-										{displayedWorkspaceName
-											? `Workspace: ${displayedWorkspaceName}`
-											: "Pick a workspace below"}
-									</div>
-								</div>
-								<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-3">
-									<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Recording
-									</div>
-									<div className="mt-1 text-sm font-medium text-[#fff0e4]">
-										{videoPath ? videoPath.split("/").pop() : "No loaded recording"}
-									</div>
-									<div className="mt-1 text-xs text-[#c6b4a8]">
-										Duration: {formatDuration(videoDurationSeconds)}
-									</div>
-								</div>
-								<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-3">
-									<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Quality
-									</div>
-									<div className="mt-1 text-sm font-medium text-[#fff0e4]">
-										{selectedQuality.label}
-									</div>
-									<div className="mt-1 text-xs text-[#c6b4a8]">{selectedQuality.description}</div>
-								</div>
-								<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-3">
-									<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Estimated Cost
-									</div>
-									<div className="mt-1 flex items-center gap-2 text-sm font-medium text-[#fff0e4]">
-										{loadingEstimate ? (
-											<Loader2 className="h-4 w-4 animate-spin text-[#FEA85E]" />
-										) : null}
-										<span>{estimateText ?? "Calculating…"}</span>
-									</div>
-									{estimate?.hasSufficientCredits === false ? (
-										<div className="mt-1 text-xs text-[#FEA85E]">
-											Credits are currently below the estimate.
-										</div>
-									) : (
-										<div className="mt-1 text-xs text-[#c6b4a8]">
-											Credits are charged by Docsie when the job completes.
-										</div>
-									)}
-								</div>
-							</div>
-
-							<div className="mt-5 rounded-3xl border border-[rgba(254,168,94,0.16)] bg-[rgba(255,255,255,0.03)] p-4">
-								<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-									<div>
-										<div className="text-lg font-semibold text-[#fff0e4]">
-											{autoGenerate ? "Convert to Docs" : "Analyze Recording"}
-										</div>
-										<div className="mt-1 text-sm leading-6 text-[#d8c4b5]">
-											{autoGenerate
-												? "Docsie will analyze the video, generate the documentation, import it into Docsie, and queue DOCX/PDF exports."
-												: "Analysis-only mode is enabled in advanced settings. Docsie will stop after the initial video breakdown."}
-										</div>
-									</div>
-
-									<Button
-										type="button"
-										onClick={() => void handleStart()}
-										disabled={!videoPath || isWorking || !hasConnectionCredentials}
-										className="h-12 min-w-[220px] bg-[#FF6738] px-5 text-base font-semibold text-white hover:bg-[#FF6738]/90"
-									>
-										{isWorking ? (
-											<Loader2 className="mr-2 h-5 w-5 animate-spin" />
-										) : autoGenerate ? (
-											<Sparkles className="mr-2 h-5 w-5" />
-										) : (
-											<Send className="mr-2 h-5 w-5" />
-										)}
-										{autoGenerate ? "Convert To Docs" : "Run Analysis"}
-									</Button>
-								</div>
-							</div>
-						</div>
-
-						<details className="rounded-2xl border border-[rgba(254,168,94,0.14)] bg-[#201715] p-4">
-							<summary className="cursor-pointer text-sm font-semibold text-[#fff0e4]">
-								Advanced settings
-							</summary>
-
-							<div className="mt-4 grid gap-4">
-								<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
-									<div className="mb-3 flex items-center justify-between">
-										<div>
-											<div className="text-sm font-semibold text-[#fff0e4]">
-												Workspace and output
-											</div>
-											<div className="text-xs text-[#c6b4a8]">
-												Keep the normal path simple. Use this only when you want to override
-												defaults.
-											</div>
-										</div>
-										<div className="flex gap-2">
-											<Button
-												type="button"
-												variant="secondary"
-												onClick={() => void handleRefreshWorkspaces()}
-												disabled={loadingWorkspaces || !hasConnectionCredentials}
-												className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-											>
-												{loadingWorkspaces ? (
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-												) : (
-													<RefreshCcw className="mr-2 h-4 w-4" />
-												)}
-												Load Workspaces
-											</Button>
-											<Button
-												type="button"
-												variant="secondary"
-												onClick={() => {
-													void persistConfig()
-														.then(() => toast.success("Docsie defaults saved"))
-														.catch((error) => {
-															toast.error(
-																error instanceof Error
-																	? error.message
-																	: "Failed to save Docsie defaults",
-															);
-														});
-												}}
-												disabled={savingConfig || !hasConnectionCredentials}
-												className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-											>
-												{savingConfig ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-												Save Defaults
+												Additional settings
 											</Button>
 										</div>
-									</div>
+									) : null}
+								</div>
 
-									<div className="grid gap-3 md:grid-cols-2">
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Workspace
-											</label>
-											<select
-												value={workspaceId}
-												onChange={(event) => {
-													setWorkspaceId(event.target.value);
-													const nextWorkspace = workspaces.find(
-														(workspace) => workspace.id === event.target.value,
-													);
-													setStoredWorkspaceName(nextWorkspace?.name ?? storedWorkspaceName);
-												}}
-												className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-											>
-												<option value="">Select a workspace</option>
-												{workspaces.map((workspace) => (
-													<option key={workspace.id} value={workspace.id}>
-														{workspace.name}
-													</option>
-												))}
-											</select>
-										</div>
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Quality
-											</label>
-											<select
-												value={quality}
-												onChange={(event) =>
-													setQuality(event.target.value as DocsieVideoToDocsQuality)
-												}
-												className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-											>
-												{QUALITY_OPTIONS.map((option) => (
-													<option key={option.value} value={option.value}>
-														{option.label} · {option.description}
-													</option>
-												))}
-											</select>
-										</div>
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Language
-											</label>
-											<Input
-												value={language}
-												onChange={(event) => setLanguage(event.target.value)}
-												placeholder="english"
-												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-											/>
-										</div>
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Doc Style
-											</label>
-											<select
-												value={docStyle}
-												onChange={(event) =>
-													setDocStyle(event.target.value as DocsieVideoToDocsDocStyle)
-												}
-												className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-											>
-												{DOC_STYLE_OPTIONS.map((option) => (
-													<option key={option} value={option}>
-														{option}
-													</option>
-												))}
-											</select>
-										</div>
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Book Title
-											</label>
-											<Input
-												value={bookTitle}
-												onChange={(event) => setBookTitle(event.target.value)}
-												placeholder="Video Documentation"
-												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-											/>
-										</div>
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Target Shelf ID
-											</label>
-											<Input
-												value={targetDocumentationId}
-												onChange={(event) => setTargetDocumentationId(event.target.value)}
-												placeholder="Optional documentation shelf ID"
-												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-											/>
-										</div>
-									</div>
-
-									<div className="mt-3 rounded-xl border border-white/10 bg-[#17110f] p-3">
-										<label className="flex items-center justify-between gap-4">
+								{showAdvancedOutputs ? (
+									<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
+										<div className="mb-3 flex items-start justify-between gap-3">
 											<div>
-												<div className="text-sm font-medium text-[#fff0e4]">Auto-generate docs</div>
-												<div className="text-xs text-[#c6b4a8]">
-													When enabled, the main button runs the whole docs pipeline and queues
-													DOCX/PDF exports.
+												<div className="text-sm font-semibold text-[#fff0e4]">Files</div>
+												<div className="text-xs text-[#8f7e73]">
+													Open the Docsie result or download the generated files.
 												</div>
 											</div>
-											<button
-												type="button"
-												onClick={() => setAutoGenerate((current) => !current)}
-												className={cn(
-													"relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-													autoGenerate ? "bg-[#FF6738]" : "bg-white/10",
-												)}
-											>
-												<span
-													className={cn(
-														"inline-block h-5 w-5 transform rounded-full bg-white transition-transform",
-														autoGenerate ? "translate-x-5" : "translate-x-1",
-													)}
-												/>
-											</button>
-										</label>
-									</div>
+											<div className="flex flex-wrap gap-2">
+												{phase === "completed" && getPrimaryResultUrl(jobResult) ? (
+													<Button
+														type="button"
+														onClick={() => void handleOpenResult()}
+														className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
+													>
+														<ExternalLink className="mr-2 h-4 w-4" />
+														Open In Docsie
+													</Button>
+												) : null}
+												<Button
+													type="button"
+													variant="secondary"
+													onClick={() => setShowSettingsDialog(true)}
+													className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+												>
+													Additional settings
+												</Button>
+											</div>
+										</div>
 
-									<div className="mt-3 grid gap-3">
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Rewrite Instructions
-											</label>
-											<textarea
-												value={rewriteInstructions}
-												onChange={(event) => setRewriteInstructions(event.target.value)}
-												placeholder="Write for Docsie customers, keep the tone clear and product-focused."
-												className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-											/>
-										</div>
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Template Instruction
-											</label>
-											<textarea
-												value={templateInstruction}
-												onChange={(event) => setTemplateInstruction(event.target.value)}
-												placeholder={
-													"1. Overview\n2. Prerequisites\n3. Step-by-step instructions\n4. Troubleshooting"
-												}
-												className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-											/>
-										</div>
-									</div>
-								</div>
+										<div className="grid gap-3 sm:grid-cols-3">
+											<div className="rounded-xl border border-white/10 bg-[#17110f] p-3">
+												<div className="flex items-start justify-between gap-3">
+													<div>
+														<div className="text-sm font-medium text-[#fff0e4]">Markdown</div>
+														<div className="text-xs text-[#8f7e73]">
+															{markdownReady ? "Ready" : "Pending"}
+														</div>
+													</div>
+													{markdownReady ? (
+														<div className="flex gap-2">
+															<Button
+																type="button"
+																variant="secondary"
+																onClick={() => void handleCopyMarkdown()}
+																className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+															>
+																<Copy className="mr-2 h-4 w-4" />
+																Copy
+															</Button>
+															<Button
+																type="button"
+																variant="secondary"
+																onClick={() => void handleDownloadMarkdown()}
+																className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+															>
+																<Download className="mr-2 h-4 w-4" />
+																Save .md
+															</Button>
+														</div>
+													) : null}
+												</div>
+												<div className="mt-3 text-xs leading-5 text-[#8f7e73]">
+													{markdownReady
+														? "Markdown is ready to copy or save locally."
+														: "Markdown will appear here when Docsie finishes generation."}
+												</div>
+											</div>
 
-								<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
-									<div className="mb-3 text-sm font-semibold text-[#fff0e4]">
-										Connection fallback
-									</div>
-									<div className="grid gap-3 md:grid-cols-2">
-										<div className="space-y-1.5 md:col-span-2">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Docsie URL
-											</label>
-											<Input
-												value={webAppUrl}
-												onChange={(event) => setWebAppUrl(event.target.value)}
-												placeholder="https://app.docsie.io"
-												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-											/>
+											{EXPORT_FORMATS.map((format) => {
+												const artifact = exportArtifacts[format];
+												return (
+													<div
+														key={format}
+														className="rounded-xl border border-white/10 bg-[#17110f] p-3"
+													>
+														<div className="flex items-start justify-between gap-3">
+															<div>
+																<div className="text-sm font-medium text-[#fff0e4]">
+																	{getExportLabel(format)}
+																</div>
+																<div className="mt-1 text-xs text-[#8f7e73]">
+																	{artifact?.status === "ready"
+																		? "Ready"
+																		: artifact?.status === "failed"
+																			? (artifact.error ?? "Failed")
+																			: artifact?.status === "processing"
+																				? "Processing"
+																				: artifact?.status === "queued"
+																					? "Queued"
+																					: "Pending"}
+																</div>
+															</div>
+															{artifact?.status === "ready" && artifact.url ? (
+																<Button
+																	type="button"
+																	variant="secondary"
+																	onClick={() => void handleOpenExport(artifact)}
+																	className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+																>
+																	<Download className="mr-2 h-4 w-4" />
+																	Download
+																</Button>
+															) : artifact?.status === "processing" ||
+																artifact?.status === "queued" ? (
+																<Loader2 className="h-4 w-4 animate-spin text-[#FEA85E]" />
+															) : null}
+														</div>
+													</div>
+												);
+											})}
 										</div>
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												API Base URL
-											</label>
-											<Input
-												value={apiBaseUrl}
-												onChange={(event) => setApiBaseUrl(event.target.value)}
-												placeholder="https://app.docsie.io/api_v2/003"
-												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-											/>
-										</div>
-										<div className="space-y-1.5">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Auth Mode
-											</label>
-											<select
-												value={authMode}
-												onChange={(event) => setAuthMode(event.target.value as DocsieAuthMode)}
-												className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-											>
-												<option value="bearer">Bearer</option>
-												<option value="apiKey">Api-Key</option>
-											</select>
-										</div>
-										<div className="space-y-1.5 md:col-span-2">
-											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Token
-											</label>
-											<Input
-												type="password"
-												value={tokenInput}
-												onChange={(event) => setTokenInput(event.target.value)}
-												placeholder={
-													hasStoredToken
-														? "Leave blank to keep the saved token"
-														: "Paste Docsie API token"
-												}
-												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-											/>
-										</div>
-									</div>
-								</div>
-							</div>
-						</details>
-					</div>
 
-					<div className="space-y-4">
-						<div className="rounded-2xl border border-[rgba(254,168,94,0.14)] bg-[#201715] p-4">
-							<div className="mb-3 flex items-center justify-between">
-								<div>
-									<div className="text-sm font-semibold text-[#fff0e4]">Progress</div>
-									<div className="text-xs text-[#c6b4a8]">{formatJobPhase(phase)}</div>
-								</div>
-								{isWorking || loadingState ? (
-									<Loader2 className="h-4 w-4 animate-spin text-[#FEA85E]" />
-								) : phase === "completed" ? (
-									<CheckCircle2 className="h-4 w-4 text-[#8ce18b]" />
+										{phase === "completed" ? (
+											<div className="mt-3 rounded-xl border border-[rgba(254,168,94,0.14)] bg-[rgba(255,255,255,0.03)] p-3">
+												<div className="text-sm font-medium text-[#fff0e4]">Saved in Docsie</div>
+												<div className="mt-1 text-xs leading-5 text-[#8f7e73]">
+													{docsiePersistenceLabel || "This generated result is stored in Docsie."}
+													{typeof jobResult?.creditsCharged === "number"
+														? ` • ${jobResult.creditsCharged.toLocaleString()} credits charged`
+														: ""}
+												</div>
+											</div>
+										) : null}
+									</div>
 								) : null}
 							</div>
-
-							<div className="grid gap-2 sm:grid-cols-3">
-								<StepPill
-									label="1. Analyze"
-									state={getStepState("analysis", phase, autoGenerate, exportArtifacts)}
-								/>
-								<StepPill
-									label="2. Generate"
-									state={getStepState("generation", phase, autoGenerate, exportArtifacts)}
-								/>
-								<StepPill
-									label="3. Exports"
-									state={getStepState("exports", phase, autoGenerate, exportArtifacts)}
-								/>
-							</div>
-
-							<div className="mt-4 rounded-2xl border border-white/10 bg-[#120d0c] p-4">
-								<div className="flex items-start gap-3">
-									{isWorking ? (
-										<div className="mt-0.5 rounded-full bg-[rgba(254,168,94,0.12)] p-2 text-[#FEA85E]">
-											<Loader2 className="h-4 w-4 animate-spin" />
-										</div>
-									) : phase === "completed" ? (
-										<div className="mt-0.5 rounded-full bg-[rgba(75,181,67,0.12)] p-2 text-[#8ce18b]">
-											<CheckCircle2 className="h-4 w-4" />
-										</div>
-									) : (
-										<div className="mt-0.5 rounded-full bg-white/10 p-2 text-[#c6b4a8]">
-											<Sparkles className="h-4 w-4" />
-										</div>
-									)}
-									<div className="space-y-2">
-										<div className="text-sm font-medium text-[#fff0e4]">
-											{busyMessage ?? "Ready to send the current video through Docsie."}
-										</div>
-										{jobStatus?.status ? (
-											<div className="text-xs text-[#c6b4a8]">
-												API status:{" "}
-												<span className="font-semibold text-[#fff0e4]">{jobStatus.status}</span>
-											</div>
-										) : null}
-										{isWorking ? (
-											<div className="grid gap-2">
-												<div className="h-2 rounded-full bg-white/10">
-													<div className="h-2 w-2/3 animate-pulse rounded-full bg-[#FF6738]" />
-												</div>
-												<div className="grid gap-2 sm:grid-cols-2">
-													<div className="h-12 animate-pulse rounded-xl bg-white/5" />
-													<div className="h-12 animate-pulse rounded-xl bg-white/5" />
-												</div>
-											</div>
+						) : (
+							<div className="rounded-3xl border border-[rgba(254,168,94,0.16)] bg-[radial-gradient(circle_at_top,rgba(255,103,56,0.18),transparent_42%),linear-gradient(135deg,#241917_0%,#17110f_100%)] px-8 py-12">
+								<div className="mx-auto flex max-w-[460px] flex-col items-center text-center">
+									<div className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#8f7e73]">
+										{connectionSummary}
+									</div>
+									<div className="mt-3 text-sm text-[#c6b4a8]">{compactSummary}</div>
+									<Button
+										type="button"
+										onClick={() => void handlePrimaryAction()}
+										disabled={hasStoredToken ? !videoPath || isWorking : false}
+										className="mt-8 h-16 min-w-[340px] rounded-full bg-[#FF6738] px-8 text-lg font-semibold text-white hover:bg-[#FF6738]/90"
+									>
+										{!hasStoredToken ? (
+											<LogIn className="mr-3 h-5 w-5" />
+										) : (
+											<Sparkles className="mr-3 h-5 w-5" />
+										)}
+										{primaryActionLabel}
+									</Button>
+									<div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-sm">
+										<button
+											type="button"
+											onClick={() => setShowSettingsDialog(true)}
+											className="text-[#c6b4a8] underline-offset-4 hover:text-[#fff0e4] hover:underline"
+										>
+											Additional settings
+										</button>
+										{!hasStoredToken ? (
+											<button
+												type="button"
+												onClick={() => void handleCreateAccount()}
+												className="text-[#FEA85E] underline-offset-4 hover:underline"
+											>
+												Create account
+											</button>
 										) : null}
 									</div>
 								</div>
 							</div>
+						)}
+					</div>
 
-							<div className="mt-4 grid gap-3 sm:grid-cols-2">
-								<div className="rounded-xl border border-white/10 bg-[#120d0c] p-3">
-									<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Analysis Job
-									</div>
-									<div className="mt-1 break-all text-xs text-[#fff0e4]">
-										{analysisJobId ?? "Not started"}
-									</div>
-								</div>
-								<div className="rounded-xl border border-white/10 bg-[#120d0c] p-3">
-									<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Generation Job
-									</div>
-									<div className="mt-1 break-all text-xs text-[#fff0e4]">
-										{generationJobId ?? (autoGenerate ? "Waiting for analysis" : "Disabled")}
-									</div>
-								</div>
-							</div>
+					<DialogFooter className="mt-4 border-t border-white/10 pt-4">
+						<Button
+							type="button"
+							variant="secondary"
+							onClick={() => onOpenChange(false)}
+							className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+						>
+							Close
+						</Button>
+						{canManuallyGenerate ? (
+							<Button
+								type="button"
+								onClick={() => void handleGenerate()}
+								disabled={isWorking}
+								className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
+							>
+								<Sparkles className="mr-2 h-4 w-4" />
+								Generate Docs
+							</Button>
+						) : null}
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
-							{jobResult?.creditsCharged || jobResult?.creditBalanceAfter ? (
-								<div className="mt-4 grid gap-3 sm:grid-cols-2">
-									<div className="rounded-xl border border-white/10 bg-[#120d0c] p-3">
-										<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Credits Charged
-										</div>
-										<div className="mt-1 text-sm text-[#fff0e4]">
-											{formatNumber(jobResult.creditsCharged) ?? "Pending"}
-										</div>
-									</div>
-									<div className="rounded-xl border border-white/10 bg-[#120d0c] p-3">
-										<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Balance After
-										</div>
-										<div className="mt-1 text-sm text-[#fff0e4]">
-											{formatNumber(jobResult.creditBalanceAfter) ?? "Pending"}
-										</div>
-									</div>
-								</div>
-							) : null}
-						</div>
+			<Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+				<DialogContent className="max-h-[90vh] overflow-hidden border border-[rgba(254,168,94,0.18)] bg-[#17110f] text-[#fff0e4] sm:max-w-[860px]">
+					<DialogHeader>
+						<DialogTitle className="text-[#fff0e4]">Additional Settings</DialogTitle>
+						<DialogDescription className="text-[#8f7e73]">
+							Overrides, connection fallback, and job details.
+						</DialogDescription>
+					</DialogHeader>
 
-						<div className="rounded-2xl border border-[rgba(254,168,94,0.14)] bg-[#201715] p-4">
-							<div className="mb-3 flex items-start justify-between gap-3">
-								<div>
-									<div className="text-sm font-semibold text-[#fff0e4]">Outputs</div>
-									<div className="text-xs text-[#c6b4a8]">
-										Markdown comes back directly. DOCX and PDF are exposed as export downloads when
-										ready.
-									</div>
-								</div>
-								{getPrimaryResultUrl(jobResult) ? (
+					<div className="grid max-h-[calc(90vh-10rem)] gap-4 overflow-y-auto pr-1">
+						<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
+							<div className="mb-3 flex items-center justify-between">
+								<div className="text-sm font-semibold text-[#fff0e4]">Workspace and output</div>
+								<div className="flex gap-2">
 									<Button
 										type="button"
 										variant="secondary"
-										onClick={() => void handleOpenResult()}
+										onClick={() => void handleRefreshWorkspaces()}
+										disabled={loadingWorkspaces || !hasConnectionCredentials}
 										className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 									>
-										<ExternalLink className="mr-2 h-4 w-4" />
-										Open In Docsie
+										{loadingWorkspaces ? (
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										) : (
+											<RefreshCcw className="mr-2 h-4 w-4" />
+										)}
+										Load Workspaces
 									</Button>
-								) : null}
+									<Button
+										type="button"
+										variant="secondary"
+										onClick={() => {
+											void persistConfig()
+												.then(() => toast.success("Docsie defaults saved"))
+												.catch((error) => {
+													toast.error(
+														error instanceof Error
+															? error.message
+															: "Failed to save Docsie defaults",
+													);
+												});
+										}}
+										disabled={savingConfig || !hasConnectionCredentials}
+										className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+									>
+										{savingConfig ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+										Save Defaults
+									</Button>
+								</div>
 							</div>
 
-							<div className="grid gap-3">
-								<div className="rounded-xl border border-white/10 bg-[#120d0c] p-3">
-									<div className="mb-2 flex items-center justify-between gap-3">
-										<div>
-											<div className="text-sm font-medium text-[#fff0e4]">Markdown</div>
-											<div className="text-xs text-[#c6b4a8]">
-												{resultPreview
-													? "Ready in the recorder preview."
-													: "Available after conversion completes."}
-											</div>
-										</div>
-										<div className="flex gap-2">
-											<Button
-												type="button"
-												variant="secondary"
-												onClick={() => void handleCopyMarkdown()}
-												disabled={!jobResult?.markdown}
-												className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-											>
-												<Copy className="mr-2 h-4 w-4" />
-												Copy
-											</Button>
-											<Button
-												type="button"
-												variant="secondary"
-												onClick={() => void handleDownloadMarkdown()}
-												disabled={!jobResult?.markdown}
-												className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-											>
-												<Download className="mr-2 h-4 w-4" />
-												Save .md
-											</Button>
-										</div>
-									</div>
-									{resultPreview ? (
-										<pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-[#17110f] p-3 text-xs text-[#e8d6ca]">
-											{resultPreview}
-										</pre>
-									) : (
-										<div className="rounded-lg border border-dashed border-white/10 px-3 py-6 text-center text-xs text-[#8f7e73]">
-											Markdown preview will appear here after Docsie finishes.
-										</div>
-									)}
+							<div className="grid gap-3 md:grid-cols-2">
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Workspace
+									</label>
+									<select
+										value={workspaceId}
+										onChange={(event) => {
+											setWorkspaceId(event.target.value);
+											const nextWorkspace = workspaces.find(
+												(workspace) => workspace.id === event.target.value,
+											);
+											setStoredWorkspaceName(nextWorkspace?.name ?? storedWorkspaceName);
+										}}
+										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+									>
+										<option value="">Select a workspace</option>
+										{workspaces.map((workspace) => (
+											<option key={workspace.id} value={workspace.id}>
+												{workspace.name}
+											</option>
+										))}
+									</select>
 								</div>
-
-								<div className="grid gap-3 sm:grid-cols-2">
-									{EXPORT_FORMATS.map((format) => {
-										const artifact = exportArtifacts[format];
-										return (
-											<div
-												key={format}
-												className="rounded-xl border border-white/10 bg-[#120d0c] p-3"
-											>
-												<div className="flex items-start justify-between gap-3">
-													<div>
-														<div className="text-sm font-medium text-[#fff0e4]">
-															{getExportLabel(format)}
-														</div>
-														<div className="mt-1 text-xs text-[#c6b4a8]">
-															{artifact?.status === "ready"
-																? "Ready to download"
-																: artifact?.status === "failed"
-																	? (artifact.error ?? "Export failed")
-																	: artifact?.status === "processing"
-																		? "Docsie is preparing the file"
-																		: artifact?.status === "queued"
-																			? "Export has been queued"
-																			: "Will appear here after generation"}
-														</div>
-													</div>
-													{artifact?.status === "ready" && artifact.url ? (
-														<Button
-															type="button"
-															variant="secondary"
-															onClick={() => void handleOpenExport(artifact)}
-															className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-														>
-															<Download className="mr-2 h-4 w-4" />
-															Download
-														</Button>
-													) : artifact?.status === "processing" || artifact?.status === "queued" ? (
-														<Loader2 className="h-4 w-4 animate-spin text-[#FEA85E]" />
-													) : null}
-												</div>
-												{artifact?.jobId ? (
-													<div className="mt-3 break-all text-[11px] text-[#8f7e73]">
-														Export job: {artifact.jobId}
-													</div>
-												) : null}
-											</div>
-										);
-									})}
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Quality
+									</label>
+									<select
+										value={quality}
+										onChange={(event) => setQuality(event.target.value as DocsieVideoToDocsQuality)}
+										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+									>
+										{QUALITY_OPTIONS.map((option) => (
+											<option key={option.value} value={option.value}>
+												{option.label} · {option.description}
+											</option>
+										))}
+									</select>
 								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Language
+									</label>
+									<Input
+										value={language}
+										onChange={(event) => setLanguage(event.target.value)}
+										placeholder="english"
+										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Doc Style
+									</label>
+									<select
+										value={docStyle}
+										onChange={(event) =>
+											setDocStyle(event.target.value as DocsieVideoToDocsDocStyle)
+										}
+										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+									>
+										{DOC_STYLE_OPTIONS.map((option) => (
+											<option key={option} value={option}>
+												{option}
+											</option>
+										))}
+									</select>
+								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Book Title
+									</label>
+									<Input
+										value={bookTitle}
+										onChange={(event) => setBookTitle(event.target.value)}
+										placeholder="Video Documentation"
+										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Target Shelf ID
+									</label>
+									<Input
+										value={targetDocumentationId}
+										onChange={(event) => setTargetDocumentationId(event.target.value)}
+										placeholder="Optional documentation shelf ID"
+										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+									/>
+								</div>
+							</div>
 
-								{jobResult?.articlesCreated ? (
-									<div className="rounded-xl border border-[rgba(75,181,67,0.2)] bg-[rgba(75,181,67,0.08)] px-3 py-2 text-sm text-[#d8f5d6]">
-										Docsie created {jobResult.articlesCreated} article
-										{jobResult.articlesCreated === 1 ? "" : "s"}
-										{jobResult.bookName ? ` in ${jobResult.bookName}.` : "."}
-									</div>
-								) : null}
+							<div className="mt-3 rounded-xl border border-white/10 bg-[#17110f] p-3">
+								<label className="flex items-center justify-between gap-4">
+									<div className="text-sm font-medium text-[#fff0e4]">Auto-generate docs</div>
+									<button
+										type="button"
+										onClick={() => setAutoGenerate((current) => !current)}
+										className={cn(
+											"relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+											autoGenerate ? "bg-[#FF6738]" : "bg-white/10",
+										)}
+									>
+										<span
+											className={cn(
+												"inline-block h-5 w-5 transform rounded-full bg-white transition-transform",
+												autoGenerate ? "translate-x-5" : "translate-x-1",
+											)}
+										/>
+									</button>
+								</label>
+							</div>
+
+							<div className="mt-3 grid gap-3">
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Rewrite Instructions
+									</label>
+									<textarea
+										value={rewriteInstructions}
+										onChange={(event) => setRewriteInstructions(event.target.value)}
+										className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Template Instruction
+									</label>
+									<textarea
+										value={templateInstruction}
+										onChange={(event) => setTemplateInstruction(event.target.value)}
+										className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+									/>
+								</div>
 							</div>
 						</div>
-					</div>
-				</div>
 
-				<DialogFooter>
-					<Button
-						type="button"
-						variant="secondary"
-						onClick={() => onOpenChange(false)}
-						className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-					>
-						Close
-					</Button>
-					{canManuallyGenerate ? (
+						<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
+							<div className="mb-3 text-sm font-semibold text-[#fff0e4]">Connection fallback</div>
+							<div className="grid gap-3 md:grid-cols-2">
+								<div className="space-y-1.5 md:col-span-2">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Docsie URL
+									</label>
+									<Input
+										value={webAppUrl}
+										onChange={(event) => setWebAppUrl(event.target.value)}
+										placeholder="https://app.docsie.io"
+										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										API Base URL
+									</label>
+									<Input
+										value={apiBaseUrl}
+										onChange={(event) => setApiBaseUrl(event.target.value)}
+										placeholder="https://app.docsie.io/api_v2/003"
+										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Auth Mode
+									</label>
+									<select
+										value={authMode}
+										onChange={(event) => setAuthMode(event.target.value as DocsieAuthMode)}
+										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+									>
+										<option value="bearer">Bearer</option>
+										<option value="apiKey">Api-Key</option>
+									</select>
+								</div>
+								<div className="space-y-1.5 md:col-span-2">
+									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+										Token
+									</label>
+									<Input
+										type="password"
+										value={tokenInput}
+										onChange={(event) => setTokenInput(event.target.value)}
+										placeholder={
+											hasStoredToken
+												? "Leave blank to keep the saved token"
+												: "Paste Docsie API token"
+										}
+										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+									/>
+								</div>
+							</div>
+						</div>
+
+						{showAdvancedOutputs ? (
+							<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
+								<div className="mb-3 text-sm font-semibold text-[#fff0e4]">Job details</div>
+								<div className="grid gap-3 sm:grid-cols-2">
+									<div className="rounded-xl border border-white/10 bg-[#17110f] p-3">
+										<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Analysis Job
+										</div>
+										<div className="mt-1 break-all text-xs text-[#fff0e4]">
+											{analysisJobId ?? "Not started"}
+										</div>
+									</div>
+									<div className="rounded-xl border border-white/10 bg-[#17110f] p-3">
+										<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Generation Job
+										</div>
+										<div className="mt-1 break-all text-xs text-[#fff0e4]">
+											{generationJobId ?? (autoGenerate ? "Waiting for analysis" : "Disabled")}
+										</div>
+									</div>
+								</div>
+							</div>
+						) : null}
+					</div>
+
+					<DialogFooter>
 						<Button
 							type="button"
-							onClick={() => void handleGenerate()}
-							disabled={isWorking}
-							className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
+							variant="secondary"
+							onClick={() => setShowSettingsDialog(false)}
+							className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 						>
-							<Sparkles className="mr-2 h-4 w-4" />
-							Generate Docs
+							Close
 						</Button>
-					) : null}
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		</>
 	);
 }

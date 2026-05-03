@@ -642,6 +642,19 @@ export function registerIpcHandlers(
 		return { success: true };
 	});
 
+	ipcMain.handle("set-current-window-size", (event, width: number, height: number) => {
+		const targetWindow = BrowserWindow.fromWebContents(event.sender);
+		if (!targetWindow) {
+			return { success: false, error: "Window not found" };
+		}
+
+		const nextWidth = Math.max(320, Math.round(width));
+		const nextHeight = Math.max(120, Math.round(height));
+		targetWindow.setSize(nextWidth, nextHeight, true);
+		targetWindow.center();
+		return { success: true };
+	});
+
 	ipcMain.handle("switch-to-editor", () => {
 		const mainWin = getMainWindow();
 		if (mainWin) {
@@ -1005,6 +1018,53 @@ export function registerIpcHandlers(
 			};
 		}
 	});
+
+	ipcMain.handle(
+		"save-text-file",
+		async (
+			_,
+			textContent: string,
+			fileName: string,
+			filters?: Array<{ name: string; extensions: string[] }>,
+		) => {
+			try {
+				const result = await dialog.showSaveDialog({
+					title: "Save File",
+					defaultPath: path.join(app.getPath("downloads"), fileName),
+					filters:
+						Array.isArray(filters) && filters.length > 0
+							? filters
+							: [{ name: "Text Files", extensions: ["txt"] }],
+					properties: ["createDirectory", "showOverwriteConfirmation"],
+				});
+
+				if (result.canceled || !result.filePath) {
+					return {
+						success: false,
+						canceled: true,
+						message: "Save canceled",
+					};
+				}
+
+				const normalizedPath = path.normalize(result.filePath);
+				await fs.mkdir(path.dirname(normalizedPath), { recursive: true });
+				await fs.writeFile(normalizedPath, textContent, "utf-8");
+
+				return {
+					success: true,
+					path: normalizedPath,
+					message: "File saved successfully",
+				};
+			} catch (error) {
+				console.error("Failed to save text file:", error);
+				return {
+					success: false,
+					message: "Failed to save file",
+					error: String(error),
+				};
+			}
+		},
+	);
 	ipcMain.handle("open-video-file-picker", async () => {
 		try {
 			const result = await dialog.showOpenDialog({

@@ -3,7 +3,7 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "io.docsie.screenrecorder",
   "asar": true,
-  "productName": "Docsie - Screen Recorder",
+  "productName": "Docsie Screen Recorder",
   "protocols": [
     {
       "name": "Docsie Screen Recorder",

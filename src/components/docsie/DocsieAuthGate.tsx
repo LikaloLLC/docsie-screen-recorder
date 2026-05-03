@@ -1,6 +1,7 @@
-import { Loader2, LogIn, RefreshCcw, ShieldCheck, UserPlus } from "lucide-react";
+import { Loader2, LogIn, RefreshCcw, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { getBundledAssetUrl } from "@/lib/assets";
 import type { DocsieDesktopConnectParams } from "@/lib/docsieIntegration";
 import {
 	buildDocsieDesktopLoginUrl,
@@ -39,6 +40,7 @@ export function DocsieAuthGate({
 	const resolvedWebAppUrl = getDocsieWebAppUrl(webAppUrl);
 	const signInUrl = buildDocsieDesktopLoginUrl(resolvedWebAppUrl, connectParams);
 	const signupUrl = buildDocsieDesktopSignupUrl(resolvedWebAppUrl, connectParams);
+	const docsieMarkUrl = getBundledAssetUrl("docsie_mark.svg");
 
 	const openUrl = async (url: string, label: string) => {
 		const result = await window.electronAPI.openExternalUrl(url);
@@ -64,7 +66,11 @@ export function DocsieAuthGate({
 						compact ? "h-10 w-10" : "h-12 w-12",
 					)}
 				>
-					<ShieldCheck className={compact ? "h-5 w-5" : "h-6 w-6"} />
+					<img
+						src={docsieMarkUrl}
+						alt="Docsie"
+						className={compact ? "h-5 w-5 object-contain" : "h-7 w-7 object-contain"}
+					/>
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#FEA85E]">

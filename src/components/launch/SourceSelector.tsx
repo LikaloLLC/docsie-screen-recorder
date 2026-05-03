@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { DocsieAuthGate } from "@/components/docsie/DocsieAuthGate";
 import { useScopedT } from "@/contexts/I18nContext";
 import { useDocsieAuthState } from "@/hooks/useDocsieAuthState";
+import { getBundledAssetUrl } from "@/lib/assets";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import styles from "./SourceSelector.module.css";
@@ -20,6 +21,7 @@ interface DesktopSource {
 export function SourceSelector() {
 	const t = useScopedT("launch");
 	const tc = useScopedT("common");
+	const docsieMarkUrl = getBundledAssetUrl("docsie_mark.svg");
 	const [sources, setSources] = useState<DesktopSource[]>([]);
 	const [selectedSource, setSelectedSource] = useState<DesktopSource | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -169,7 +171,7 @@ export function SourceSelector() {
 				<div className="mb-3 px-1">
 					<div className={styles.windowHeader}>
 						<div>
-							<img src="/docsie_orange.svg" alt="Docsie" className={styles.brandMark} />
+							<img src={docsieMarkUrl} alt="Docsie" className={styles.brandMark} />
 							<h1 className="text-lg font-semibold text-[#FFF0E4]">Screen Recorder</h1>
 							<p className="text-xs text-[#FDD2A3]/70">Choose the screen or window to capture.</p>
 						</div>
@@ -225,7 +227,7 @@ export function SourceSelector() {
 								</div>
 								<p className="mt-2 max-w-[360px] text-xs leading-5 text-[#FDD2A3]/70">
 									Open macOS Screen &amp; System Audio Recording settings, enable
-									<em> Docsie - Screen Recorder</em>, then fully quit and reopen the app.
+									<em> Docsie Screen Recorder</em>, then fully quit and reopen the app.
 								</p>
 								<div className="mt-4 flex gap-2">
 									<Button

@@ -19,12 +19,13 @@ import { registerIpcHandlers } from "./ipc/handlers";
 import {
 	createCountdownOverlayWindow,
 	createEditorWindow,
-	createHudOverlayWindow,
+	createLaunchWindow,
 	createSourceSelectorWindow,
 } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DOCSIE_PROTOCOL = "docsie-screen";
+const APP_DISPLAY_NAME = "Docsie Screen Recorder";
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!gotSingleInstanceLock) {
@@ -70,6 +71,12 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 	? path.join(process.env.APP_ROOT, "public")
 	: RENDERER_DIST;
 
+app.setName(APP_DISPLAY_NAME);
+app.setAboutPanelOptions({
+	applicationName: APP_DISPLAY_NAME,
+	applicationVersion: app.getVersion(),
+});
+
 // Window references
 let mainWindow: BrowserWindow | null = null;
 let sourceSelectorWindow: BrowserWindow | null = null;
@@ -82,11 +89,11 @@ let pendingDesktopAuthUrl = extractDesktopAuthUrlFromArgv(process.argv);
 let pendingDesktopAuthEvent: DocsieDesktopAuthEvent | null = null;
 
 // Tray Icons
-const defaultTrayIcon = getTrayIcon("docsie-logo.png", trayIconSize);
+const defaultTrayIcon = getTrayIcon("docsie_app_icon.png", trayIconSize);
 const recordingTrayIcon = getTrayIcon("rec-button.png", trayIconSize);
 
 function createWindow() {
-	mainWindow = createHudOverlayWindow();
+	mainWindow = createLaunchWindow();
 	attachDesktopAuthEventFlush(mainWindow);
 }
 
@@ -231,7 +238,9 @@ function getTrayIcon(filename: string, size: number) {
 function registerDesktopProtocolClient() {
 	try {
 		if (process.platform === "win32" && !app.isPackaged && process.argv[1]) {
-			app.setAsDefaultProtocolClient(DOCSIE_PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
+			app.setAsDefaultProtocolClient(DOCSIE_PROTOCOL, process.execPath, [
+				path.resolve(process.argv[1]),
+			]);
 			return;
 		}
 
@@ -304,6 +313,18 @@ function attachDesktopAuthEventFlush(window: BrowserWindow | null) {
 		window.webContents.send("docsie:desktop-auth-event", pendingDesktopAuthEvent);
 		pendingDesktopAuthEvent = null;
 	});
+}
+
+function applyAppBranding() {
+	if (process.platform !== "darwin") {
+		return;
+	}
+
+	const dockIconPath = path.join(process.env.VITE_PUBLIC || RENDERER_DIST, "docsie_app_icon.png");
+	const dockIcon = nativeImage.createFromPath(dockIconPath);
+	if (!dockIcon.isEmpty() && app.dock) {
+		app.dock.setIcon(dockIcon);
+	}
 }
 
 async function handleDesktopAuthUrl(rawUrl: string) {
@@ -514,6 +535,7 @@ app.on("second-instance", (_event, argv) => {
 
 // Register all IPC handlers when app is ready
 app.whenReady().then(async () => {
+	applyAppBranding();
 	registerDesktopProtocolClient();
 
 	// Allow microphone/media permission checks
