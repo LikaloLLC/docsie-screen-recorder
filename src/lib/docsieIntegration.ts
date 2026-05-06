@@ -21,11 +21,22 @@ export interface DocsieWorkspace {
 	documentationId?: string | null;
 }
 
+export interface DocsieGenerationTemplate {
+	id: string;
+	name: string;
+	category: string;
+	description?: string;
+	icon?: string;
+	preview?: string[];
+	exampleMarkdown?: string;
+}
+
 export interface DocsieDesktopConnectParams {
 	workspaceId?: string;
 	docStyle?: DocsieVideoToDocsDocStyle;
 	quality?: DocsieVideoToDocsQuality;
 	language?: string;
+	generationTemplateId?: string;
 	templateInstruction?: string;
 	rewriteInstructions?: string;
 	targetDocumentationId?: string;
@@ -70,6 +81,9 @@ export function buildDocsieDesktopConnectUrl(
 	}
 	if (params?.language?.trim()) {
 		connectUrl.searchParams.set("language", params.language.trim());
+	}
+	if (params?.generationTemplateId?.trim()) {
+		connectUrl.searchParams.set("generation_template_id", params.generationTemplateId.trim());
 	}
 	if (params?.templateInstruction?.trim()) {
 		connectUrl.searchParams.set("template_instruction", params.templateInstruction.trim());
@@ -116,6 +130,7 @@ export interface DocsieIntegrationConfigInput {
 	defaultLanguage?: string;
 	defaultDocStyle?: DocsieVideoToDocsDocStyle;
 	defaultRewriteInstructions?: string;
+	defaultGenerationTemplateId?: string;
 	defaultTemplateInstruction?: string;
 	targetDocumentationId?: string;
 	autoGenerate?: boolean;
@@ -133,6 +148,7 @@ export interface DocsieIntegrationState {
 	defaultLanguage: string;
 	defaultDocStyle: DocsieVideoToDocsDocStyle;
 	defaultRewriteInstructions?: string;
+	defaultGenerationTemplateId?: string;
 	defaultTemplateInstruction?: string;
 	targetDocumentationId?: string;
 	autoGenerate: boolean;
@@ -193,6 +209,7 @@ export interface DocsieStartVideoToDocsInput {
 	workspaceId?: string;
 	docStyle?: DocsieVideoToDocsDocStyle;
 	rewriteInstructions?: string;
+	generationTemplateId?: string;
 	templateInstruction?: string;
 	targetDocumentationId?: string;
 	bookTitle?: string;
@@ -215,6 +232,7 @@ export interface DocsieGenerateVideoToDocsInput {
 	jobId: string;
 	docStyle?: DocsieVideoToDocsDocStyle;
 	rewriteInstructions?: string;
+	generationTemplateId?: string;
 	templateInstruction?: string;
 	targetLanguage?: string;
 	targetDocumentationId?: string;
@@ -309,6 +327,8 @@ export interface DocsieVideoToDocsHistoryEntry {
 	docStyle?: DocsieVideoToDocsDocStyle;
 	bookTitle?: string;
 	targetDocumentationId?: string;
+	generationTemplateId?: string;
+	generationTemplateName?: string;
 	templateInstruction?: string;
 	rewriteInstructions?: string;
 	analysisJobId?: string;
@@ -324,6 +344,8 @@ export interface DocsieSaveVideoToDocsHistoryInput {
 	docStyle?: DocsieVideoToDocsDocStyle;
 	bookTitle?: string;
 	targetDocumentationId?: string;
+	generationTemplateId?: string;
+	generationTemplateName?: string;
 	templateInstruction?: string;
 	rewriteInstructions?: string;
 	analysisJobId?: string;

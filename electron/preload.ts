@@ -82,6 +82,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	docsieListWorkspaces: () => {
 		return ipcRenderer.invoke("docsie:list-workspaces");
 	},
+	docsieListGenerationTemplates: () => {
+		return ipcRenderer.invoke("docsie:list-generation-templates");
+	},
 	docsieEstimateVideoToDocs: (input: DocsieEstimateInput) => {
 		return ipcRenderer.invoke("docsie:estimate-video-to-docs", input);
 	},

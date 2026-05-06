@@ -10,6 +10,7 @@ import type {
 	DocsieEstimateResult,
 	DocsieGenerateVideoToDocsInput,
 	DocsieGenerateVideoToDocsResult,
+	DocsieGenerationTemplate,
 	DocsieIntegrationConfigInput,
 	DocsieIntegrationState,
 	DocsieSaveVideoToDocsHistoryInput,
@@ -42,6 +43,7 @@ interface StoredDocsieConfig {
 	defaultLanguage?: string;
 	defaultDocStyle?: string;
 	defaultRewriteInstructions?: string;
+	defaultGenerationTemplateId?: string;
 	defaultTemplateInstruction?: string;
 	targetDocumentationId?: string;
 	autoGenerate?: boolean;
@@ -59,6 +61,7 @@ interface ResolvedDocsieConfig {
 	defaultLanguage: string;
 	defaultDocStyle: string;
 	defaultRewriteInstructions?: string;
+	defaultGenerationTemplateId?: string;
 	defaultTemplateInstruction?: string;
 	targetDocumentationId?: string;
 	autoGenerate: boolean;
@@ -156,6 +159,7 @@ async function readStoredDocsieConfig(): Promise<StoredDocsieConfig | null> {
 			defaultLanguage: asString(parsed.defaultLanguage),
 			defaultDocStyle: asString(parsed.defaultDocStyle),
 			defaultRewriteInstructions: asString(parsed.defaultRewriteInstructions),
+			defaultGenerationTemplateId: asString(parsed.defaultGenerationTemplateId),
 			defaultTemplateInstruction: asString(parsed.defaultTemplateInstruction),
 			targetDocumentationId: asString(parsed.targetDocumentationId),
 			autoGenerate: typeof parsed.autoGenerate === "boolean" ? parsed.autoGenerate : undefined,
@@ -220,6 +224,7 @@ function toDocsieState(stored: StoredDocsieConfig | null): DocsieIntegrationStat
 		defaultDocStyle:
 			(stored?.defaultDocStyle as DocsieIntegrationState["defaultDocStyle"]) ?? DEFAULT_DOC_STYLE,
 		defaultRewriteInstructions: stored?.defaultRewriteInstructions ?? "",
+		defaultGenerationTemplateId: stored?.defaultGenerationTemplateId ?? "",
 		defaultTemplateInstruction: stored?.defaultTemplateInstruction ?? "",
 		targetDocumentationId: stored?.targetDocumentationId,
 		autoGenerate: stored?.autoGenerate ?? true,
@@ -249,6 +254,7 @@ async function resolveDocsieConfig(): Promise<ResolvedDocsieConfig> {
 		defaultLanguage: stored.defaultLanguage ?? DEFAULT_LANGUAGE,
 		defaultDocStyle: stored.defaultDocStyle ?? DEFAULT_DOC_STYLE,
 		defaultRewriteInstructions: stored.defaultRewriteInstructions ?? "",
+		defaultGenerationTemplateId: stored.defaultGenerationTemplateId ?? "",
 		defaultTemplateInstruction: stored.defaultTemplateInstruction ?? "",
 		targetDocumentationId: stored.targetDocumentationId,
 		autoGenerate: stored.autoGenerate ?? true,
@@ -351,6 +357,33 @@ function normalizeWorkspacePayload(payload: unknown): DocsieWorkspace[] {
 			documentationId: asNullableString(item.documentation_id),
 		}))
 		.filter((workspace) => workspace.id);
+}
+
+function normalizeGenerationTemplatePayload(payload: unknown): DocsieGenerationTemplate[] {
+	const items = Array.isArray(payload)
+		? payload
+		: isRecord(payload) && Array.isArray(payload.results)
+			? payload.results
+			: isRecord(payload) && Array.isArray(payload.templates)
+				? payload.templates
+				: [];
+
+	return items
+		.filter((item): item is Record<string, unknown> => isRecord(item))
+		.map((item) => ({
+			id: String(item.id ?? ""),
+			name: asString(item.name) ?? String(item.id ?? "Template"),
+			category: asString(item.category) ?? "other",
+			description: asString(item.description),
+			icon: asString(item.icon),
+			preview: Array.isArray(item.preview)
+				? item.preview
+						.map((value) => asString(value))
+						.filter((value): value is string => Boolean(value))
+				: [],
+			exampleMarkdown: asString(item.example_markdown) ?? asString(item.exampleMarkdown),
+		}))
+		.filter((template) => template.id);
 }
 
 function normalizeEstimateResponse(payload: unknown): DocsieEstimateResult {
@@ -468,6 +501,8 @@ export async function saveDocsieIntegrationConfig(
 		defaultDocStyle: input.defaultDocStyle ?? stored?.defaultDocStyle ?? DEFAULT_DOC_STYLE,
 		defaultRewriteInstructions:
 			asString(input.defaultRewriteInstructions) ?? stored?.defaultRewriteInstructions ?? "",
+		defaultGenerationTemplateId:
+			asString(input.defaultGenerationTemplateId) ?? stored?.defaultGenerationTemplateId ?? "",
 		defaultTemplateInstruction:
 			asString(input.defaultTemplateInstruction) ?? stored?.defaultTemplateInstruction ?? "",
 		targetDocumentationId: asString(input.targetDocumentationId) ?? stored?.targetDocumentationId,
@@ -483,6 +518,12 @@ export async function listDocsieWorkspaces(): Promise<DocsieWorkspace[]> {
 	const config = await resolveDocsieConfig();
 	const payload = await docsieJsonRequest(config, "/workspaces/");
 	return normalizeWorkspacePayload(payload);
+}
+
+export async function listDocsieGenerationTemplates(): Promise<DocsieGenerationTemplate[]> {
+	const config = await resolveDocsieConfig();
+	const payload = await docsieJsonRequest(config, "/video-to-docs/templates/");
+	return normalizeGenerationTemplatePayload(payload);
 }
 
 export async function connectDocsieDesktopHandoff(
@@ -533,6 +574,7 @@ export async function connectDocsieDesktopHandoff(
 			defaultLanguage: asString(payload.default_language) ?? DEFAULT_LANGUAGE,
 			defaultDocStyle: asString(payload.default_doc_style) ?? DEFAULT_DOC_STYLE,
 			defaultRewriteInstructions: asString(payload.default_rewrite_instructions) ?? "",
+			defaultGenerationTemplateId: asString(payload.default_generation_template_id) ?? "",
 			defaultTemplateInstruction: asString(payload.default_template_instruction) ?? "",
 			targetDocumentationId: asString(payload.target_documentation_id),
 			autoGenerate: typeof payload.auto_generate === "boolean" ? payload.auto_generate : true,
@@ -637,6 +679,11 @@ export async function startDocsieVideoToDocs(
 		const remoteName = sanitizeFilenameSegment(
 			`docsie-screen-${Date.now()}-${basename || `recording${path.extname(normalizedVideoPath)}`}`,
 		);
+		const generationTemplateId =
+			asString(input.generationTemplateId) ?? config.defaultGenerationTemplateId ?? "";
+		const templateInstruction = generationTemplateId
+			? ""
+			: (asString(input.templateInstruction) ?? config.defaultTemplateInstruction ?? "");
 
 		const tempUploadPayload = await docsieJsonRequest(config, "/files/generate_temp_url/", {
 			method: "POST",
@@ -697,8 +744,8 @@ export async function startDocsieVideoToDocs(
 				doc_style: input.docStyle ?? config.defaultDocStyle,
 				rewrite_instructions:
 					asString(input.rewriteInstructions) ?? config.defaultRewriteInstructions ?? "",
-				template_instruction:
-					asString(input.templateInstruction) ?? config.defaultTemplateInstruction ?? "",
+				generation_template_id: generationTemplateId,
+				template_instruction: templateInstruction,
 				target_documentation_id:
 					asString(input.targetDocumentationId) ?? config.targetDocumentationId ?? "",
 				book_title: asString(input.bookTitle) ?? defaultBookTitle,
@@ -738,6 +785,11 @@ export async function generateDocsieVideoToDocs(
 		if (!jobId) {
 			throw new Error("Docsie analysis job ID is required");
 		}
+		const generationTemplateId =
+			asString(input.generationTemplateId) ?? config.defaultGenerationTemplateId ?? "";
+		const templateInstruction = generationTemplateId
+			? ""
+			: (asString(input.templateInstruction) ?? config.defaultTemplateInstruction ?? "");
 
 		const payload = await docsieJsonRequest(config, `/video-to-docs/${jobId}/generate/`, {
 			method: "POST",
@@ -748,8 +800,8 @@ export async function generateDocsieVideoToDocs(
 				doc_style: input.docStyle ?? config.defaultDocStyle,
 				rewrite_instructions:
 					asString(input.rewriteInstructions) ?? config.defaultRewriteInstructions ?? "",
-				template_instruction:
-					asString(input.templateInstruction) ?? config.defaultTemplateInstruction ?? "",
+				generation_template_id: generationTemplateId,
+				template_instruction: templateInstruction,
 				target_language: asString(input.targetLanguage) ?? config.defaultLanguage,
 				target_documentation_id:
 					asString(input.targetDocumentationId) ?? config.targetDocumentationId ?? "",
@@ -827,6 +879,8 @@ export async function saveDocsieVideoToDocsHistory(
 		docStyle: input.docStyle,
 		bookTitle: asString(input.bookTitle),
 		targetDocumentationId: asString(input.targetDocumentationId),
+		generationTemplateId: asString(input.generationTemplateId),
+		generationTemplateName: asString(input.generationTemplateName),
 		templateInstruction: asString(input.templateInstruction),
 		rewriteInstructions: asString(input.rewriteInstructions),
 		analysisJobId: asString(input.analysisJobId),

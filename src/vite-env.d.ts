@@ -87,6 +87,11 @@ interface Window {
 			workspaces: import("./lib/docsieIntegration").DocsieWorkspace[];
 			error?: string;
 		}>;
+		docsieListGenerationTemplates: () => Promise<{
+			success: boolean;
+			templates: import("./lib/docsieIntegration").DocsieGenerationTemplate[];
+			error?: string;
+		}>;
 		docsieEstimateVideoToDocs: (
 			input: import("./lib/docsieIntegration").DocsieEstimateInput,
 		) => Promise<import("./lib/docsieIntegration").DocsieEstimateResult>;

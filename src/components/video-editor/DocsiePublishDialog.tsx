@@ -21,9 +21,11 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DocsieTemplatePicker } from "@/components/video-editor/DocsieTemplatePicker";
 import type {
 	DocsieAuthMode,
 	DocsieEstimateResult,
+	DocsieGenerationTemplate,
 	DocsieIntegrationState,
 	DocsieOutputFormat,
 	DocsieVideoToDocsDocStyle,
@@ -269,12 +271,15 @@ export function DocsiePublishDialog({
 	const [docStyle, setDocStyle] = useState<DocsieVideoToDocsDocStyle>("guide");
 	const [autoGenerate, setAutoGenerate] = useState(true);
 	const [rewriteInstructions, setRewriteInstructions] = useState("");
+	const [generationTemplateId, setGenerationTemplateId] = useState("");
 	const [templateInstruction, setTemplateInstruction] = useState("");
 	const [targetDocumentationId, setTargetDocumentationId] = useState("");
 	const [bookTitle, setBookTitle] = useState("Video Documentation");
 	const [workspaces, setWorkspaces] = useState<DocsieWorkspace[]>([]);
+	const [generationTemplates, setGenerationTemplates] = useState<DocsieGenerationTemplate[]>([]);
 	const [savingConfig, setSavingConfig] = useState(false);
 	const [loadingWorkspaces, setLoadingWorkspaces] = useState(false);
+	const [loadingTemplates, setLoadingTemplates] = useState(false);
 	const [loadingEstimate, setLoadingEstimate] = useState(false);
 	const [estimate, setEstimate] = useState<DocsieEstimateResult | null>(null);
 	const [phase, setPhase] = useState<PublishPhase>("idle");
@@ -294,6 +299,10 @@ export function DocsiePublishDialog({
 		() => workspaces.find((workspace) => workspace.id === workspaceId) ?? null,
 		[workspaceId, workspaces],
 	);
+	const selectedGenerationTemplate = useMemo(
+		() => generationTemplates.find((template) => template.id === generationTemplateId) ?? null,
+		[generationTemplateId, generationTemplates],
+	);
 	const displayedWorkspaceName = selectedWorkspace?.name ?? storedWorkspaceName;
 	const hasConnectionCredentials = hasStoredToken || Boolean(tokenInput.trim());
 	const estimateText = getEstimateText(estimate);
@@ -309,6 +318,18 @@ export function DocsiePublishDialog({
 		phase === "starting" ||
 		phase === "analysis" ||
 		phase === "generation";
+
+	const loadGenerationTemplates = useCallback(async () => {
+		setLoadingTemplates(true);
+		try {
+			const result = await window.electronAPI.docsieListGenerationTemplates();
+			if (result.success) {
+				setGenerationTemplates(result.templates);
+			}
+		} finally {
+			setLoadingTemplates(false);
+		}
+	}, []);
 
 	const loadState = useCallback(async () => {
 		const result = await window.electronAPI.docsieGetState();
@@ -328,6 +349,7 @@ export function DocsiePublishDialog({
 		setLanguage(state.defaultLanguage);
 		setDocStyle(state.defaultDocStyle);
 		setRewriteInstructions(state.defaultRewriteInstructions ?? "");
+		setGenerationTemplateId(state.defaultGenerationTemplateId ?? "");
 		setTemplateInstruction(state.defaultTemplateInstruction ?? "");
 		setTargetDocumentationId(state.targetDocumentationId ?? "");
 		setAutoGenerate(state.autoGenerate);
@@ -342,8 +364,9 @@ export function DocsiePublishDialog({
 					setStoredWorkspaceName(firstWorkspace.name);
 				}
 			}
+			void loadGenerationTemplates();
 		}
-	}, []);
+	}, [loadGenerationTemplates]);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -447,6 +470,7 @@ export function DocsiePublishDialog({
 				defaultLanguage: language,
 				defaultDocStyle: docStyle,
 				defaultRewriteInstructions: rewriteInstructions,
+				defaultGenerationTemplateId: generationTemplateId || undefined,
 				defaultTemplateInstruction: templateInstruction,
 				targetDocumentationId: targetDocumentationId.trim() || undefined,
 				autoGenerate,
@@ -473,6 +497,7 @@ export function DocsiePublishDialog({
 		authMode,
 		autoGenerate,
 		docStyle,
+		generationTemplateId,
 		language,
 		organizationName,
 		quality,
@@ -492,6 +517,7 @@ export function DocsiePublishDialog({
 			docStyle,
 			quality,
 			language,
+			generationTemplateId,
 			templateInstruction,
 			rewriteInstructions,
 			targetDocumentationId,
@@ -508,6 +534,7 @@ export function DocsiePublishDialog({
 	}, [
 		autoGenerate,
 		docStyle,
+		generationTemplateId,
 		language,
 		quality,
 		rewriteInstructions,
@@ -523,6 +550,7 @@ export function DocsiePublishDialog({
 			docStyle,
 			quality,
 			language,
+			generationTemplateId,
 			templateInstruction,
 			rewriteInstructions,
 			targetDocumentationId,
@@ -539,6 +567,7 @@ export function DocsiePublishDialog({
 	}, [
 		autoGenerate,
 		docStyle,
+		generationTemplateId,
 		language,
 		quality,
 		rewriteInstructions,
@@ -568,12 +597,13 @@ export function DocsiePublishDialog({
 				setWorkspaceId(firstWorkspace.id);
 				setStoredWorkspaceName(firstWorkspace.name);
 			}
+			void loadGenerationTemplates();
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));
 		} finally {
 			setLoadingWorkspaces(false);
 		}
-	}, [hasConnectionCredentials, persistConfig, workspaceId]);
+	}, [hasConnectionCredentials, loadGenerationTemplates, persistConfig, workspaceId]);
 
 	const runGeneration = useCallback(
 		async (sourceJobId: string) => {
@@ -583,6 +613,7 @@ export function DocsiePublishDialog({
 				jobId: sourceJobId,
 				docStyle,
 				rewriteInstructions,
+				generationTemplateId: generationTemplateId || undefined,
 				templateInstruction,
 				targetLanguage: language,
 				targetDocumentationId: targetDocumentationId.trim() || undefined,
@@ -603,6 +634,7 @@ export function DocsiePublishDialog({
 		[
 			bookTitle,
 			docStyle,
+			generationTemplateId,
 			language,
 			rewriteInstructions,
 			targetDocumentationId,
@@ -790,6 +822,8 @@ export function DocsiePublishDialog({
 				docStyle,
 				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
 				targetDocumentationId: targetDocumentationId.trim() || undefined,
+				generationTemplateId: generationTemplateId || undefined,
+				generationTemplateName: selectedGenerationTemplate?.name,
 				templateInstruction,
 				rewriteInstructions,
 				analysisJobId: analysisJobId ?? undefined,
@@ -814,6 +848,7 @@ export function DocsiePublishDialog({
 		analysisJobId,
 		bookTitle,
 		docStyle,
+		generationTemplateId,
 		generationJobId,
 		historyEntries,
 		jobResult,
@@ -821,6 +856,7 @@ export function DocsiePublishDialog({
 		phase,
 		quality,
 		rewriteInstructions,
+		selectedGenerationTemplate?.name,
 		targetDocumentationId,
 		templateInstruction,
 		videoPath,
@@ -854,6 +890,7 @@ export function DocsiePublishDialog({
 				workspaceId,
 				docStyle,
 				rewriteInstructions,
+				generationTemplateId: generationTemplateId || undefined,
 				templateInstruction,
 				targetDocumentationId: targetDocumentationId.trim() || undefined,
 				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
@@ -883,6 +920,7 @@ export function DocsiePublishDialog({
 		autoGenerate,
 		bookTitle,
 		docStyle,
+		generationTemplateId,
 		hasConnectionCredentials,
 		language,
 		persistConfig,
@@ -1530,10 +1568,47 @@ export function DocsiePublishDialog({
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
 										Output Template
 									</label>
+									<DocsieTemplatePicker
+										templates={generationTemplates}
+										isLoading={loadingTemplates}
+										selectedTemplateId={generationTemplateId}
+										onOpen={async () => {
+											if (!hasConnectionCredentials) {
+												toast.error("Connect this recorder to Docsie first");
+												return false;
+											}
+											try {
+												if (!hasStoredToken) {
+													const state = await persistConfig();
+													if (!state.hasToken) {
+														toast.error("Save a Docsie API token before browsing templates");
+														return false;
+													}
+												}
+												await loadGenerationTemplates();
+											} catch (error) {
+												toast.error(error instanceof Error ? error.message : String(error));
+												return false;
+											}
+										}}
+										onSelect={(template) => {
+											setGenerationTemplateId(template.id);
+											toast.success(`Template selected: ${template.name}`);
+										}}
+										onClear={() => {
+											setGenerationTemplateId("");
+											toast.info("Template selection cleared");
+										}}
+									/>
+									<div className="text-xs text-[#8f7e73]">
+										{generationTemplateId
+											? "The selected library template id is sent to Docsie. Custom text below is kept as a fallback only."
+											: "Pick a library template or enter a custom structure below."}
+									</div>
 									<textarea
 										value={templateInstruction}
 										onChange={(event) => setTemplateInstruction(event.target.value)}
-										placeholder="Outline the structure Docsie should follow for the generated document."
+										placeholder="Optional custom structure when no library template is selected."
 										className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 									/>
 								</div>

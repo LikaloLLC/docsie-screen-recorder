@@ -34,6 +34,7 @@ import {
 	getDocsieIntegrationState,
 	getDocsieVideoToDocsJobResult,
 	getDocsieVideoToDocsJobStatus,
+	listDocsieGenerationTemplates,
 	listDocsieVideoToDocsHistory,
 	listDocsieWorkspaces,
 	saveDocsieIntegrationConfig,
@@ -875,6 +876,15 @@ export function registerIpcHandlers(
 		} catch (error) {
 			console.error("Failed to list Docsie workspaces:", error);
 			return { success: false, error: String(error), workspaces: [] };
+		}
+	});
+
+	ipcMain.handle("docsie:list-generation-templates", async () => {
+		try {
+			return { success: true, templates: await listDocsieGenerationTemplates() };
+		} catch (error) {
+			console.error("Failed to list Docsie generation templates:", error);
+			return { success: false, error: String(error), templates: [] };
 		}
 	});
 
