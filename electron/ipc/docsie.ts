@@ -80,6 +80,28 @@ function asString(value: unknown): string | undefined {
 	return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function decodeEscapedUnicode(value: string | undefined): string | undefined {
+	if (!value) {
+		return value;
+	}
+
+	return value.replace(
+		/\\u([0-9a-fA-F]{4})\\u([0-9a-fA-F]{4})|\\u([0-9a-fA-F]{4})/g,
+		(match, high, low, single) => {
+			if (high && low) {
+				const highCode = Number.parseInt(high, 16);
+				const lowCode = Number.parseInt(low, 16);
+				if (highCode >= 0xd800 && highCode <= 0xdbff && lowCode >= 0xdc00 && lowCode <= 0xdfff) {
+					return String.fromCodePoint(0x10000 + ((highCode - 0xd800) << 10) + (lowCode - 0xdc00));
+				}
+			}
+
+			const code = Number.parseInt(single ?? high, 16);
+			return Number.isFinite(code) ? String.fromCharCode(code) : match;
+		},
+	);
+}
+
 function asNullableString(value: unknown): string | null {
 	return typeof value === "string" && value.trim() ? value.trim() : null;
 }
@@ -375,13 +397,23 @@ function normalizeGenerationTemplatePayload(payload: unknown): DocsieGenerationT
 			name: asString(item.name) ?? String(item.id ?? "Template"),
 			category: asString(item.category) ?? "other",
 			description: asString(item.description),
-			icon: asString(item.icon),
+			icon: decodeEscapedUnicode(asString(item.icon)),
 			preview: Array.isArray(item.preview)
 				? item.preview
 						.map((value) => asString(value))
 						.filter((value): value is string => Boolean(value))
 				: [],
+			outline: Array.isArray(item.outline)
+				? item.outline
+						.filter((value): value is Record<string, unknown> => isRecord(value))
+						.map((value) => ({
+							title: asString(value.title) ?? "",
+							description: asString(value.description),
+						}))
+						.filter((value) => value.title)
+				: [],
 			exampleMarkdown: asString(item.example_markdown) ?? asString(item.exampleMarkdown),
+			previewMarkdown: asString(item.preview_markdown) ?? asString(item.previewMarkdown),
 		}))
 		.filter((template) => template.id);
 }

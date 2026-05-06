@@ -20,18 +20,18 @@
 
 ## Download
 
-Latest release: **[v1.3.0](https://github.com/LikaloLLC/docsie-screen-recorder/releases/latest)**
+Latest release: **[v1.3.1](https://github.com/LikaloLLC/docsie-screen-recorder/releases/latest)**
 
 | Platform | Download |
 |----------|----------|
-| macOS (Apple Silicon) | [docsie-screen-recorder-mac-arm64-1.3.0.dmg](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/docsie-screen-recorder-mac-arm64-1.3.0.dmg) |
-| macOS (Intel) | [docsie-screen-recorder-mac-x64-1.3.0.dmg](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/docsie-screen-recorder-mac-x64-1.3.0.dmg) |
-| Windows (installer) | [Docsie.Screen.Recorder.Setup.1.3.0.exe](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder.Setup.1.3.0.exe) |
-| Windows (portable) | [Docsie.Screen.Recorder.exe](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder.exe) |
-| Linux (AppImage) | [Docsie.Screen.Recorder-Linux-1.3.0.AppImage](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder-Linux-1.3.0.AppImage) |
-| Linux (.deb) | [Docsie.Screen.Recorder-Linux-1.3.0.deb](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/Docsie.Screen.Recorder-Linux-1.3.0.deb) |
+| macOS (Apple Silicon) | [docsie-screen-recorder-mac-arm64-1.3.1.dmg](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.1/docsie-screen-recorder-mac-arm64-1.3.1.dmg) |
+| macOS (Intel) | [docsie-screen-recorder-mac-x64-1.3.1.dmg](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.1/docsie-screen-recorder-mac-x64-1.3.1.dmg) |
+| Windows (installer) | [Docsie.Screen.Recorder.Setup.1.3.1.exe](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.1/Docsie.Screen.Recorder.Setup.1.3.1.exe) |
+| Windows (portable) | [Docsie.Screen.Recorder.exe](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.1/Docsie.Screen.Recorder.exe) |
+| Linux (AppImage) | [Docsie.Screen.Recorder-Linux-1.3.1.AppImage](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.1/Docsie.Screen.Recorder-Linux-1.3.1.AppImage) |
+| Linux (.deb) | [Docsie.Screen.Recorder-Linux-1.3.1.deb](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.1/Docsie.Screen.Recorder-Linux-1.3.1.deb) |
 
-Checksums: [SHA256SUMS.txt](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.0/SHA256SUMS.txt)
+Checksums: [SHA256SUMS.txt](https://github.com/LikaloLLC/docsie-screen-recorder/releases/download/v1.3.1/SHA256SUMS.txt)
 
 ---
 
@@ -80,9 +80,9 @@ npm run build:mac
 
 Useful output paths after a mac build:
 
-- Apple Silicon app bundle: `release/1.3.0/mac-arm64/Docsie - Screen Recorder.app`
-- Intel app bundle: `release/1.3.0/mac/Docsie - Screen Recorder.app`
-- DMGs: `release/1.3.0/*.dmg`
+- Apple Silicon app bundle: `release/1.3.1/mac-arm64/Docsie - Screen Recorder.app`
+- Intel app bundle: `release/1.3.1/mac/Docsie - Screen Recorder.app`
+- DMGs: `release/1.3.1/*.dmg`
 
 Create a tagged multi-platform release:
 
@@ -105,7 +105,7 @@ If the app opens but shows `Screens (0)` and `Windows (0)`, macOS screen capture
 If Gatekeeper blocks the app on first launch, remove quarantine and retry:
 
 ```bash
-xattr -dr com.apple.quarantine "release/1.3.0/mac-arm64/Docsie - Screen Recorder.app"
+xattr -dr com.apple.quarantine "release/1.3.1/mac-arm64/Docsie - Screen Recorder.app"
 ```
 
 ### Licensing Model

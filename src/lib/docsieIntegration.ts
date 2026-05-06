@@ -21,6 +21,11 @@ export interface DocsieWorkspace {
 	documentationId?: string | null;
 }
 
+export interface DocsieGenerationTemplateOutlineItem {
+	title: string;
+	description?: string;
+}
+
 export interface DocsieGenerationTemplate {
 	id: string;
 	name: string;
@@ -28,7 +33,9 @@ export interface DocsieGenerationTemplate {
 	description?: string;
 	icon?: string;
 	preview?: string[];
+	outline?: DocsieGenerationTemplateOutlineItem[];
 	exampleMarkdown?: string;
+	previewMarkdown?: string;
 }
 
 export interface DocsieDesktopConnectParams {

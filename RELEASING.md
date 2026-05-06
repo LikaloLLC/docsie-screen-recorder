@@ -11,14 +11,17 @@ GitHub Releases is the default distribution target. S3 is supported as an option
 ## Normal Flow
 
 1. Bump `package.json` to the version you want to ship.
-2. Commit the version bump.
-3. Run:
+2. Add release notes under `release-notes/v<version>.md`.
+3. Commit the version bump and release notes.
+4. Run:
 
 ```bash
 npm run release:tag
 ```
 
 That creates and pushes `v<package.json version>`. The tag push triggers `.github/workflows/release.yml`, which builds the installers on native GitHub-hosted runners and publishes them to the GitHub release for that tag.
+
+If `release-notes/v<version>.md` exists, the workflow uses it as the GitHub release description. Otherwise, GitHub generates release notes from commits.
 
 ## Local Build Only
 

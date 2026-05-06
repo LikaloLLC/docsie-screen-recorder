@@ -409,6 +409,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.prepare.result == 'success' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success' && needs.build-macos.result == 'success' && (needs.prepare.outputs.publish_to_github == 'true' || needs.prepare.outputs.publish_to_s3 == 'true') }}
     steps:
+      - name: Checkout release notes
+        uses: actions/checkout@v4
+
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
@@ -425,8 +428,32 @@ jobs:
           cd release-assets
           find . -type f ! -name "SHA256SUMS.txt" -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
 
-      - name: Publish GitHub release
-        if: ${{ needs.prepare.outputs.publish_to_github == 'true' }}
+      - name: Resolve curated release notes
+        id: notes
+        run: |
+          NOTES_FILE="release-notes/${{ needs.prepare.outputs.release_tag }}.md"
+          if [[ -f "$NOTES_FILE" ]]; then
+            echo "has_notes=true" >> "$GITHUB_OUTPUT"
+            echo "body_path=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_notes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub release with curated notes
+        if: ${{ needs.prepare.outputs.publish_to_github == 'true' && steps.notes.outputs.has_notes == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          name: Docsie Screen Recorder ${{ needs.prepare.outputs.version }}
+          body_path: ${{ steps.notes.outputs.body_path }}
+          prerelease: ${{ contains(needs.prepare.outputs.release_tag, '-') }}
+          files: |
+            release-assets/**
+          fail_on_unmatched_files: true
+
+      - name: Publish GitHub release with generated notes
+        if: ${{ needs.prepare.outputs.publish_to_github == 'true' && steps.notes.outputs.has_notes != 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.release_tag }}

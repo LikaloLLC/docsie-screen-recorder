@@ -173,6 +173,28 @@ function formatTemplateCategory(categoryId: string) {
 		.join(" ");
 }
 
+function decodeEscapedUnicode(value?: string) {
+	if (!value) {
+		return value;
+	}
+
+	return value.replace(
+		/\\u([0-9a-fA-F]{4})\\u([0-9a-fA-F]{4})|\\u([0-9a-fA-F]{4})/g,
+		(match, high, low, single) => {
+			if (high && low) {
+				const highCode = Number.parseInt(high, 16);
+				const lowCode = Number.parseInt(low, 16);
+				if (highCode >= 0xd800 && highCode <= 0xdbff && lowCode >= 0xdc00 && lowCode <= 0xdfff) {
+					return String.fromCodePoint(0x10000 + ((highCode - 0xd800) << 10) + (lowCode - 0xdc00));
+				}
+			}
+
+			const code = Number.parseInt(single ?? high, 16);
+			return Number.isFinite(code) ? String.fromCharCode(code) : match;
+		},
+	);
+}
+
 function escapeHtml(value: string) {
 	return value.replace(/[&<>"']/g, (char) => {
 		switch (char) {
@@ -196,6 +218,26 @@ function renderInlineMarkdown(value: string) {
 		.replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
+function parseMarkdownTableRow(value: string) {
+	return value
+		.trim()
+		.replace(/^\|/, "")
+		.replace(/\|$/, "")
+		.split("|")
+		.map((cell) => cell.trim());
+}
+
+function isMarkdownTableDivider(value: string) {
+	const cells = parseMarkdownTableRow(value);
+	return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function isMarkdownTableStart(lines: string[], index: number) {
+	const current = lines[index]?.trim() ?? "";
+	const next = lines[index + 1]?.trim() ?? "";
+	return current.startsWith("|") && current.endsWith("|") && isMarkdownTableDivider(next);
+}
+
 function renderTemplateMarkdown(value: string) {
 	const lines = value.split(/\r?\n/);
 	const html: string[] = [];
@@ -210,7 +252,8 @@ function renderTemplateMarkdown(value: string) {
 		}
 	};
 
-	for (const line of lines) {
+	for (let index = 0; index < lines.length; index += 1) {
+		const line = lines[index];
 		if (line.trim().startsWith("```")) {
 			if (inCode) {
 				html.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
@@ -231,6 +274,41 @@ function renderTemplateMarkdown(value: string) {
 		const trimmed = line.trim();
 		if (!trimmed) {
 			closeList();
+			continue;
+		}
+
+		if (isMarkdownTableStart(lines, index)) {
+			closeList();
+			const headers = parseMarkdownTableRow(line);
+			const rows: string[][] = [];
+			index += 2;
+
+			while (index < lines.length) {
+				const row = lines[index].trim();
+				if (!row.startsWith("|") || !row.endsWith("|")) {
+					index -= 1;
+					break;
+				}
+				rows.push(parseMarkdownTableRow(row));
+				index += 1;
+			}
+
+			html.push('<div class="markdown-table-wrap"><table>');
+			html.push(
+				`<thead><tr>${headers
+					.map((header) => `<th>${renderInlineMarkdown(header)}</th>`)
+					.join("")}</tr></thead>`,
+			);
+			if (rows.length > 0) {
+				html.push("<tbody>");
+				for (const row of rows) {
+					html.push(
+						`<tr>${row.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join("")}</tr>`,
+					);
+				}
+				html.push("</tbody>");
+			}
+			html.push("</table></div>");
 			continue;
 		}
 
@@ -273,6 +351,12 @@ function renderTemplateMarkdown(value: string) {
 	}
 	closeList();
 	return html.join("");
+}
+
+function renderTemplatePreview(template: DocsieGenerationTemplate) {
+	return renderTemplateMarkdown(
+		(template.previewMarkdown ?? template.exampleMarkdown ?? "").trim(),
+	);
 }
 
 export function DocsieTemplatePicker({
@@ -431,9 +515,7 @@ export function DocsieTemplatePicker({
 		closePicker();
 	};
 
-	const previewHtml = previewingTemplate
-		? renderTemplateMarkdown(previewingTemplate.exampleMarkdown ?? "")
-		: "";
+	const previewHtml = previewingTemplate ? renderTemplatePreview(previewingTemplate) : "";
 
 	return (
 		<>
@@ -447,7 +529,7 @@ export function DocsieTemplatePicker({
 				<div className="docsie-template-trigger-header">
 					<div className="docsie-template-trigger-meta">
 						<div className="docsie-template-trigger-icon">
-							{selectedTemplate?.icon ?? NO_TEMPLATE_ICON}
+							{decodeEscapedUnicode(selectedTemplate?.icon) ?? NO_TEMPLATE_ICON}
 						</div>
 						<div>
 							<div className="docsie-template-trigger-title">
@@ -510,7 +592,7 @@ export function DocsieTemplatePicker({
 									<p>
 										{previewingTemplate
 											? previewingTemplate.description
-											: "Pick a documentation template and preview the full structure before you generate."}
+											: "Pick a documentation template and preview the sample output before you generate."}
 									</p>
 								</div>
 							</div>
@@ -625,7 +707,7 @@ export function DocsieTemplatePicker({
 												onClick={() => setPreviewingTemplate(template)}
 											>
 												<div className="template-card-icon">
-													{template.icon || FALLBACK_TEMPLATE_ICON}
+													{decodeEscapedUnicode(template.icon) || FALLBACK_TEMPLATE_ICON}
 												</div>
 												<div className="template-card-title">{template.name}</div>
 												<div className="template-card-desc">{template.description}</div>
@@ -656,7 +738,7 @@ export function DocsieTemplatePicker({
 							<div className="template-preview-layout">
 								<div className="template-preview-info">
 									<div className="template-preview-info-icon">
-										{previewingTemplate.icon || FALLBACK_TEMPLATE_ICON}
+										{decodeEscapedUnicode(previewingTemplate.icon) || FALLBACK_TEMPLATE_ICON}
 									</div>
 									<div className="template-preview-info-name">{previewingTemplate.name}</div>
 									<div className="template-preview-info-desc">{previewingTemplate.description}</div>
@@ -680,7 +762,9 @@ export function DocsieTemplatePicker({
 						) : null}
 
 						<div className="template-modal-footer">
-							<div className="template-modal-note">Preview a template before generating.</div>
+							<div className="template-modal-note">
+								Preview the template output before generating.
+							</div>
 							<div className="template-modal-actions">
 								{previewingTemplate ? (
 									<button
