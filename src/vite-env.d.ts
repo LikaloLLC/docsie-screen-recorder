@@ -105,6 +105,18 @@ interface Window {
 		docsieGetBackgroundJob: (
 			jobId: string,
 		) => Promise<import("./lib/docsieIntegration").DocsieAsyncJobResult>;
+		docsieListVideoToDocsHistory: (videoPath: string) => Promise<{
+			success: boolean;
+			entries: import("./lib/docsieIntegration").DocsieVideoToDocsHistoryEntry[];
+			error?: string;
+		}>;
+		docsieSaveVideoToDocsHistory: (
+			input: import("./lib/docsieIntegration").DocsieSaveVideoToDocsHistoryInput,
+		) => Promise<{
+			success: boolean;
+			entry?: import("./lib/docsieIntegration").DocsieVideoToDocsHistoryEntry;
+			error?: string;
+		}>;
 		onDocsieDesktopAuthEvent: (
 			callback: (event: import("./lib/docsieIntegration").DocsieDesktopAuthEvent) => void,
 		) => () => void;

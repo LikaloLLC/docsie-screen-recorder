@@ -27,6 +27,7 @@ import type {
 	DocsieIntegrationState,
 	DocsieOutputFormat,
 	DocsieVideoToDocsDocStyle,
+	DocsieVideoToDocsHistoryEntry,
 	DocsieVideoToDocsJobResult,
 	DocsieVideoToDocsJobStatus,
 	DocsieVideoToDocsQuality,
@@ -126,6 +127,27 @@ function formatDuration(value?: number) {
 	return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
 }
 
+function formatSecondsPerFrame(value?: number | null) {
+	if (typeof value !== "number" || Number.isNaN(value) || value <= 0) {
+		return null;
+	}
+
+	return value >= 1 ? `Every ${value.toFixed(value >= 10 ? 0 : 1)}s` : `Every ${value.toFixed(2)}s`;
+}
+
+function estimateFrameCount(durationSeconds?: number, secondsPerFrame?: number | null) {
+	if (
+		typeof durationSeconds !== "number" ||
+		durationSeconds <= 0 ||
+		typeof secondsPerFrame !== "number" ||
+		secondsPerFrame <= 0
+	) {
+		return null;
+	}
+
+	return Math.max(1, Math.round(durationSeconds / secondsPerFrame));
+}
+
 function getEstimateText(estimate: DocsieEstimateResult | null) {
 	if (!estimate?.success) {
 		return null;
@@ -172,6 +194,14 @@ function getDocsiePersistenceLabel(jobResult: DocsieVideoToDocsJobResult | null)
 	return [jobResult?.documentationName ?? jobResult?.bookName ?? null, jobResult?.articleId ?? null]
 		.filter(Boolean)
 		.join(" • ");
+}
+
+function formatHistoryDate(value: string) {
+	try {
+		return new Date(value).toLocaleString();
+	} catch {
+		return value;
+	}
 }
 
 function normalizeExportArtifacts(
@@ -257,6 +287,7 @@ export function DocsiePublishDialog({
 	const [exportArtifacts, setExportArtifacts] = useState<
 		Partial<Record<ExportFormat, ExportArtifact>>
 	>({});
+	const [historyEntries, setHistoryEntries] = useState<DocsieVideoToDocsHistoryEntry[]>([]);
 	const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
 	const selectedWorkspace = useMemo(
@@ -266,6 +297,8 @@ export function DocsiePublishDialog({
 	const displayedWorkspaceName = selectedWorkspace?.name ?? storedWorkspaceName;
 	const hasConnectionCredentials = hasStoredToken || Boolean(tokenInput.trim());
 	const estimateText = getEstimateText(estimate);
+	const estimateFrames = estimateFrameCount(videoDurationSeconds, estimate?.secondsPerFrame);
+	const samplingText = formatSecondsPerFrame(estimate?.secondsPerFrame);
 	const markdownReady = Boolean(jobResult?.markdown);
 	const canManuallyGenerate =
 		phase === "completed" && !autoGenerate && Boolean(analysisJobId) && !generationJobId;
@@ -378,6 +411,27 @@ export function DocsiePublishDialog({
 			cancelled = true;
 		};
 	}, [hasStoredToken, isOpen, quality, videoDurationSeconds]);
+
+	useEffect(() => {
+		if (!isOpen || !videoPath) {
+			setHistoryEntries([]);
+			return;
+		}
+
+		let cancelled = false;
+
+		const loadHistory = async () => {
+			const result = await window.electronAPI.docsieListVideoToDocsHistory(videoPath);
+			if (!cancelled && result.success) {
+				setHistoryEntries(result.entries);
+			}
+		};
+
+		void loadHistory();
+		return () => {
+			cancelled = true;
+		};
+	}, [isOpen, videoPath]);
 
 	const persistConfig = useCallback(async () => {
 		setSavingConfig(true);
@@ -718,6 +772,60 @@ export function DocsiePublishDialog({
 		};
 	}, [jobResult?.exports]);
 
+	useEffect(() => {
+		if (!videoPath || phase !== "completed" || !jobResult?.success || !jobResult.jobId) {
+			return;
+		}
+
+		if (historyEntries.some((entry) => entry.jobResult.jobId === jobResult.jobId)) {
+			return;
+		}
+
+		void window.electronAPI
+			.docsieSaveVideoToDocsHistory({
+				videoPath,
+				videoName: videoPath.split("/").pop() ?? "Video Documentation",
+				quality,
+				language,
+				docStyle,
+				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
+				targetDocumentationId: targetDocumentationId.trim() || undefined,
+				templateInstruction,
+				rewriteInstructions,
+				analysisJobId: analysisJobId ?? undefined,
+				generationJobId: generationJobId ?? undefined,
+				jobResult,
+			})
+			.then((result) => {
+				if (!result.success || !result.entry) {
+					return;
+				}
+
+				const savedEntry = result.entry;
+				setHistoryEntries((current) => {
+					const next: DocsieVideoToDocsHistoryEntry[] = [
+						savedEntry,
+						...current.filter((entry) => entry.id !== savedEntry.id),
+					];
+					return next.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+				});
+			});
+	}, [
+		analysisJobId,
+		bookTitle,
+		docStyle,
+		generationJobId,
+		historyEntries,
+		jobResult,
+		language,
+		phase,
+		quality,
+		rewriteInstructions,
+		targetDocumentationId,
+		templateInstruction,
+		videoPath,
+	]);
+
 	const handleStart = useCallback(async () => {
 		if (!videoPath) {
 			toast.error("No video available to send to Docsie");
@@ -873,6 +981,13 @@ export function DocsiePublishDialog({
 	const showAdvancedOutputs = isWorking || phase === "completed" || phase === "failed";
 	const recordingSummary = videoPath ? videoPath.split("/").pop() : "No loaded recording";
 	const docsiePersistenceLabel = getDocsiePersistenceLabel(jobResult);
+	const qualitySummary = [
+		samplingText,
+		estimateFrames ? `~${estimateFrames} frames` : null,
+		estimateText,
+	]
+		.filter(Boolean)
+		.join(" • ");
 	const primaryActionLabel = !hasStoredToken
 		? "Log In To Docsie"
 		: phase === "completed" && getPrimaryResultUrl(jobResult)
@@ -1306,17 +1421,25 @@ export function DocsiePublishDialog({
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
 										Quality
 									</label>
-									<select
-										value={quality}
-										onChange={(event) => setQuality(event.target.value as DocsieVideoToDocsQuality)}
-										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-									>
-										{QUALITY_OPTIONS.map((option) => (
-											<option key={option.value} value={option.value}>
-												{option.label} · {option.description}
-											</option>
-										))}
-									</select>
+									<div className="space-y-1.5">
+										<select
+											value={quality}
+											onChange={(event) =>
+												setQuality(event.target.value as DocsieVideoToDocsQuality)
+											}
+											className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+										>
+											{QUALITY_OPTIONS.map((option) => (
+												<option key={option.value} value={option.value}>
+													{option.label} · {option.description}
+												</option>
+											))}
+										</select>
+										<div className="text-xs text-[#8f7e73]">
+											{qualitySummary ||
+												"Estimate loads after the recorder can read the video length."}
+										</div>
+									</div>
 								</div>
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
@@ -1405,16 +1528,80 @@ export function DocsiePublishDialog({
 								</div>
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Template Instruction
+										Output Template
 									</label>
 									<textarea
 										value={templateInstruction}
 										onChange={(event) => setTemplateInstruction(event.target.value)}
+										placeholder="Outline the structure Docsie should follow for the generated document."
 										className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 									/>
 								</div>
 							</div>
 						</div>
+
+						{videoPath ? (
+							<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
+								<div className="mb-3 flex items-center justify-between gap-3">
+									<div>
+										<div className="text-sm font-semibold text-[#fff0e4]">
+											Saved Conversions For This Video
+										</div>
+										<div className="text-xs text-[#8f7e73]">
+											Each completed Docsie run is stored locally and still persists in Docsie.
+										</div>
+									</div>
+									<div className="text-xs uppercase tracking-[0.16em] text-[#c6b4a8]">
+										{historyEntries.length} saved
+									</div>
+								</div>
+								{historyEntries.length > 0 ? (
+									<div className="space-y-3">
+										{historyEntries.map((entry) => {
+											const entryUrl = getPrimaryResultUrl(entry.jobResult);
+											const entryLabel =
+												getDocsiePersistenceLabel(entry.jobResult) ||
+												entry.bookTitle ||
+												entry.videoName;
+											return (
+												<div
+													key={entry.id}
+													className="rounded-xl border border-white/10 bg-[#17110f] p-3"
+												>
+													<div className="flex flex-wrap items-start justify-between gap-3">
+														<div>
+															<div className="text-sm font-medium text-[#fff0e4]">{entryLabel}</div>
+															<div className="mt-1 text-xs text-[#8f7e73]">
+																{formatHistoryDate(entry.createdAt)}
+																{entry.quality ? ` • ${entry.quality}` : ""}
+																{typeof entry.jobResult.creditsCharged === "number"
+																	? ` • ${entry.jobResult.creditsCharged.toLocaleString()} credits`
+																	: ""}
+															</div>
+														</div>
+														{entryUrl ? (
+															<Button
+																type="button"
+																variant="secondary"
+																onClick={() => void window.electronAPI.openExternalUrl(entryUrl)}
+																className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+															>
+																<ExternalLink className="mr-2 h-4 w-4" />
+																Open
+															</Button>
+														) : null}
+													</div>
+												</div>
+											);
+										})}
+									</div>
+								) : (
+									<div className="rounded-xl border border-dashed border-white/10 bg-[#17110f] p-4 text-sm text-[#8f7e73]">
+										No saved conversions for this video yet.
+									</div>
+								)}
+							</div>
+						) : null}
 
 						<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
 							<div className="mb-3 text-sm font-semibold text-[#fff0e4]">Connection fallback</div>

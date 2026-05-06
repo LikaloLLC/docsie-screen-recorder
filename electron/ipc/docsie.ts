@@ -12,18 +12,22 @@ import type {
 	DocsieGenerateVideoToDocsResult,
 	DocsieIntegrationConfigInput,
 	DocsieIntegrationState,
+	DocsieSaveVideoToDocsHistoryInput,
 	DocsieStartVideoToDocsInput,
 	DocsieStartVideoToDocsResult,
+	DocsieVideoToDocsHistoryEntry,
 	DocsieVideoToDocsJobResult,
 	DocsieVideoToDocsJobStatus,
 	DocsieWorkspace,
 } from "../../src/lib/docsieIntegration";
 
 const DOCSIE_CONFIG_PATH = path.join(app.getPath("userData"), "docsie-integration.json");
+const DOCSIE_HISTORY_PATH = path.join(app.getPath("userData"), "docsie-video-to-docs-history.json");
 const DEFAULT_API_PATH = "/api_v2/v3";
 const DEFAULT_LANGUAGE = "english";
 const DEFAULT_QUALITY = "standard";
 const DEFAULT_DOC_STYLE = "guide";
+const MAX_HISTORY_PER_VIDEO = 12;
 
 interface StoredDocsieConfig {
 	apiBaseUrl: string;
@@ -60,6 +64,11 @@ interface ResolvedDocsieConfig {
 	autoGenerate: boolean;
 }
 
+interface StoredDocsieVideoToDocsHistory {
+	version: number;
+	entriesByVideoPath: Record<string, DocsieVideoToDocsHistoryEntry[]>;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -74,6 +83,10 @@ function asNullableString(value: unknown): string | null {
 
 function asNumber(value: unknown): number | null {
 	return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function normalizeVideoHistoryPath(videoPath: string): string {
+	return path.resolve(videoPath);
 }
 
 function normalizeDocsieApiBaseUrl(input: string): string {
@@ -154,6 +167,42 @@ async function readStoredDocsieConfig(): Promise<StoredDocsieConfig | null> {
 		}
 		return null;
 	}
+}
+
+async function readDocsieVideoToDocsHistory(): Promise<StoredDocsieVideoToDocsHistory> {
+	try {
+		const raw = await fs.readFile(DOCSIE_HISTORY_PATH, "utf-8");
+		const parsed = JSON.parse(raw);
+		if (
+			isRecord(parsed) &&
+			isRecord(parsed.entriesByVideoPath) &&
+			typeof parsed.version === "number"
+		) {
+			return {
+				version: parsed.version,
+				entriesByVideoPath: parsed.entriesByVideoPath as Record<
+					string,
+					DocsieVideoToDocsHistoryEntry[]
+				>,
+			};
+		}
+	} catch (error) {
+		const nodeError = error as NodeJS.ErrnoException;
+		if (nodeError.code !== "ENOENT") {
+			console.warn("Failed to read Docsie video-to-docs history:", error);
+		}
+	}
+
+	return {
+		version: 1,
+		entriesByVideoPath: {},
+	};
+}
+
+async function writeDocsieVideoToDocsHistory(
+	history: StoredDocsieVideoToDocsHistory,
+): Promise<void> {
+	await fs.writeFile(DOCSIE_HISTORY_PATH, JSON.stringify(history, null, 2), "utf-8");
 }
 
 function toDocsieState(stored: StoredDocsieConfig | null): DocsieIntegrationState {
@@ -748,6 +797,59 @@ export async function getDocsieVideoToDocsJobResult(
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
+}
+
+export async function listDocsieVideoToDocsHistory(
+	videoPath: string,
+): Promise<DocsieVideoToDocsHistoryEntry[]> {
+	const history = await readDocsieVideoToDocsHistory();
+	return history.entriesByVideoPath[normalizeVideoHistoryPath(videoPath)] ?? [];
+}
+
+export async function saveDocsieVideoToDocsHistory(
+	input: DocsieSaveVideoToDocsHistoryInput,
+): Promise<DocsieVideoToDocsHistoryEntry> {
+	const config = await resolveDocsieConfig();
+	const history = await readDocsieVideoToDocsHistory();
+	const normalizedVideoPath = normalizeVideoHistoryPath(input.videoPath);
+	const createdAt = new Date().toISOString();
+
+	const nextEntry: DocsieVideoToDocsHistoryEntry = {
+		id: `docsie-v2d-${Date.now()}`,
+		videoPath: normalizedVideoPath,
+		videoName: asString(input.videoName) ?? path.basename(normalizedVideoPath),
+		createdAt,
+		organizationName: config.organizationName,
+		workspaceId: asString(input.jobResult.workspaceId) ?? config.workspaceId,
+		workspaceName: config.workspaceName,
+		quality: input.quality,
+		language: asString(input.language) ?? config.defaultLanguage,
+		docStyle: input.docStyle,
+		bookTitle: asString(input.bookTitle),
+		targetDocumentationId: asString(input.targetDocumentationId),
+		templateInstruction: asString(input.templateInstruction),
+		rewriteInstructions: asString(input.rewriteInstructions),
+		analysisJobId: asString(input.analysisJobId),
+		generationJobId: asString(input.generationJobId),
+		jobResult: input.jobResult,
+	};
+
+	const existing = history.entriesByVideoPath[normalizedVideoPath] ?? [];
+	const deduped = existing.filter((entry) => {
+		const existingResultId = asString(entry.jobResult.jobId);
+		const nextResultId = asString(nextEntry.jobResult.jobId);
+		if (existingResultId && nextResultId && existingResultId === nextResultId) {
+			return false;
+		}
+		return entry.id !== nextEntry.id;
+	});
+
+	history.entriesByVideoPath[normalizedVideoPath] = [nextEntry, ...deduped].slice(
+		0,
+		MAX_HISTORY_PER_VIDEO,
+	);
+	await writeDocsieVideoToDocsHistory(history);
+	return nextEntry;
 }
 
 export async function getDocsieBackgroundJob(jobId: string): Promise<DocsieAsyncJobResult> {

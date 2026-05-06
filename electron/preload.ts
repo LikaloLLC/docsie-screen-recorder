@@ -4,6 +4,7 @@ import type {
 	DocsieEstimateInput,
 	DocsieGenerateVideoToDocsInput,
 	DocsieIntegrationConfigInput,
+	DocsieSaveVideoToDocsHistoryInput,
 	DocsieStartVideoToDocsInput,
 } from "../src/lib/docsieIntegration";
 import type { RecordingSession, StoreRecordedSessionInput } from "../src/lib/recordingSession";
@@ -98,6 +99,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	docsieGetBackgroundJob: (jobId: string) => {
 		return ipcRenderer.invoke("docsie:get-background-job", jobId);
+	},
+	docsieListVideoToDocsHistory: (videoPath: string) => {
+		return ipcRenderer.invoke("docsie:list-video-to-docs-history", videoPath);
+	},
+	docsieSaveVideoToDocsHistory: (input: DocsieSaveVideoToDocsHistoryInput) => {
+		return ipcRenderer.invoke("docsie:save-video-to-docs-history", input);
 	},
 	onDocsieDesktopAuthEvent: (callback: (event: DocsieDesktopAuthEvent) => void) => {
 		const listener = (_event: unknown, payload: DocsieDesktopAuthEvent) => callback(payload);

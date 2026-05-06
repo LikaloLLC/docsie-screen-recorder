@@ -295,3 +295,38 @@ export interface DocsieVideoToDocsJobResult {
 	error?: string | null;
 	message?: string | null;
 }
+
+export interface DocsieVideoToDocsHistoryEntry {
+	id: string;
+	videoPath: string;
+	videoName: string;
+	createdAt: string;
+	organizationName?: string;
+	workspaceId?: string;
+	workspaceName?: string;
+	quality?: DocsieVideoToDocsQuality;
+	language?: string;
+	docStyle?: DocsieVideoToDocsDocStyle;
+	bookTitle?: string;
+	targetDocumentationId?: string;
+	templateInstruction?: string;
+	rewriteInstructions?: string;
+	analysisJobId?: string;
+	generationJobId?: string;
+	jobResult: DocsieVideoToDocsJobResult;
+}
+
+export interface DocsieSaveVideoToDocsHistoryInput {
+	videoPath: string;
+	videoName?: string;
+	quality?: DocsieVideoToDocsQuality;
+	language?: string;
+	docStyle?: DocsieVideoToDocsDocStyle;
+	bookTitle?: string;
+	targetDocumentationId?: string;
+	templateInstruction?: string;
+	rewriteInstructions?: string;
+	analysisJobId?: string;
+	generationJobId?: string;
+	jobResult: DocsieVideoToDocsJobResult;
+}

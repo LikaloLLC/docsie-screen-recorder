@@ -15,6 +15,7 @@ import type {
 	DocsieEstimateInput,
 	DocsieGenerateVideoToDocsInput,
 	DocsieIntegrationConfigInput,
+	DocsieSaveVideoToDocsHistoryInput,
 	DocsieStartVideoToDocsInput,
 } from "../../src/lib/docsieIntegration";
 import {
@@ -33,8 +34,10 @@ import {
 	getDocsieIntegrationState,
 	getDocsieVideoToDocsJobResult,
 	getDocsieVideoToDocsJobStatus,
+	listDocsieVideoToDocsHistory,
 	listDocsieWorkspaces,
 	saveDocsieIntegrationConfig,
+	saveDocsieVideoToDocsHistory,
 	startDocsieVideoToDocs,
 } from "./docsie";
 
@@ -922,6 +925,49 @@ export function registerIpcHandlers(
 	ipcMain.handle("docsie:get-background-job", async (_, jobId: string) => {
 		return await getDocsieBackgroundJob(jobId);
 	});
+
+	ipcMain.handle("docsie:list-video-to-docs-history", async (_, videoPath: string) => {
+		try {
+			const approvedVideoPath = await approveReadableVideoPath(videoPath);
+			if (!approvedVideoPath) {
+				return { success: false, error: "Selected video is not readable", entries: [] };
+			}
+
+			return {
+				success: true,
+				entries: await listDocsieVideoToDocsHistory(approvedVideoPath),
+			};
+		} catch (error) {
+			console.error("Failed to list Docsie video-to-docs history:", error);
+			return { success: false, error: String(error), entries: [] };
+		}
+	});
+
+	ipcMain.handle(
+		"docsie:save-video-to-docs-history",
+		async (_, input: DocsieSaveVideoToDocsHistoryInput) => {
+			try {
+				const approvedVideoPath = await approveReadableVideoPath(input.videoPath);
+				if (!approvedVideoPath) {
+					return {
+						success: false,
+						error: "Selected video is not readable",
+					};
+				}
+
+				return {
+					success: true,
+					entry: await saveDocsieVideoToDocsHistory({
+						...input,
+						videoPath: approvedVideoPath,
+					}),
+				};
+			} catch (error) {
+				console.error("Failed to save Docsie video-to-docs history:", error);
+				return { success: false, error: String(error) };
+			}
+		},
+	);
 
 	ipcMain.handle("open-external-url", async (_, url: string) => {
 		try {
