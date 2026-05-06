@@ -419,6 +419,41 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Create latest asset aliases
+        run: |
+          set -euo pipefail
+          cd release-assets
+
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          copy_first() {
+            local alias="$1"
+            shift
+
+            for source in "$@"; do
+              if [[ -f "$source" ]]; then
+                cp -f "$source" "$alias"
+                return 0
+              fi
+            done
+
+            echo "::warning::Could not create $alias because none of the expected source files exist: $*"
+          }
+
+          copy_first "docsie-screen-recorder-mac-arm64.dmg" \
+            "docsie-screen-recorder-mac-arm64-${VERSION}.dmg"
+          copy_first "docsie-screen-recorder-mac-x64.dmg" \
+            "docsie-screen-recorder-mac-x64-${VERSION}.dmg"
+          copy_first "Docsie.Screen.Recorder.Setup.exe" \
+            "Docsie.Screen.Recorder.Setup.${VERSION}.exe" \
+            "Docsie-Screen-Recorder-Setup-${VERSION}.exe"
+          copy_first "Docsie.Screen.Recorder-Linux.AppImage" \
+            "Docsie.Screen.Recorder-Linux-${VERSION}.AppImage" \
+            "Docsie-Screen-Recorder-Linux-${VERSION}.AppImage"
+          copy_first "Docsie.Screen.Recorder-Linux.deb" \
+            "Docsie.Screen.Recorder-Linux-${VERSION}.deb" \
+            "Docsie-Screen-Recorder-Linux-${VERSION}.deb"
+
       - name: Show collected artifacts
         run: find release-assets -maxdepth 2 -type f | sort
 
