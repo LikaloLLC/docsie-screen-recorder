@@ -1216,6 +1216,22 @@ export function DocsiePublishDialog({
 		}
 	}, [jobResult]);
 
+	const handleOpenHistoryEntry = useCallback((entry: DocsieVideoToDocsHistoryEntry) => {
+		setJobStatus(null);
+		setJobResult(entry.jobResult);
+		setExportArtifacts(normalizeExportArtifacts(entry.jobResult.exports));
+		setAnalysisJobId(entry.analysisJobId ?? null);
+		setGenerationJobId(entry.generationJobId ?? entry.jobResult.jobId ?? null);
+		setActiveJobId(null);
+		setBusyMessage("Loaded this completed Docsie result from local history.");
+		setPhase("completed");
+		if (entry.targetDocumentationId || entry.jobResult.documentationId) {
+			setTargetDocumentationId(
+				entry.targetDocumentationId ?? entry.jobResult.documentationId ?? "",
+			);
+		}
+	}, []);
+
 	const handleOpenExport = useCallback(async (artifact: ExportArtifact) => {
 		if (!artifact.url) {
 			return;
@@ -1573,7 +1589,6 @@ export function DocsiePublishDialog({
 				{visibleHistoryEntries.length > 0 ? (
 					<div className="space-y-2">
 						{visibleHistoryEntries.map((entry) => {
-							const entryUrl = getPrimaryResultUrl(entry.jobResult);
 							const entryLabel =
 								getDocsiePersistenceLabel(entry.jobResult) || entry.bookTitle || entry.videoName;
 							return (
@@ -1589,18 +1604,15 @@ export function DocsiePublishDialog({
 												{entry.generationTemplateName ? ` • ${entry.generationTemplateName}` : ""}
 											</div>
 										</div>
-										{entryUrl ? (
-											<Button
-												type="button"
-												size="sm"
-												variant="secondary"
-												onClick={() => void window.electronAPI.openExternalUrl(entryUrl)}
-												className="shrink-0 bg-white/10 text-[#fff0e4] hover:bg-white/15"
-											>
-												<ExternalLink className="mr-2 h-4 w-4" />
-												Open
-											</Button>
-										) : null}
+										<Button
+											type="button"
+											size="sm"
+											variant="secondary"
+											onClick={() => handleOpenHistoryEntry(entry)}
+											className="shrink-0 bg-white/10 text-[#fff0e4] hover:bg-white/15"
+										>
+											View
+										</Button>
 									</div>
 								</div>
 							);
