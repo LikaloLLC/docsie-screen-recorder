@@ -194,6 +194,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		[t],
 	);
 
+	const safeHideCountdownOverlay = useCallback(async (runId: number) => {
+		try {
+			await window.electronAPI.hideCountdownOverlay(runId);
+		} catch (error) {
+			console.warn("Failed to hide countdown overlay:", error);
+		}
+	}, []);
+
 	useEffect(() => {
 		if (!webcamEnabled) return;
 
@@ -445,7 +453,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			webcamRecorder.current = null;
 			teardownMedia();
 		};
-	}, [teardownMedia]);
+	}, [safeHideCountdownOverlay, teardownMedia]);
 
 	const safeShowCountdownOverlay = async (value: number, runId: number) => {
 		try {
@@ -469,14 +477,6 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			await window.electronAPI.setCountdownOverlayValue(value, runId);
 		} catch (error) {
 			console.warn("Failed to update countdown overlay value:", error);
-		}
-	};
-
-	const safeHideCountdownOverlay = async (runId: number) => {
-		try {
-			await window.electronAPI.hideCountdownOverlay(runId);
-		} catch (error) {
-			console.warn("Failed to hide countdown overlay:", error);
 		}
 	};
 

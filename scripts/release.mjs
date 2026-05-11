@@ -134,7 +134,9 @@ function parseTagOptions(args) {
 function ensureCleanWorktree() {
 	const status = capture("git", ["status", "--short"]);
 	if (status.length > 0) {
-		fail("Refusing to tag a dirty worktree. Commit or stash your changes first, or rerun with --allow-dirty.");
+		fail(
+			"Refusing to tag a dirty worktree. Commit or stash your changes first, or rerun with --allow-dirty.",
+		);
 	}
 }
 
@@ -199,8 +201,12 @@ function tagRelease(args) {
 	run("git", ["push", options.remote, options.tag]);
 
 	log(`Pushed ${options.tag} to ${options.remote}.`);
-	log("GitHub Actions will now build Windows, Linux, and macOS release binaries on native runners.");
-	log("GitHub Releases publishing is automatic on tag pushes. Use the workflow dispatch UI when you need an S3 mirror.");
+	log(
+		"GitHub Actions will now build Windows, Linux, and macOS release binaries on native runners.",
+	);
+	log(
+		"GitHub Releases publishing is automatic on tag pushes. Use the workflow dispatch UI when you need an S3 mirror.",
+	);
 }
 
 const [command, ...args] = process.argv.slice(2);
