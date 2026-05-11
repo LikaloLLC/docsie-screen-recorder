@@ -9,7 +9,7 @@ import {
 	ShieldCheck,
 	Sparkles,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -252,6 +252,48 @@ function getDocsiePersistenceLabel(jobResult: DocsieVideoToDocsJobResult | null)
 		.join(" • ");
 }
 
+function getResultHistoryKey(jobResult: DocsieVideoToDocsJobResult | null | undefined) {
+	return (
+		asString(jobResult?.jobId) ??
+		asString(jobResult?.articleId) ??
+		asString(jobResult?.url) ??
+		asString(jobResult?.resultUrl) ??
+		asString(jobResult?.bookId) ??
+		asString(jobResult?.documentationId) ??
+		null
+	);
+}
+
+function getHistoryEntryKey(entry: DocsieVideoToDocsHistoryEntry) {
+	const fallbackKey = [
+		entry.videoPath,
+		entry.bookTitle,
+		entry.generationTemplateId,
+		entry.targetDocumentationId,
+		entry.createdAt,
+	]
+		.filter(Boolean)
+		.join("::");
+
+	return getResultHistoryKey(entry.jobResult) ?? (fallbackKey || entry.id);
+}
+
+function dedupeHistoryEntries(entries: DocsieVideoToDocsHistoryEntry[]) {
+	const seen = new Set<string>();
+	const deduped: DocsieVideoToDocsHistoryEntry[] = [];
+
+	for (const entry of entries) {
+		const key = getHistoryEntryKey(entry);
+		if (seen.has(key)) {
+			continue;
+		}
+		seen.add(key);
+		deduped.push(entry);
+	}
+
+	return deduped;
+}
+
 function formatHistoryDate(value: string) {
 	try {
 		return new Date(value).toLocaleString();
@@ -352,6 +394,7 @@ export function DocsiePublishDialog({
 	>({});
 	const [historyEntries, setHistoryEntries] = useState<DocsieVideoToDocsHistoryEntry[]>([]);
 	const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+	const savedHistoryKeysRef = useRef<Set<string>>(new Set());
 
 	const selectedWorkspace = useMemo(
 		() => workspaces.find((workspace) => workspace.id === workspaceId) ?? null,
@@ -551,7 +594,7 @@ export function DocsiePublishDialog({
 		const loadHistory = async () => {
 			const result = await window.electronAPI.docsieListVideoToDocsHistory(videoPath);
 			if (!cancelled && result.success) {
-				setHistoryEntries(result.entries);
+				setHistoryEntries(dedupeHistoryEntries(result.entries));
 			}
 		};
 
@@ -939,9 +982,16 @@ export function DocsiePublishDialog({
 			return;
 		}
 
-		if (historyEntries.some((entry) => entry.jobResult.jobId === jobResult.jobId)) {
+		const resultHistoryKey = getResultHistoryKey(jobResult);
+		if (!resultHistoryKey || savedHistoryKeysRef.current.has(resultHistoryKey)) {
 			return;
 		}
+
+		if (historyEntries.some((entry) => getHistoryEntryKey(entry) === resultHistoryKey)) {
+			return;
+		}
+
+		savedHistoryKeysRef.current.add(resultHistoryKey);
 
 		void window.electronAPI
 			.docsieSaveVideoToDocsHistory({
@@ -962,17 +1012,23 @@ export function DocsiePublishDialog({
 			})
 			.then((result) => {
 				if (!result.success || !result.entry) {
+					savedHistoryKeysRef.current.delete(resultHistoryKey);
 					return;
 				}
 
 				const savedEntry = result.entry;
 				setHistoryEntries((current) => {
-					const next: DocsieVideoToDocsHistoryEntry[] = [
+					const next = dedupeHistoryEntries([
 						savedEntry,
-						...current.filter((entry) => entry.id !== savedEntry.id),
-					];
+						...current.filter(
+							(entry) => getHistoryEntryKey(entry) !== getHistoryEntryKey(savedEntry),
+						),
+					]);
 					return next.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 				});
+			})
+			.catch(() => {
+				savedHistoryKeysRef.current.delete(resultHistoryKey);
 			});
 	}, [
 		analysisJobId,
@@ -1497,8 +1553,11 @@ export function DocsiePublishDialog({
 		</div>
 	) : null;
 
+	const visibleHistoryEntries = dedupeHistoryEntries(historyEntries).sort((a, b) =>
+		b.createdAt.localeCompare(a.createdAt),
+	);
 	const historyPanel =
-		videoPath && (historyEntries.length > 0 || phase === "completed") ? (
+		videoPath && (visibleHistoryEntries.length > 0 || phase === "completed") ? (
 			<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
 				<div className="mb-3 flex items-center justify-between gap-3">
 					<div>
@@ -1508,12 +1567,12 @@ export function DocsiePublishDialog({
 						</div>
 					</div>
 					<div className="text-xs uppercase tracking-[0.16em] text-[#c6b4a8]">
-						{historyEntries.length} saved
+						{visibleHistoryEntries.length} saved
 					</div>
 				</div>
-				{historyEntries.length > 0 ? (
+				{visibleHistoryEntries.length > 0 ? (
 					<div className="space-y-2">
-						{historyEntries.map((entry) => {
+						{visibleHistoryEntries.map((entry) => {
 							const entryUrl = getPrimaryResultUrl(entry.jobResult);
 							const entryLabel =
 								getDocsiePersistenceLabel(entry.jobResult) || entry.bookTitle || entry.videoName;
@@ -1576,8 +1635,8 @@ export function DocsiePublishDialog({
 								{phase === "completed" ? (
 									<>
 										{filesPanel}
-										{historyPanel}
 										{statusPanel}
+										{historyPanel}
 									</>
 								) : (
 									<>
