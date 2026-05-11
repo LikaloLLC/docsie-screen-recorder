@@ -25,6 +25,7 @@ import { DocsieTemplatePicker } from "@/components/video-editor/DocsieTemplatePi
 import type {
 	DocsieAuthMode,
 	DocsieCreditBalance,
+	DocsieDocumentationShelf,
 	DocsieEstimateResult,
 	DocsieGenerationTemplate,
 	DocsieIntegrationState,
@@ -70,6 +71,7 @@ const DOC_STYLE_OPTIONS: DocsieVideoToDocsDocStyle[] = [
 
 const GENERATION_OUTPUT_FORMATS: DocsieOutputFormat[] = ["md", "docx", "pdf"];
 const EXPORT_FORMATS = ["docx", "pdf"] as const;
+const STATUS_MESSAGE_MAX_LENGTH = 360;
 
 type PublishPhase = "idle" | "starting" | "analysis" | "generation" | "completed" | "failed";
 type ExportFormat = (typeof EXPORT_FORMATS)[number];
@@ -114,6 +116,27 @@ function formatJobPhase(phase: PublishPhase) {
 		default:
 			return "Ready";
 	}
+}
+
+function formatStatusMessage(value: string) {
+	const title = value.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+	const htmlStripped = (title ?? value)
+		.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+		.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+		.replace(/<!--[\s\S]*?-->/g, " ")
+		.replace(/<[^>]+>/g, " ")
+		.replace(/&nbsp;/gi, " ")
+		.replace(/&amp;/gi, "&")
+		.replace(/&lt;/gi, "<")
+		.replace(/&gt;/gi, ">")
+		.replace(/&quot;/gi, '"')
+		.replace(/&#39;/gi, "'")
+		.replace(/\s+/g, " ")
+		.trim();
+
+	return htmlStripped.length > STATUS_MESSAGE_MAX_LENGTH
+		? `${htmlStripped.slice(0, STATUS_MESSAGE_MAX_LENGTH - 1)}…`
+		: htmlStripped;
 }
 
 function formatDuration(value?: number) {
@@ -204,6 +227,11 @@ function buildApiBaseUrl(webAppUrl: string, currentApiBaseUrl: string) {
 
 	const base = getDocsieWebAppUrl(webAppUrl);
 	return new URL("/api_v2/003", `${base}/`).toString().replace(/\/+$/, "");
+}
+
+function buildDesktopAuthWebAppUrl(webAppUrl: string, currentApiBaseUrl: string) {
+	const current = currentApiBaseUrl.trim();
+	return getDocsieWebAppUrl(current || webAppUrl);
 }
 
 function getPrimaryResultUrl(jobResult: DocsieVideoToDocsJobResult | null) {
@@ -302,9 +330,11 @@ export function DocsiePublishDialog({
 	const [targetDocumentationId, setTargetDocumentationId] = useState("");
 	const [bookTitle, setBookTitle] = useState("Video Documentation");
 	const [workspaces, setWorkspaces] = useState<DocsieWorkspace[]>([]);
+	const [documentationShelves, setDocumentationShelves] = useState<DocsieDocumentationShelf[]>([]);
 	const [generationTemplates, setGenerationTemplates] = useState<DocsieGenerationTemplate[]>([]);
 	const [savingConfig, setSavingConfig] = useState(false);
 	const [loadingWorkspaces, setLoadingWorkspaces] = useState(false);
+	const [loadingShelves, setLoadingShelves] = useState(false);
 	const [loadingTemplates, setLoadingTemplates] = useState(false);
 	const [loadingEstimate, setLoadingEstimate] = useState(false);
 	const [estimate, setEstimate] = useState<DocsieEstimateResult | null>(null);
@@ -326,6 +356,10 @@ export function DocsiePublishDialog({
 	const selectedWorkspace = useMemo(
 		() => workspaces.find((workspace) => workspace.id === workspaceId) ?? null,
 		[workspaceId, workspaces],
+	);
+	const selectedDocumentationShelf = useMemo(
+		() => documentationShelves.find((shelf) => shelf.id === targetDocumentationId) ?? null,
+		[documentationShelves, targetDocumentationId],
 	);
 	const selectedGenerationTemplate = useMemo(
 		() => generationTemplates.find((template) => template.id === generationTemplateId) ?? null,
@@ -374,6 +408,29 @@ export function DocsiePublishDialog({
 		}
 	}, []);
 
+	const loadDocumentationShelves = useCallback(async (nextWorkspaceId?: string) => {
+		const resolvedWorkspaceId = nextWorkspaceId?.trim();
+		if (!resolvedWorkspaceId) {
+			setDocumentationShelves([]);
+			return;
+		}
+
+		setLoadingShelves(true);
+		try {
+			const result = await window.electronAPI.docsieListDocumentationShelves({
+				workspaceId: resolvedWorkspaceId,
+			});
+			if (result.success) {
+				setDocumentationShelves(result.shelves);
+			} else {
+				setDocumentationShelves([]);
+			}
+			return result;
+		} finally {
+			setLoadingShelves(false);
+		}
+	}, []);
+
 	const loadState = useCallback(async () => {
 		const result = await window.electronAPI.docsieGetState();
 		if (!result.success || !result.state) {
@@ -398,6 +455,7 @@ export function DocsiePublishDialog({
 		setAutoGenerate(state.autoGenerate);
 
 		if (state.hasToken) {
+			let nextWorkspaceId = state.workspaceId ?? "";
 			const workspacesResult = await window.electronAPI.docsieListWorkspaces();
 			if (workspacesResult.success) {
 				setWorkspaces(workspacesResult.workspaces);
@@ -405,12 +463,14 @@ export function DocsiePublishDialog({
 					const firstWorkspace = workspacesResult.workspaces[0];
 					setWorkspaceId(firstWorkspace.id);
 					setStoredWorkspaceName(firstWorkspace.name);
+					nextWorkspaceId = firstWorkspace.id;
 				}
 			}
+			void loadDocumentationShelves(nextWorkspaceId);
 			void loadGenerationTemplates();
 			void loadCreditBalance();
 		}
-	}, [loadCreditBalance, loadGenerationTemplates]);
+	}, [loadCreditBalance, loadDocumentationShelves, loadGenerationTemplates]);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -461,6 +521,7 @@ export function DocsiePublishDialog({
 			try {
 				const result = await window.electronAPI.docsieEstimateVideoToDocs({
 					quality,
+					workspaceId,
 					durationSeconds: videoDurationSeconds,
 				});
 				if (!cancelled) {
@@ -477,7 +538,7 @@ export function DocsiePublishDialog({
 		return () => {
 			cancelled = true;
 		};
-	}, [hasStoredToken, isOpen, quality, videoDurationSeconds]);
+	}, [hasStoredToken, isOpen, quality, videoDurationSeconds, workspaceId]);
 
 	useEffect(() => {
 		if (!isOpen || !videoPath) {
@@ -564,17 +625,20 @@ export function DocsiePublishDialog({
 	]);
 
 	const handleConnect = useCallback(async () => {
-		const launchUrl = buildDocsieDesktopConnectUrl(webAppUrl, {
-			workspaceId,
-			docStyle,
-			quality,
-			language,
-			generationTemplateId,
-			templateInstruction,
-			rewriteInstructions,
-			targetDocumentationId,
-			autoGenerate,
-		});
+		const launchUrl = buildDocsieDesktopConnectUrl(
+			buildDesktopAuthWebAppUrl(webAppUrl, apiBaseUrl),
+			{
+				workspaceId,
+				docStyle,
+				quality,
+				language,
+				generationTemplateId,
+				templateInstruction,
+				rewriteInstructions,
+				targetDocumentationId,
+				autoGenerate,
+			},
+		);
 
 		const result = await window.electronAPI.openExternalUrl(launchUrl);
 		if (!result.success) {
@@ -584,6 +648,7 @@ export function DocsiePublishDialog({
 
 		toast.success("Opened Docsie sign-in in your browser");
 	}, [
+		apiBaseUrl,
 		autoGenerate,
 		docStyle,
 		generationTemplateId,
@@ -597,17 +662,20 @@ export function DocsiePublishDialog({
 	]);
 
 	const handleCreateAccount = useCallback(async () => {
-		const launchUrl = buildDocsieDesktopSignupUrl(webAppUrl, {
-			workspaceId,
-			docStyle,
-			quality,
-			language,
-			generationTemplateId,
-			templateInstruction,
-			rewriteInstructions,
-			targetDocumentationId,
-			autoGenerate,
-		});
+		const launchUrl = buildDocsieDesktopSignupUrl(
+			buildDesktopAuthWebAppUrl(webAppUrl, apiBaseUrl),
+			{
+				workspaceId,
+				docStyle,
+				quality,
+				language,
+				generationTemplateId,
+				templateInstruction,
+				rewriteInstructions,
+				targetDocumentationId,
+				autoGenerate,
+			},
+		);
 
 		const result = await window.electronAPI.openExternalUrl(launchUrl);
 		if (!result.success) {
@@ -617,6 +685,7 @@ export function DocsiePublishDialog({
 
 		toast.success("Opened Docsie sign-up in your browser");
 	}, [
+		apiBaseUrl,
 		autoGenerate,
 		docStyle,
 		generationTemplateId,
@@ -644,18 +713,27 @@ export function DocsiePublishDialog({
 			}
 
 			setWorkspaces(result.workspaces);
+			let nextWorkspaceId = workspaceId;
 			if (!workspaceId && result.workspaces.length > 0) {
 				const firstWorkspace = result.workspaces[0];
 				setWorkspaceId(firstWorkspace.id);
 				setStoredWorkspaceName(firstWorkspace.name);
+				nextWorkspaceId = firstWorkspace.id;
 			}
+			void loadDocumentationShelves(nextWorkspaceId);
 			void loadGenerationTemplates();
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));
 		} finally {
 			setLoadingWorkspaces(false);
 		}
-	}, [hasConnectionCredentials, loadGenerationTemplates, persistConfig, workspaceId]);
+	}, [
+		hasConnectionCredentials,
+		loadDocumentationShelves,
+		loadGenerationTemplates,
+		persistConfig,
+		workspaceId,
+	]);
 
 	const runGeneration = useCallback(
 		async (sourceJobId: string) => {
@@ -914,6 +992,71 @@ export function DocsiePublishDialog({
 		videoPath,
 	]);
 
+	useEffect(() => {
+		const generatedShelfId = jobResult?.documentationId?.trim();
+		if (
+			!isOpen ||
+			!hasStoredToken ||
+			phase !== "completed" ||
+			!jobResult?.success ||
+			!generatedShelfId ||
+			targetDocumentationId.trim()
+		) {
+			return;
+		}
+
+		setTargetDocumentationId(generatedShelfId);
+		setDocumentationShelves((current) => {
+			if (current.some((shelf) => shelf.id === generatedShelfId)) {
+				return current;
+			}
+			return [
+				{
+					id: generatedShelfId,
+					name: jobResult.documentationName ?? jobResult.bookName ?? "Generated shelf",
+					workspaceId: jobResult.workspaceId ?? workspaceId,
+				},
+				...current,
+			];
+		});
+
+		void window.electronAPI.docsieSaveConfig({
+			apiBaseUrl: buildApiBaseUrl(webAppUrl, apiBaseUrl),
+			authMode,
+			organizationName,
+			workspaceId,
+			workspaceName: selectedWorkspace?.name ?? storedWorkspaceName,
+			defaultQuality: quality,
+			defaultLanguage: language,
+			defaultDocStyle: docStyle,
+			defaultRewriteInstructions: rewriteInstructions,
+			defaultGenerationTemplateId: generationTemplateId || undefined,
+			defaultTemplateInstruction: templateInstruction,
+			targetDocumentationId: generatedShelfId,
+			autoGenerate,
+		});
+	}, [
+		apiBaseUrl,
+		authMode,
+		autoGenerate,
+		docStyle,
+		generationTemplateId,
+		hasStoredToken,
+		isOpen,
+		jobResult,
+		language,
+		organizationName,
+		phase,
+		quality,
+		rewriteInstructions,
+		selectedWorkspace?.name,
+		storedWorkspaceName,
+		targetDocumentationId,
+		templateInstruction,
+		webAppUrl,
+		workspaceId,
+	]);
+
 	const handleStart = useCallback(async () => {
 		if (!videoPath) {
 			toast.error("No video available to send to Docsie");
@@ -1068,9 +1211,12 @@ export function DocsiePublishDialog({
 			: "Connected to Docsie"
 		: "Docsie login required";
 	const showAnalysisScreen = phase !== "idle" || Boolean(jobResult) || Boolean(activeJobId);
-	const showAdvancedOutputs = isWorking || phase === "completed" || phase === "failed";
+	const showAdvancedOutputs = isWorking || phase === "completed";
 	const recordingSummary = videoPath ? videoPath.split("/").pop() : "No loaded recording";
 	const docsiePersistenceLabel = getDocsiePersistenceLabel(jobResult);
+	const statusMessage = formatStatusMessage(
+		busyMessage ?? "Docsie is preparing the current recording.",
+	);
 	const qualitySummary = [
 		samplingText,
 		estimateFrames ? `~${estimateFrames} frames` : null,
@@ -1082,7 +1228,9 @@ export function DocsiePublishDialog({
 		? "Log In To Docsie"
 		: phase === "completed" && getPrimaryResultUrl(jobResult)
 			? "Open In Docsie"
-			: "Convert Video To Docs";
+			: phase === "failed"
+				? "Run Analysis Again"
+				: "Convert Video To Docs";
 	const compactSummary = [
 		hasStoredToken
 			? displayedWorkspaceName || organizationName || "Docsie connected"
@@ -1112,6 +1260,301 @@ export function DocsiePublishDialog({
 		await handleStart();
 	}, [handleConnect, handleOpenResult, handleStart, hasStoredToken, isWorking, jobResult, phase]);
 
+	const statusPanel = (
+		<div className="rounded-3xl border border-[rgba(254,168,94,0.16)] bg-[radial-gradient(circle_at_top,rgba(255,103,56,0.18),transparent_42%),linear-gradient(135deg,#241917_0%,#17110f_100%)] p-6">
+			<div className="flex items-center gap-3">
+				<div
+					className={cn(
+						"rounded-full border p-2.5",
+						phase === "completed"
+							? "border-[rgba(75,181,67,0.28)] bg-[rgba(75,181,67,0.12)] text-[#8ce18b]"
+							: phase === "failed"
+								? "border-[rgba(255,103,56,0.28)] bg-[rgba(255,103,56,0.12)] text-[#ffb8a1]"
+								: "border-[rgba(254,168,94,0.18)] bg-[rgba(254,168,94,0.08)] text-[#FEA85E]",
+					)}
+				>
+					{phase === "completed" ? (
+						<CheckCircle2 className="h-5 w-5" />
+					) : isWorking ? (
+						<Loader2 className="h-5 w-5 animate-spin" />
+					) : phase === "failed" ? (
+						<ShieldCheck className="h-5 w-5" />
+					) : (
+						<Sparkles className="h-5 w-5" />
+					)}
+				</div>
+				<div>
+					<div className="text-lg font-semibold text-[#fff0e4]">{formatJobPhase(phase)}</div>
+					<div className="max-h-28 overflow-y-auto break-words text-sm text-[#c6b4a8]">
+						{statusMessage}
+					</div>
+				</div>
+			</div>
+
+			<div className="mt-4 text-sm text-[#c6b4a8]">
+				{recordingSummary}
+				{typeof videoDurationSeconds === "number" && videoDurationSeconds > 0
+					? ` • ${formatDuration(videoDurationSeconds)}`
+					: ""}
+				{estimateText ? ` • ${estimateText}` : ""}
+			</div>
+			{jobStatus?.status ? (
+				<div className="mt-2 text-xs uppercase tracking-[0.16em] text-[#8f7e73]">
+					Status: {jobStatus.status}
+				</div>
+			) : null}
+
+			<div className="mt-5 grid gap-2 sm:grid-cols-3">
+				{[
+					{
+						label: "Analyze",
+						active:
+							phase === "starting" ||
+							phase === "analysis" ||
+							phase === "generation" ||
+							phase === "completed",
+						done: phase === "analysis" || phase === "generation" || phase === "completed",
+					},
+					{
+						label: "Generate",
+						active: phase === "generation" || phase === "completed",
+						done: phase === "completed" || Boolean(generationJobId),
+					},
+					{
+						label: "Exports",
+						active: phase === "completed",
+						done: Object.values(exportArtifacts).some((artifact) => artifact?.status === "ready"),
+					},
+				].map((step) => (
+					<div
+						key={step.label}
+						className={cn(
+							"min-w-0 rounded-full border px-3 py-2 text-center text-xs font-medium uppercase tracking-[0.14em]",
+							step.done
+								? "border-[rgba(75,181,67,0.28)] bg-[rgba(75,181,67,0.1)] text-[#8ce18b]"
+								: step.active
+									? "border-[rgba(254,168,94,0.22)] bg-[rgba(254,168,94,0.08)] text-[#fff0e4]"
+									: "border-white/10 bg-[#17110f] text-[#8f7e73]",
+						)}
+					>
+						{step.label}
+					</div>
+				))}
+			</div>
+
+			{phase === "failed" ? (
+				<div className="mt-5 flex flex-wrap gap-2">
+					<Button
+						type="button"
+						onClick={() => void handleStart()}
+						disabled={!videoPath || isWorking}
+						className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
+					>
+						<RefreshCcw className="mr-2 h-4 w-4" />
+						Run Analysis Again
+					</Button>
+					<Button
+						type="button"
+						variant="secondary"
+						onClick={() => setShowSettingsDialog(true)}
+						className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+					>
+						Additional settings
+					</Button>
+				</div>
+			) : null}
+		</div>
+	);
+
+	const filesPanel = showAdvancedOutputs ? (
+		<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
+			<div className="mb-3 flex items-start justify-between gap-3">
+				<div>
+					<div className="text-sm font-semibold text-[#fff0e4]">Files</div>
+					<div className="text-xs text-[#8f7e73]">
+						Open the Docsie result or download the generated files.
+					</div>
+				</div>
+				<div className="flex flex-wrap gap-2">
+					{phase === "completed" && getPrimaryResultUrl(jobResult) ? (
+						<Button
+							type="button"
+							onClick={() => void handleOpenResult()}
+							className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
+						>
+							<ExternalLink className="mr-2 h-4 w-4" />
+							Open In Docsie
+						</Button>
+					) : null}
+					{phase !== "completed" ? (
+						<Button
+							type="button"
+							variant="secondary"
+							onClick={() => setShowSettingsDialog(true)}
+							className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+						>
+							Additional settings
+						</Button>
+					) : null}
+				</div>
+			</div>
+
+			<div className="grid gap-3 sm:grid-cols-3">
+				<div className="rounded-xl border border-white/10 bg-[#17110f] p-3">
+					<div className="flex items-start justify-between gap-3">
+						<div className="min-w-0">
+							<div className="text-sm font-medium text-[#fff0e4]">Markdown</div>
+							<div className="text-xs text-[#8f7e73]">{markdownReady ? "Ready" : "Pending"}</div>
+						</div>
+						{markdownReady ? (
+							<div className="flex shrink-0 gap-1">
+								<Button
+									type="button"
+									size="icon"
+									variant="secondary"
+									onClick={() => void handleCopyMarkdown()}
+									title="Copy markdown"
+									aria-label="Copy markdown"
+									className="h-8 w-8 bg-white/10 text-[#fff0e4] hover:bg-white/15"
+								>
+									<Copy className="h-4 w-4" />
+								</Button>
+								<Button
+									type="button"
+									size="icon"
+									variant="secondary"
+									onClick={() => void handleDownloadMarkdown()}
+									title="Download markdown"
+									aria-label="Download markdown"
+									className="h-8 w-8 bg-white/10 text-[#fff0e4] hover:bg-white/15"
+								>
+									<Download className="h-4 w-4" />
+								</Button>
+							</div>
+						) : null}
+					</div>
+					<div className="mt-3 text-xs leading-5 text-[#8f7e73]">
+						{markdownReady
+							? "Markdown is ready to copy or save locally."
+							: "Markdown will appear here when Docsie finishes generation."}
+					</div>
+				</div>
+
+				{EXPORT_FORMATS.map((format) => {
+					const artifact = exportArtifacts[format];
+					return (
+						<div key={format} className="rounded-xl border border-white/10 bg-[#17110f] p-3">
+							<div className="flex items-start justify-between gap-3">
+								<div className="min-w-0">
+									<div className="text-sm font-medium text-[#fff0e4]">{getExportLabel(format)}</div>
+									<div className="mt-1 text-xs text-[#8f7e73]">
+										{artifact?.status === "ready"
+											? "Ready"
+											: artifact?.status === "failed"
+												? (artifact.error ?? "Failed")
+												: artifact?.status === "processing"
+													? "Processing"
+													: artifact?.status === "queued"
+														? "Queued"
+														: "Pending"}
+									</div>
+								</div>
+								{artifact?.status === "ready" && artifact.url ? (
+									<Button
+										type="button"
+										size="icon"
+										variant="secondary"
+										onClick={() => void handleOpenExport(artifact)}
+										title={`Download ${getExportLabel(format)}`}
+										aria-label={`Download ${getExportLabel(format)}`}
+										className="h-8 w-8 shrink-0 bg-white/10 text-[#fff0e4] hover:bg-white/15"
+									>
+										<Download className="h-4 w-4" />
+									</Button>
+								) : artifact?.status === "processing" || artifact?.status === "queued" ? (
+									<Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#FEA85E]" />
+								) : null}
+							</div>
+						</div>
+					);
+				})}
+			</div>
+
+			{phase === "completed" ? (
+				<div className="mt-3 rounded-xl border border-[rgba(254,168,94,0.14)] bg-[rgba(255,255,255,0.03)] p-3">
+					<div className="text-sm font-medium text-[#fff0e4]">Saved in Docsie</div>
+					<div className="mt-1 text-xs leading-5 text-[#8f7e73]">
+						{docsiePersistenceLabel || "This generated result is stored in Docsie."}
+						{selectedDocumentationShelf?.name && jobResult?.documentationId
+							? ` • Shelf: ${selectedDocumentationShelf.name}`
+							: ""}
+						{typeof jobResult?.creditsCharged === "number"
+							? ` • ${jobResult.creditsCharged.toLocaleString()} credits charged`
+							: ""}
+					</div>
+				</div>
+			) : null}
+		</div>
+	) : null;
+
+	const historyPanel =
+		videoPath && (historyEntries.length > 0 || phase === "completed") ? (
+			<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
+				<div className="mb-3 flex items-center justify-between gap-3">
+					<div>
+						<div className="text-sm font-semibold text-[#fff0e4]">Analysis History</div>
+						<div className="text-xs text-[#8f7e73]">
+							Completed Docsie runs for this recording are saved locally.
+						</div>
+					</div>
+					<div className="text-xs uppercase tracking-[0.16em] text-[#c6b4a8]">
+						{historyEntries.length} saved
+					</div>
+				</div>
+				{historyEntries.length > 0 ? (
+					<div className="space-y-2">
+						{historyEntries.map((entry) => {
+							const entryUrl = getPrimaryResultUrl(entry.jobResult);
+							const entryLabel =
+								getDocsiePersistenceLabel(entry.jobResult) || entry.bookTitle || entry.videoName;
+							return (
+								<div key={entry.id} className="rounded-xl border border-white/10 bg-[#17110f] p-3">
+									<div className="flex flex-wrap items-start justify-between gap-3">
+										<div className="min-w-0">
+											<div className="truncate text-sm font-medium text-[#fff0e4]">
+												{entryLabel}
+											</div>
+											<div className="mt-1 text-xs text-[#8f7e73]">
+												{formatHistoryDate(entry.createdAt)}
+												{entry.quality ? ` • ${entry.quality}` : ""}
+												{entry.generationTemplateName ? ` • ${entry.generationTemplateName}` : ""}
+											</div>
+										</div>
+										{entryUrl ? (
+											<Button
+												type="button"
+												size="sm"
+												variant="secondary"
+												onClick={() => void window.electronAPI.openExternalUrl(entryUrl)}
+												className="shrink-0 bg-white/10 text-[#fff0e4] hover:bg-white/15"
+											>
+												<ExternalLink className="mr-2 h-4 w-4" />
+												Open
+											</Button>
+										) : null}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				) : (
+					<div className="rounded-xl border border-dashed border-white/10 bg-[#17110f] p-4 text-sm text-[#8f7e73]">
+						This completed result is being saved to local history.
+					</div>
+				)}
+			</div>
+		) : null;
+
 	return (
 		<>
 			<Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -1130,301 +1573,93 @@ export function DocsiePublishDialog({
 					<div className="min-h-0 flex-1 overflow-y-auto pr-1">
 						{showAnalysisScreen ? (
 							<div className="space-y-4">
-								<div className="rounded-3xl border border-[rgba(254,168,94,0.16)] bg-[radial-gradient(circle_at_top,rgba(255,103,56,0.18),transparent_42%),linear-gradient(135deg,#241917_0%,#17110f_100%)] p-6">
-									<div className="flex items-center gap-3">
-										<div
-											className={cn(
-												"rounded-full border p-2.5",
-												phase === "completed"
-													? "border-[rgba(75,181,67,0.28)] bg-[rgba(75,181,67,0.12)] text-[#8ce18b]"
-													: phase === "failed"
-														? "border-[rgba(255,103,56,0.28)] bg-[rgba(255,103,56,0.12)] text-[#ffb8a1]"
-														: "border-[rgba(254,168,94,0.18)] bg-[rgba(254,168,94,0.08)] text-[#FEA85E]",
-											)}
-										>
-											{phase === "completed" ? (
-												<CheckCircle2 className="h-5 w-5" />
-											) : isWorking ? (
-												<Loader2 className="h-5 w-5 animate-spin" />
-											) : phase === "failed" ? (
-												<ShieldCheck className="h-5 w-5" />
-											) : (
-												<Sparkles className="h-5 w-5" />
-											)}
-										</div>
-										<div>
-											<div className="text-lg font-semibold text-[#fff0e4]">
-												{formatJobPhase(phase)}
-											</div>
-											<div className="text-sm text-[#c6b4a8]">
-												{busyMessage ?? "Docsie is preparing the current recording."}
-											</div>
-										</div>
-									</div>
-
-									<div className="mt-4 text-sm text-[#c6b4a8]">
-										{recordingSummary}
-										{typeof videoDurationSeconds === "number" && videoDurationSeconds > 0
-											? ` • ${formatDuration(videoDurationSeconds)}`
-											: ""}
-										{estimateText ? ` • ${estimateText}` : ""}
-									</div>
-									{jobStatus?.status ? (
-										<div className="mt-2 text-xs uppercase tracking-[0.16em] text-[#8f7e73]">
-											Status: {jobStatus.status}
-										</div>
-									) : null}
-
-									<div className="mt-5 grid gap-2 sm:grid-cols-3">
-										{[
-											{
-												label: "Analyze",
-												active:
-													phase === "starting" ||
-													phase === "analysis" ||
-													phase === "generation" ||
-													phase === "completed",
-												done:
-													phase === "analysis" || phase === "generation" || phase === "completed",
-											},
-											{
-												label: "Generate",
-												active: phase === "generation" || phase === "completed",
-												done: phase === "completed" || Boolean(generationJobId),
-											},
-											{
-												label: "Exports",
-												active: phase === "completed",
-												done: Object.values(exportArtifacts).some(
-													(artifact) => artifact?.status === "ready",
-												),
-											},
-										].map((step) => (
-											<div
-												key={step.label}
-												className={cn(
-													"min-w-0 rounded-full border px-3 py-2 text-center text-xs font-medium uppercase tracking-[0.14em]",
-													step.done
-														? "border-[rgba(75,181,67,0.28)] bg-[rgba(75,181,67,0.1)] text-[#8ce18b]"
-														: step.active
-															? "border-[rgba(254,168,94,0.22)] bg-[rgba(254,168,94,0.08)] text-[#fff0e4]"
-															: "border-white/10 bg-[#17110f] text-[#8f7e73]",
-												)}
-											>
-												{step.label}
-											</div>
-										))}
-									</div>
-
-									{phase === "completed" && getPrimaryResultUrl(jobResult) ? (
-										<div className="mt-5 flex flex-wrap gap-2">
-											<Button
-												type="button"
-												onClick={() => void handleOpenResult()}
-												className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
-											>
-												<ExternalLink className="mr-2 h-4 w-4" />
-												Open In Docsie
-											</Button>
-											<Button
-												type="button"
-												variant="secondary"
-												onClick={() => setShowSettingsDialog(true)}
-												className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-											>
-												Additional settings
-											</Button>
-										</div>
-									) : null}
-								</div>
-
-								{showAdvancedOutputs ? (
-									<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
-										<div className="mb-3 flex items-start justify-between gap-3">
-											<div>
-												<div className="text-sm font-semibold text-[#fff0e4]">Files</div>
-												<div className="text-xs text-[#8f7e73]">
-													Open the Docsie result or download the generated files.
-												</div>
-											</div>
-											<div className="flex flex-wrap gap-2">
-												{phase === "completed" && getPrimaryResultUrl(jobResult) ? (
-													<Button
-														type="button"
-														onClick={() => void handleOpenResult()}
-														className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
-													>
-														<ExternalLink className="mr-2 h-4 w-4" />
-														Open In Docsie
-													</Button>
-												) : null}
-												<Button
-													type="button"
-													variant="secondary"
-													onClick={() => setShowSettingsDialog(true)}
-													className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-												>
-													Additional settings
-												</Button>
-											</div>
-										</div>
-
-										<div className="grid gap-3 sm:grid-cols-3">
-											<div className="rounded-xl border border-white/10 bg-[#17110f] p-3">
-												<div className="flex items-start justify-between gap-3">
-													<div>
-														<div className="text-sm font-medium text-[#fff0e4]">Markdown</div>
-														<div className="text-xs text-[#8f7e73]">
-															{markdownReady ? "Ready" : "Pending"}
-														</div>
-													</div>
-													{markdownReady ? (
-														<div className="flex gap-2">
-															<Button
-																type="button"
-																variant="secondary"
-																onClick={() => void handleCopyMarkdown()}
-																className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-															>
-																<Copy className="mr-2 h-4 w-4" />
-																Copy
-															</Button>
-															<Button
-																type="button"
-																variant="secondary"
-																onClick={() => void handleDownloadMarkdown()}
-																className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-															>
-																<Download className="mr-2 h-4 w-4" />
-																Save .md
-															</Button>
-														</div>
-													) : null}
-												</div>
-												<div className="mt-3 text-xs leading-5 text-[#8f7e73]">
-													{markdownReady
-														? "Markdown is ready to copy or save locally."
-														: "Markdown will appear here when Docsie finishes generation."}
-												</div>
-											</div>
-
-											{EXPORT_FORMATS.map((format) => {
-												const artifact = exportArtifacts[format];
-												return (
-													<div
-														key={format}
-														className="rounded-xl border border-white/10 bg-[#17110f] p-3"
-													>
-														<div className="flex items-start justify-between gap-3">
-															<div>
-																<div className="text-sm font-medium text-[#fff0e4]">
-																	{getExportLabel(format)}
-																</div>
-																<div className="mt-1 text-xs text-[#8f7e73]">
-																	{artifact?.status === "ready"
-																		? "Ready"
-																		: artifact?.status === "failed"
-																			? (artifact.error ?? "Failed")
-																			: artifact?.status === "processing"
-																				? "Processing"
-																				: artifact?.status === "queued"
-																					? "Queued"
-																					: "Pending"}
-																</div>
-															</div>
-															{artifact?.status === "ready" && artifact.url ? (
-																<Button
-																	type="button"
-																	variant="secondary"
-																	onClick={() => void handleOpenExport(artifact)}
-																	className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-																>
-																	<Download className="mr-2 h-4 w-4" />
-																	Download
-																</Button>
-															) : artifact?.status === "processing" ||
-																artifact?.status === "queued" ? (
-																<Loader2 className="h-4 w-4 animate-spin text-[#FEA85E]" />
-															) : null}
-														</div>
-													</div>
-												);
-											})}
-										</div>
-
-										{phase === "completed" ? (
-											<div className="mt-3 rounded-xl border border-[rgba(254,168,94,0.14)] bg-[rgba(255,255,255,0.03)] p-3">
-												<div className="text-sm font-medium text-[#fff0e4]">Saved in Docsie</div>
-												<div className="mt-1 text-xs leading-5 text-[#8f7e73]">
-													{docsiePersistenceLabel || "This generated result is stored in Docsie."}
-													{typeof jobResult?.creditsCharged === "number"
-														? ` • ${jobResult.creditsCharged.toLocaleString()} credits charged`
-														: ""}
-												</div>
-											</div>
-										) : null}
-									</div>
-								) : null}
+								{phase === "completed" ? (
+									<>
+										{filesPanel}
+										{historyPanel}
+										{statusPanel}
+									</>
+								) : (
+									<>
+										{statusPanel}
+										{filesPanel}
+										{historyPanel}
+									</>
+								)}
 							</div>
 						) : (
-							<div className="rounded-3xl border border-[rgba(254,168,94,0.16)] bg-[radial-gradient(circle_at_top,rgba(255,103,56,0.18),transparent_42%),linear-gradient(135deg,#241917_0%,#17110f_100%)] px-8 py-12">
-								<div className="mx-auto flex max-w-[460px] flex-col items-center text-center">
-									<div className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#8f7e73]">
-										{connectionSummary}
-									</div>
-									<div className="mt-3 text-sm text-[#c6b4a8]">{compactSummary}</div>
-									{hasStoredToken ? (
-										<div className="mt-5 border-t border-white/10 pt-4">
-											<div className="text-xs font-medium uppercase tracking-[0.16em] text-[#8f7e73]">
-												AI credits
-											</div>
-											<div className="mt-1 text-base font-semibold text-[#fff0e4]">
-												{loadingCreditBalance
-													? "Loading balance"
-													: (creditBalanceText ?? "Balance unavailable")}
-											</div>
-											{creditBalanceDetail ? (
-												<div className="mt-1 text-xs text-[#8f7e73]">{creditBalanceDetail}</div>
-											) : null}
+							<div className="space-y-4">
+								<div className="rounded-3xl border border-[rgba(254,168,94,0.16)] bg-[radial-gradient(circle_at_top,rgba(255,103,56,0.18),transparent_42%),linear-gradient(135deg,#241917_0%,#17110f_100%)] px-8 py-12">
+									<div className="mx-auto flex max-w-[460px] flex-col items-center text-center">
+										<div className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#8f7e73]">
+											{connectionSummary}
 										</div>
-									) : null}
-									<Button
-										type="button"
-										onClick={() => void handlePrimaryAction()}
-										disabled={hasStoredToken ? !videoPath || isWorking : false}
-										className="mt-8 h-16 min-w-[340px] rounded-full bg-[#FF6738] px-8 text-lg font-semibold text-white hover:bg-[#FF6738]/90"
-									>
-										{!hasStoredToken ? (
-											<LogIn className="mr-3 h-5 w-5" />
-										) : (
-											<Sparkles className="mr-3 h-5 w-5" />
-										)}
-										{primaryActionLabel}
-									</Button>
-									<div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-sm">
-										<button
+										<div className="mt-3 text-sm text-[#c6b4a8]">{compactSummary}</div>
+										{hasStoredToken ? (
+											<div className="mt-5 border-t border-white/10 pt-4">
+												<div className="text-xs font-medium uppercase tracking-[0.16em] text-[#8f7e73]">
+													AI credits
+												</div>
+												<div className="mt-1 text-base font-semibold text-[#fff0e4]">
+													{loadingCreditBalance
+														? "Loading balance"
+														: (creditBalanceText ?? "Balance unavailable")}
+												</div>
+												{creditBalanceDetail ? (
+													<div className="mt-1 text-xs text-[#8f7e73]">{creditBalanceDetail}</div>
+												) : null}
+											</div>
+										) : null}
+										<Button
 											type="button"
-											onClick={() => setShowSettingsDialog(true)}
-											className="text-[#c6b4a8] underline-offset-4 hover:text-[#fff0e4] hover:underline"
+											onClick={() => void handlePrimaryAction()}
+											disabled={hasStoredToken ? !videoPath || isWorking : false}
+											className="mt-8 h-16 min-w-[340px] rounded-full bg-[#FF6738] px-8 text-lg font-semibold text-white hover:bg-[#FF6738]/90"
 										>
-											Additional settings
-										</button>
-										{!hasStoredToken ? (
+											{!hasStoredToken ? (
+												<LogIn className="mr-3 h-5 w-5" />
+											) : (
+												<Sparkles className="mr-3 h-5 w-5" />
+											)}
+											{primaryActionLabel}
+										</Button>
+										<div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-sm">
 											<button
 												type="button"
-												onClick={() => void handleCreateAccount()}
-												className="text-[#FEA85E] underline-offset-4 hover:underline"
+												onClick={() => setShowSettingsDialog(true)}
+												className="text-[#c6b4a8] underline-offset-4 hover:text-[#fff0e4] hover:underline"
 											>
-												Create account
+												Additional settings
 											</button>
-										) : null}
+											{!hasStoredToken ? (
+												<button
+													type="button"
+													onClick={() => void handleCreateAccount()}
+													className="text-[#FEA85E] underline-offset-4 hover:underline"
+												>
+													Create account
+												</button>
+											) : null}
+										</div>
 									</div>
 								</div>
+								{historyPanel}
 							</div>
 						)}
 					</div>
 
 					<DialogFooter className="mt-4 border-t border-white/10 pt-4">
+						{phase === "failed" ? (
+							<Button
+								type="button"
+								onClick={() => void handleStart()}
+								disabled={!videoPath || isWorking}
+								className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
+							>
+								<RefreshCcw className="mr-2 h-4 w-4" />
+								Run Analysis Again
+							</Button>
+						) : null}
 						<Button
 							type="button"
 							variant="secondary"
@@ -1521,11 +1756,14 @@ export function DocsiePublishDialog({
 									<select
 										value={workspaceId}
 										onChange={(event) => {
-											setWorkspaceId(event.target.value);
+											const nextWorkspaceId = event.target.value;
+											setWorkspaceId(nextWorkspaceId);
+											setTargetDocumentationId("");
 											const nextWorkspace = workspaces.find(
-												(workspace) => workspace.id === event.target.value,
+												(workspace) => workspace.id === nextWorkspaceId,
 											);
 											setStoredWorkspaceName(nextWorkspace?.name ?? storedWorkspaceName);
+											void loadDocumentationShelves(nextWorkspaceId);
 										}}
 										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 									>
@@ -1603,14 +1841,41 @@ export function DocsiePublishDialog({
 								</div>
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Target Shelf ID
+										Destination Shelf
 									</label>
-									<Input
+									<select
 										value={targetDocumentationId}
 										onChange={(event) => setTargetDocumentationId(event.target.value)}
-										placeholder="Optional documentation shelf ID"
-										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-									/>
+										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+									>
+										<option value="">Create a new shelf from the book title</option>
+										{targetDocumentationId &&
+										!documentationShelves.some((shelf) => shelf.id === targetDocumentationId) ? (
+											<option value={targetDocumentationId}>
+												Saved shelf ({targetDocumentationId})
+											</option>
+										) : null}
+										{documentationShelves.map((shelf) => (
+											<option key={shelf.id} value={shelf.id}>
+												{shelf.name}
+											</option>
+										))}
+									</select>
+									<div className="flex items-center justify-between gap-3 text-xs text-[#8f7e73]">
+										<span>
+											{targetDocumentationId
+												? "Docsie will add the generated book to this shelf."
+												: "Docsie will create the shelf, then reuse it for future runs."}
+										</span>
+										<button
+											type="button"
+											onClick={() => void loadDocumentationShelves(workspaceId)}
+											disabled={loadingShelves || !workspaceId}
+											className="shrink-0 text-[#FEA85E] underline-offset-4 hover:underline disabled:text-[#8f7e73]"
+										>
+											{loadingShelves ? "Loading" : "Refresh"}
+										</button>
+									</div>
 								</div>
 							</div>
 
@@ -1696,69 +1961,6 @@ export function DocsiePublishDialog({
 								</div>
 							</div>
 						</div>
-
-						{videoPath ? (
-							<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
-								<div className="mb-3 flex items-center justify-between gap-3">
-									<div>
-										<div className="text-sm font-semibold text-[#fff0e4]">
-											Saved Conversions For This Video
-										</div>
-										<div className="text-xs text-[#8f7e73]">
-											Each completed Docsie run is stored locally and still persists in Docsie.
-										</div>
-									</div>
-									<div className="text-xs uppercase tracking-[0.16em] text-[#c6b4a8]">
-										{historyEntries.length} saved
-									</div>
-								</div>
-								{historyEntries.length > 0 ? (
-									<div className="space-y-3">
-										{historyEntries.map((entry) => {
-											const entryUrl = getPrimaryResultUrl(entry.jobResult);
-											const entryLabel =
-												getDocsiePersistenceLabel(entry.jobResult) ||
-												entry.bookTitle ||
-												entry.videoName;
-											return (
-												<div
-													key={entry.id}
-													className="rounded-xl border border-white/10 bg-[#17110f] p-3"
-												>
-													<div className="flex flex-wrap items-start justify-between gap-3">
-														<div>
-															<div className="text-sm font-medium text-[#fff0e4]">{entryLabel}</div>
-															<div className="mt-1 text-xs text-[#8f7e73]">
-																{formatHistoryDate(entry.createdAt)}
-																{entry.quality ? ` • ${entry.quality}` : ""}
-																{typeof entry.jobResult.creditsCharged === "number"
-																	? ` • ${entry.jobResult.creditsCharged.toLocaleString()} credits`
-																	: ""}
-															</div>
-														</div>
-														{entryUrl ? (
-															<Button
-																type="button"
-																variant="secondary"
-																onClick={() => void window.electronAPI.openExternalUrl(entryUrl)}
-																className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
-															>
-																<ExternalLink className="mr-2 h-4 w-4" />
-																Open
-															</Button>
-														) : null}
-													</div>
-												</div>
-											);
-										})}
-									</div>
-								) : (
-									<div className="rounded-xl border border-dashed border-white/10 bg-[#17110f] p-4 text-sm text-[#8f7e73]">
-										No saved conversions for this video yet.
-									</div>
-								)}
-							</div>
-						) : null}
 
 						<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
 							<div className="mb-3 text-sm font-semibold text-[#fff0e4]">Connection fallback</div>

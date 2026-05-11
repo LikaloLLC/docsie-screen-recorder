@@ -15,6 +15,7 @@ import type {
 	DocsieEstimateInput,
 	DocsieGenerateVideoToDocsInput,
 	DocsieIntegrationConfigInput,
+	DocsieListDocumentationShelvesInput,
 	DocsieSaveVideoToDocsHistoryInput,
 	DocsieStartVideoToDocsInput,
 } from "../../src/lib/docsieIntegration";
@@ -35,6 +36,7 @@ import {
 	getDocsieIntegrationState,
 	getDocsieVideoToDocsJobResult,
 	getDocsieVideoToDocsJobStatus,
+	listDocsieDocumentationShelves,
 	listDocsieGenerationTemplates,
 	listDocsieVideoToDocsHistory,
 	listDocsieWorkspaces,
@@ -879,6 +881,18 @@ export function registerIpcHandlers(
 			return { success: false, error: String(error), workspaces: [] };
 		}
 	});
+
+	ipcMain.handle(
+		"docsie:list-documentation-shelves",
+		async (_, input: DocsieListDocumentationShelvesInput) => {
+			try {
+				return { success: true, shelves: await listDocsieDocumentationShelves(input) };
+			} catch (error) {
+				console.error("Failed to list Docsie shelves:", error);
+				return { success: false, error: String(error), shelves: [] };
+			}
+		},
+	);
 
 	ipcMain.handle("docsie:list-generation-templates", async () => {
 		try {

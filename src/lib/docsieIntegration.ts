@@ -21,6 +21,15 @@ export interface DocsieWorkspace {
 	documentationId?: string | null;
 }
 
+export interface DocsieDocumentationShelf {
+	id: string;
+	name: string;
+	slug?: string;
+	workspaceId?: string | null;
+	primary?: boolean;
+	activeBooksCount?: number | null;
+}
+
 export interface DocsieGenerationTemplateOutlineItem {
 	title: string;
 	description?: string;
@@ -193,8 +202,13 @@ export interface DocsieDesktopAuthEvent {
 
 export interface DocsieEstimateInput {
 	quality: DocsieVideoToDocsQuality;
+	workspaceId?: string;
 	durationSeconds?: number;
 	durationMinutes?: number;
+}
+
+export interface DocsieListDocumentationShelvesInput {
+	workspaceId?: string;
 }
 
 export interface DocsieEstimateResult {

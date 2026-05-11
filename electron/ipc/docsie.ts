@@ -8,6 +8,7 @@ import type {
 	DocsieCreditBalanceResult,
 	DocsieDesktopHandoffExchangeResult,
 	DocsieDesktopHandoffInput,
+	DocsieDocumentationShelf,
 	DocsieEstimateInput,
 	DocsieEstimateResult,
 	DocsieGenerateVideoToDocsInput,
@@ -15,6 +16,7 @@ import type {
 	DocsieGenerationTemplate,
 	DocsieIntegrationConfigInput,
 	DocsieIntegrationState,
+	DocsieListDocumentationShelvesInput,
 	DocsieSaveVideoToDocsHistoryInput,
 	DocsieStartVideoToDocsInput,
 	DocsieStartVideoToDocsResult,
@@ -31,6 +33,7 @@ const DEFAULT_LANGUAGE = "english";
 const DEFAULT_QUALITY = "standard";
 const DEFAULT_DOC_STYLE = "guide";
 const MAX_HISTORY_PER_VIDEO = 12;
+const DOCSIE_ERROR_MAX_LENGTH = 320;
 
 interface StoredDocsieConfig {
 	apiBaseUrl: string;
@@ -312,19 +315,87 @@ async function docsieJsonRequest(
 		: await response.text();
 
 	if (!response.ok) {
-		if (isRecord(payload)) {
-			const message = asString(payload.message) ?? asString(payload.error);
-			throw new Error(message ?? `Docsie request failed (${response.status})`);
-		}
-
-		throw new Error(
-			typeof payload === "string" && payload
-				? payload
-				: `Docsie request failed (${response.status})`,
-		);
+		throw new Error(formatDocsieError(payload, response.status));
 	}
 
 	return payload;
+}
+
+function formatDocsieErrorValue(value: unknown): string | null {
+	if (typeof value === "string") {
+		return summarizeDocsieTextError(value);
+	}
+	if (Array.isArray(value)) {
+		return value.map(formatDocsieErrorValue).filter(Boolean).join("; ") || null;
+	}
+	if (isRecord(value)) {
+		const entries = Object.entries(value)
+			.map(([key, entryValue]) => {
+				const formatted = formatDocsieErrorValue(entryValue);
+				return formatted ? `${key}: ${formatted}` : null;
+			})
+			.filter(Boolean);
+		return entries.join("; ") || null;
+	}
+	return null;
+}
+
+function formatDocsieError(payload: unknown, statusCode: number): string {
+	const directMessage = isRecord(payload)
+		? (asString(payload.message) ?? asString(payload.error) ?? asString(payload.detail))
+		: null;
+	const payloadMessage = truncateDocsieError(
+		(directMessage ? summarizeDocsieTextError(directMessage) : null) ??
+			formatDocsieErrorValue(payload),
+	);
+	return payloadMessage
+		? `Docsie request failed (${statusCode}): ${payloadMessage}`
+		: `Docsie request failed (${statusCode})`;
+}
+
+function decodeBasicHtmlEntities(value: string): string {
+	return value
+		.replace(/&nbsp;/gi, " ")
+		.replace(/&amp;/gi, "&")
+		.replace(/&lt;/gi, "<")
+		.replace(/&gt;/gi, ">")
+		.replace(/&quot;/gi, '"')
+		.replace(/&#39;/gi, "'");
+}
+
+function truncateDocsieError(value: string | null): string | null {
+	if (!value) {
+		return null;
+	}
+	return value.length > DOCSIE_ERROR_MAX_LENGTH
+		? `${value.slice(0, DOCSIE_ERROR_MAX_LENGTH - 1)}…`
+		: value;
+}
+
+function summarizeDocsieTextError(value: string): string | null {
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return null;
+	}
+
+	const title = trimmed.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+	const heading = trimmed.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+	if (title || heading) {
+		return decodeBasicHtmlEntities(title ?? heading ?? "")
+			.replace(/\s+/g, " ")
+			.trim();
+	}
+
+	const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(trimmed);
+	const text = looksLikeHtml
+		? trimmed
+				.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+				.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+				.replace(/<!--[\s\S]*?-->/g, " ")
+				.replace(/<[^>]+>/g, " ")
+		: trimmed;
+
+	return decodeBasicHtmlEntities(text).replace(/\s+/g, " ").trim() || null;
 }
 
 async function uploadBinaryToPresignedUrl(
@@ -381,6 +452,29 @@ function normalizeWorkspacePayload(payload: unknown): DocsieWorkspace[] {
 			documentationId: asNullableString(item.documentation_id),
 		}))
 		.filter((workspace) => workspace.id);
+}
+
+function normalizeDocumentationShelfPayload(payload: unknown): DocsieDocumentationShelf[] {
+	const items = Array.isArray(payload)
+		? payload
+		: isRecord(payload) && Array.isArray(payload.results)
+			? payload.results
+			: [];
+
+	return items
+		.filter((item): item is Record<string, unknown> => isRecord(item))
+		.map((item) => {
+			const workspace = isRecord(item.workspace) ? item.workspace : null;
+			return {
+				id: String(item.id ?? ""),
+				name: asString(item.name) ?? asString(item.slug) ?? String(item.id ?? "Shelf"),
+				slug: asString(item.slug),
+				workspaceId: workspace ? asNullableString(workspace.id) : asNullableString(item.workspace),
+				primary: typeof item.primary === "boolean" ? item.primary : undefined,
+				activeBooksCount: asNumber(item.active_books_count),
+			};
+		})
+		.filter((shelf) => shelf.id);
 }
 
 function normalizeGenerationTemplatePayload(payload: unknown): DocsieGenerationTemplate[] {
@@ -533,7 +627,19 @@ export async function saveDocsieIntegrationConfig(
 ): Promise<DocsieIntegrationState> {
 	const stored = await readStoredDocsieConfig();
 	const normalizedApiBaseUrl = normalizeDocsieApiBaseUrl(input.apiBaseUrl);
-	const nextToken = asString(input.token) ?? (stored ? decryptToken(stored) : undefined);
+	const explicitToken = asString(input.token);
+	const storedToken = stored ? decryptToken(stored) : undefined;
+	const hasGenerationTemplateInput = "defaultGenerationTemplateId" in input;
+	const hasTargetDocumentationInput = "targetDocumentationId" in input;
+	if (!explicitToken && storedToken && stored?.apiBaseUrl) {
+		const storedOrigin = new URL(stored.apiBaseUrl).origin;
+		const nextOrigin = new URL(normalizedApiBaseUrl).origin;
+		if (storedOrigin !== nextOrigin) {
+			throw new Error("Log in again after changing Docsie environments.");
+		}
+	}
+
+	const nextToken = explicitToken ?? storedToken;
 	if (!nextToken) {
 		throw new Error("Docsie API token is required");
 	}
@@ -550,11 +656,14 @@ export async function saveDocsieIntegrationConfig(
 		defaultDocStyle: input.defaultDocStyle ?? stored?.defaultDocStyle ?? DEFAULT_DOC_STYLE,
 		defaultRewriteInstructions:
 			asString(input.defaultRewriteInstructions) ?? stored?.defaultRewriteInstructions ?? "",
-		defaultGenerationTemplateId:
-			asString(input.defaultGenerationTemplateId) ?? stored?.defaultGenerationTemplateId ?? "",
+		defaultGenerationTemplateId: hasGenerationTemplateInput
+			? (asString(input.defaultGenerationTemplateId) ?? "")
+			: (stored?.defaultGenerationTemplateId ?? ""),
 		defaultTemplateInstruction:
 			asString(input.defaultTemplateInstruction) ?? stored?.defaultTemplateInstruction ?? "",
-		targetDocumentationId: asString(input.targetDocumentationId) ?? stored?.targetDocumentationId,
+		targetDocumentationId: hasTargetDocumentationInput
+			? (asString(input.targetDocumentationId) ?? undefined)
+			: stored?.targetDocumentationId,
 		autoGenerate: input.autoGenerate ?? stored?.autoGenerate ?? true,
 		...encryptToken(nextToken),
 	};
@@ -567,6 +676,19 @@ export async function listDocsieWorkspaces(): Promise<DocsieWorkspace[]> {
 	const config = await resolveDocsieConfig();
 	const payload = await docsieJsonRequest(config, "/workspaces/");
 	return normalizeWorkspacePayload(payload);
+}
+
+export async function listDocsieDocumentationShelves(
+	input: DocsieListDocumentationShelvesInput = {},
+): Promise<DocsieDocumentationShelf[]> {
+	const config = await resolveDocsieConfig();
+	const workspaceId = asString(input.workspaceId) ?? config.workspaceId;
+	const params = new URLSearchParams({ deleted: "false" });
+	if (workspaceId) {
+		params.set("workspace", workspaceId);
+	}
+	const payload = await docsieJsonRequest(config, `/documentation/?${params.toString()}`);
+	return normalizeDocumentationShelfPayload(payload);
 }
 
 export async function listDocsieGenerationTemplates(): Promise<DocsieGenerationTemplate[]> {
@@ -708,6 +830,7 @@ export async function estimateDocsieVideoToDocs(
 			},
 			body: JSON.stringify({
 				quality: input.quality,
+				...(asString(input.workspaceId) ? { workspace_id: asString(input.workspaceId) } : {}),
 				...(typeof input.durationMinutes === "number"
 					? { duration_minutes: input.durationMinutes }
 					: {}),

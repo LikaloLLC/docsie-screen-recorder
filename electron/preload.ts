@@ -4,6 +4,7 @@ import type {
 	DocsieEstimateInput,
 	DocsieGenerateVideoToDocsInput,
 	DocsieIntegrationConfigInput,
+	DocsieListDocumentationShelvesInput,
 	DocsieSaveVideoToDocsHistoryInput,
 	DocsieStartVideoToDocsInput,
 } from "../src/lib/docsieIntegration";
@@ -81,6 +82,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	docsieListWorkspaces: () => {
 		return ipcRenderer.invoke("docsie:list-workspaces");
+	},
+	docsieListDocumentationShelves: (input?: DocsieListDocumentationShelvesInput) => {
+		return ipcRenderer.invoke("docsie:list-documentation-shelves", input ?? {});
 	},
 	docsieListGenerationTemplates: () => {
 		return ipcRenderer.invoke("docsie:list-generation-templates");

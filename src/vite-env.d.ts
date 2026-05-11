@@ -87,6 +87,13 @@ interface Window {
 			workspaces: import("./lib/docsieIntegration").DocsieWorkspace[];
 			error?: string;
 		}>;
+		docsieListDocumentationShelves: (
+			input?: import("./lib/docsieIntegration").DocsieListDocumentationShelvesInput,
+		) => Promise<{
+			success: boolean;
+			shelves: import("./lib/docsieIntegration").DocsieDocumentationShelf[];
+			error?: string;
+		}>;
 		docsieListGenerationTemplates: () => Promise<{
 			success: boolean;
 			templates: import("./lib/docsieIntegration").DocsieGenerationTemplate[];
