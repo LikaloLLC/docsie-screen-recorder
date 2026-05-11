@@ -9,12 +9,22 @@ import { fileURLToPath } from "node:url";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, "..");
 const packageJsonPath = path.join(projectRoot, "package.json");
-const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-const version = packageJson.version;
-const defaultTag = `v${version}`;
 const isWindows = process.platform === "win32";
 const npmCommand = isWindows ? "npm.cmd" : "npm";
 const npxCommand = isWindows ? "npx.cmd" : "npx";
+const VERSION_BUMP_TYPES = new Set(["patch", "minor", "major"]);
+
+function readPackageJson() {
+	return JSON.parse(readFileSync(packageJsonPath, "utf8"));
+}
+
+function getPackageVersion() {
+	return readPackageJson().version;
+}
+
+function getDefaultTag() {
+	return `v${getPackageVersion()}`;
+}
 
 function log(message) {
 	process.stdout.write(`${message}\n`);
@@ -29,15 +39,20 @@ function usage(exitCode = 0) {
 	const message = `
 Usage:
   npm run release:local
+  npm run release:patch
+  npm run release:minor
+  npm run release:major
   npm run release:tag -- [tag] [--remote origin] [--allow-dirty] [--allow-version-mismatch]
 
 Commands:
   local   Build release binaries for the current OS only.
+  bump    Bump package version, commit it, push the branch, and push a fresh release tag.
   tag     Create and push a git tag that triggers the GitHub Actions release workflow.
 
 Notes:
   - Cross-platform Windows/Linux/macOS releases are built in GitHub Actions on native runners.
-  - The default tag is ${defaultTag} and must match package.json unless --allow-version-mismatch is set.
+  - The default tag is ${getDefaultTag()} and must match package.json unless --allow-version-mismatch is set.
+  - Release commands default to the "private" remote when present, otherwise "origin".
   - Set RELEASE_SIGN_MACOS=1 with the local command to use scripts/build_macos.sh on macOS.
 `.trim();
 
@@ -81,10 +96,20 @@ function capture(command, args, options = {}) {
 	return result.stdout.trim();
 }
 
+function getDefaultRemote() {
+	const remotes = capture("git", ["remote"])
+		.split(/\s+/)
+		.map((remote) => remote.trim())
+		.filter(Boolean);
+
+	return remotes.includes("private") ? "private" : "origin";
+}
+
 function parseTagOptions(args) {
+	const defaultTag = getDefaultTag();
 	const options = {
 		tag: defaultTag,
-		remote: "origin",
+		remote: getDefaultRemote(),
 		allowDirty: false,
 		allowVersionMismatch: false,
 	};
@@ -131,6 +156,44 @@ function parseTagOptions(args) {
 	return options;
 }
 
+function parseBumpOptions(args) {
+	const options = {
+		type: "patch",
+		remote: getDefaultRemote(),
+	};
+
+	for (let index = 0; index < args.length; index += 1) {
+		const value = args[index];
+
+		if (!value) {
+			continue;
+		}
+
+		if (VERSION_BUMP_TYPES.has(value)) {
+			options.type = value;
+			continue;
+		}
+
+		if (value === "--remote") {
+			const remote = args[index + 1];
+			if (!remote) {
+				fail("--remote requires a value");
+			}
+			options.remote = remote;
+			index += 1;
+			continue;
+		}
+
+		if (value === "--help" || value === "-h") {
+			usage(0);
+		}
+
+		fail(`Unknown option: ${value}`);
+	}
+
+	return options;
+}
+
 function ensureCleanWorktree() {
 	const status = capture("git", ["status", "--short"]);
 	if (status.length > 0) {
@@ -141,6 +204,8 @@ function ensureCleanWorktree() {
 }
 
 function ensureVersionMatch(tag, allowVersionMismatch) {
+	const version = getPackageVersion();
+	const defaultTag = getDefaultTag();
 	if (allowVersionMismatch || tag === defaultTag) {
 		return;
 	}
@@ -163,6 +228,7 @@ function ensureTagDoesNotExist(tag, remote) {
 }
 
 function buildCurrentPlatform() {
+	const version = getPackageVersion();
 	log(`Building release binaries for ${process.platform} ${process.arch}`);
 
 	if (process.platform === "darwin" && process.env.RELEASE_SIGN_MACOS === "1") {
@@ -185,6 +251,37 @@ function buildCurrentPlatform() {
 	}
 
 	log(`Artifacts are available in ${path.join(projectRoot, "release", version)}`);
+}
+
+function getCurrentBranch() {
+	const branch = capture("git", ["branch", "--show-current"]);
+	if (!branch) {
+		fail("Refusing to release from a detached HEAD.");
+	}
+	return branch;
+}
+
+function bumpAndTagRelease(args) {
+	const options = parseBumpOptions(args);
+	const branch = getCurrentBranch();
+
+	ensureCleanWorktree();
+
+	run(npmCommand, ["version", options.type, "--no-git-tag-version"]);
+
+	const version = getPackageVersion();
+	const tag = `v${version}`;
+	ensureTagDoesNotExist(tag, options.remote);
+
+	run("git", ["add", "package.json", "package-lock.json"]);
+	run("git", ["commit", "-m", `Bump version to ${tag}`]);
+	run("git", ["push", options.remote, `HEAD:${branch}`]);
+	run("git", ["tag", "-a", tag, "-m", `Release ${tag}`]);
+	run("git", ["push", options.remote, tag]);
+
+	log(`Bumped package version to ${version}.`);
+	log(`Pushed ${branch} and ${tag} to ${options.remote}.`);
+	log("GitHub Actions will now build and publish the new release.");
 }
 
 function tagRelease(args) {
@@ -230,6 +327,11 @@ if (command === "local") {
 
 if (command === "tag") {
 	tagRelease(args);
+	process.exit(0);
+}
+
+if (command === "bump") {
+	bumpAndTagRelease(args);
 	process.exit(0);
 }
 

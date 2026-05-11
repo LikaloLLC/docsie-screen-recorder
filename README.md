@@ -84,13 +84,13 @@ Useful output paths after a mac build:
 - Intel app bundle: `release/1.3.1/mac/Docsie - Screen Recorder.app`
 - DMGs: `release/1.3.1/*.dmg`
 
-Create a tagged multi-platform release:
+Create a new patch release:
 
 ```bash
-npm run release:tag
+npm run release:patch
 ```
 
-That triggers the GitHub Actions release workflow, which builds Windows, Linux, and macOS installers on native runners and publishes them to GitHub Releases. Optional S3 mirroring is documented in [RELEASING.md](./RELEASING.md).
+That bumps the app version, commits it, pushes the branch, and pushes a fresh release tag. The tag triggers the GitHub Actions release workflow, which builds Windows, Linux, and macOS installers on native runners and publishes them to GitHub Releases. Optional S3 mirroring is documented in [RELEASING.md](./RELEASING.md).
 
 ### macOS Permission Flow
 
