@@ -88,6 +88,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	docsieEstimateVideoToDocs: (input: DocsieEstimateInput) => {
 		return ipcRenderer.invoke("docsie:estimate-video-to-docs", input);
 	},
+	docsieGetCreditBalance: () => {
+		return ipcRenderer.invoke("docsie:get-credit-balance");
+	},
 	docsieStartVideoToDocs: (input: DocsieStartVideoToDocsInput) => {
 		return ipcRenderer.invoke("docsie:start-video-to-docs", input);
 	},

@@ -4,6 +4,8 @@ import { app, safeStorage } from "electron";
 import type {
 	DocsieAsyncJobResult,
 	DocsieAuthMode,
+	DocsieCreditBalance,
+	DocsieCreditBalanceResult,
 	DocsieDesktopHandoffExchangeResult,
 	DocsieDesktopHandoffInput,
 	DocsieEstimateInput,
@@ -438,6 +440,21 @@ function normalizeEstimateResponse(payload: unknown): DocsieEstimateResult {
 	};
 }
 
+function normalizeCreditBalancePayload(payload: unknown): DocsieCreditBalance {
+	const data: Record<string, unknown> = isRecord(payload) ? payload : {};
+	return {
+		monthlyAllocated: asNumber(data.monthly_allocated) ?? undefined,
+		monthlyUsed: asNumber(data.monthly_used) ?? undefined,
+		monthlyRemaining: asNumber(data.monthly_remaining) ?? undefined,
+		purchasedBalance: asNumber(data.purchased_balance) ?? undefined,
+		totalAvailable: asNumber(data.total_available) ?? undefined,
+		monthlyResetsAt: asNullableString(data.monthly_resets_at),
+		billingMode: asString(data.billing_mode),
+		videoQualityTiers: isRecord(data.video_quality_tiers) ? data.video_quality_tiers : undefined,
+		raw: data,
+	};
+}
+
 function normalizeJobStatus(payload: unknown): DocsieVideoToDocsJobStatus {
 	if (!isRecord(payload)) {
 		return { success: false, error: "Unexpected Docsie job status response" };
@@ -556,6 +573,22 @@ export async function listDocsieGenerationTemplates(): Promise<DocsieGenerationT
 	const config = await resolveDocsieConfig();
 	const payload = await docsieJsonRequest(config, "/video-to-docs/templates/");
 	return normalizeGenerationTemplatePayload(payload);
+}
+
+export async function getDocsieCreditBalance(): Promise<DocsieCreditBalanceResult> {
+	try {
+		const config = await resolveDocsieConfig();
+		const payload = await docsieJsonRequest(config, "/credits/balance/");
+		return {
+			success: true,
+			balance: normalizeCreditBalancePayload(payload),
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
 }
 
 export async function connectDocsieDesktopHandoff(

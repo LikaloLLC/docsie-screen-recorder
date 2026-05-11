@@ -95,6 +95,9 @@ interface Window {
 		docsieEstimateVideoToDocs: (
 			input: import("./lib/docsieIntegration").DocsieEstimateInput,
 		) => Promise<import("./lib/docsieIntegration").DocsieEstimateResult>;
+		docsieGetCreditBalance: () => Promise<
+			import("./lib/docsieIntegration").DocsieCreditBalanceResult
+		>;
 		docsieStartVideoToDocs: (
 			input: import("./lib/docsieIntegration").DocsieStartVideoToDocsInput,
 		) => Promise<import("./lib/docsieIntegration").DocsieStartVideoToDocsResult>;

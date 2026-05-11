@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { DocsieTemplatePicker } from "@/components/video-editor/DocsieTemplatePicker";
 import type {
 	DocsieAuthMode,
+	DocsieCreditBalance,
 	DocsieEstimateResult,
 	DocsieGenerationTemplate,
 	DocsieIntegrationState,
@@ -161,6 +162,31 @@ function getEstimateText(estimate: DocsieEstimateResult | null) {
 	return typeof credits === "number" ? `${credits.toLocaleString()} credits` : null;
 }
 
+function getCreditBalanceText(balance: DocsieCreditBalance | null) {
+	if (typeof balance?.totalAvailable !== "number") {
+		return null;
+	}
+
+	return `${balance.totalAvailable.toLocaleString()} credits available`;
+}
+
+function getCreditBalanceDetail(balance: DocsieCreditBalance | null) {
+	if (!balance) {
+		return null;
+	}
+
+	const parts = [
+		typeof balance.monthlyRemaining === "number"
+			? `${balance.monthlyRemaining.toLocaleString()} monthly`
+			: null,
+		typeof balance.purchasedBalance === "number"
+			? `${balance.purchasedBalance.toLocaleString()} purchased`
+			: null,
+	];
+
+	return parts.filter(Boolean).join(" • ") || null;
+}
+
 function buildDefaultBookTitle(videoPath: string | null) {
 	if (!videoPath) {
 		return "Video Documentation";
@@ -282,6 +308,8 @@ export function DocsiePublishDialog({
 	const [loadingTemplates, setLoadingTemplates] = useState(false);
 	const [loadingEstimate, setLoadingEstimate] = useState(false);
 	const [estimate, setEstimate] = useState<DocsieEstimateResult | null>(null);
+	const [creditBalance, setCreditBalance] = useState<DocsieCreditBalance | null>(null);
+	const [loadingCreditBalance, setLoadingCreditBalance] = useState(false);
 	const [phase, setPhase] = useState<PublishPhase>("idle");
 	const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
 	const [generationJobId, setGenerationJobId] = useState<string | null>(null);
@@ -306,6 +334,8 @@ export function DocsiePublishDialog({
 	const displayedWorkspaceName = selectedWorkspace?.name ?? storedWorkspaceName;
 	const hasConnectionCredentials = hasStoredToken || Boolean(tokenInput.trim());
 	const estimateText = getEstimateText(estimate);
+	const creditBalanceText = getCreditBalanceText(creditBalance);
+	const creditBalanceDetail = getCreditBalanceDetail(creditBalance);
 	const estimateFrames = estimateFrameCount(videoDurationSeconds, estimate?.secondsPerFrame);
 	const samplingText = formatSecondsPerFrame(estimate?.secondsPerFrame);
 	const markdownReady = Boolean(jobResult?.markdown);
@@ -328,6 +358,19 @@ export function DocsiePublishDialog({
 			}
 		} finally {
 			setLoadingTemplates(false);
+		}
+	}, []);
+
+	const loadCreditBalance = useCallback(async () => {
+		setLoadingCreditBalance(true);
+		try {
+			const result = await window.electronAPI.docsieGetCreditBalance();
+			if (result.success) {
+				setCreditBalance(result.balance ?? null);
+			}
+			return result;
+		} finally {
+			setLoadingCreditBalance(false);
 		}
 	}, []);
 
@@ -365,8 +408,9 @@ export function DocsiePublishDialog({
 				}
 			}
 			void loadGenerationTemplates();
+			void loadCreditBalance();
 		}
-	}, [loadGenerationTemplates]);
+	}, [loadCreditBalance, loadGenerationTemplates]);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -455,6 +499,14 @@ export function DocsiePublishDialog({
 			cancelled = true;
 		};
 	}, [isOpen, videoPath]);
+
+	useEffect(() => {
+		if (!isOpen || !hasStoredToken || phase !== "completed") {
+			return;
+		}
+
+		void loadCreditBalance();
+	}, [hasStoredToken, isOpen, loadCreditBalance, phase]);
 
 	const persistConfig = useCallback(async () => {
 		setSavingConfig(true);
@@ -1040,6 +1092,7 @@ export function DocsiePublishDialog({
 			? formatDuration(videoDurationSeconds)
 			: null,
 		estimateText,
+		creditBalanceText,
 	]
 		.filter(Boolean)
 		.join(" • ");
@@ -1320,6 +1373,21 @@ export function DocsiePublishDialog({
 										{connectionSummary}
 									</div>
 									<div className="mt-3 text-sm text-[#c6b4a8]">{compactSummary}</div>
+									{hasStoredToken ? (
+										<div className="mt-5 border-t border-white/10 pt-4">
+											<div className="text-xs font-medium uppercase tracking-[0.16em] text-[#8f7e73]">
+												AI credits
+											</div>
+											<div className="mt-1 text-base font-semibold text-[#fff0e4]">
+												{loadingCreditBalance
+													? "Loading balance"
+													: (creditBalanceText ?? "Balance unavailable")}
+											</div>
+											{creditBalanceDetail ? (
+												<div className="mt-1 text-xs text-[#8f7e73]">{creditBalanceDetail}</div>
+											) : null}
+										</div>
+									) : null}
 									<Button
 										type="button"
 										onClick={() => void handlePrimaryAction()}
@@ -1394,6 +1462,20 @@ export function DocsiePublishDialog({
 							<div className="mb-3 flex items-center justify-between">
 								<div className="text-sm font-semibold text-[#fff0e4]">Workspace and output</div>
 								<div className="flex gap-2">
+									<Button
+										type="button"
+										variant="secondary"
+										onClick={() => void loadCreditBalance()}
+										disabled={loadingCreditBalance || !hasStoredToken}
+										className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
+									>
+										{loadingCreditBalance ? (
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										) : (
+											<RefreshCcw className="mr-2 h-4 w-4" />
+										)}
+										Credits
+									</Button>
 									<Button
 										type="button"
 										variant="secondary"

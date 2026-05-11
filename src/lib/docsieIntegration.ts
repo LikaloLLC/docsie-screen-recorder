@@ -209,6 +209,24 @@ export interface DocsieEstimateResult {
 	error?: string;
 }
 
+export interface DocsieCreditBalance {
+	monthlyAllocated?: number;
+	monthlyUsed?: number;
+	monthlyRemaining?: number;
+	purchasedBalance?: number;
+	totalAvailable?: number;
+	monthlyResetsAt?: string | null;
+	billingMode?: string;
+	videoQualityTiers?: Record<string, unknown>;
+	raw?: Record<string, unknown>;
+}
+
+export interface DocsieCreditBalanceResult {
+	success: boolean;
+	balance?: DocsieCreditBalance;
+	error?: string;
+}
+
 export interface DocsieStartVideoToDocsInput {
 	videoPath: string;
 	quality?: DocsieVideoToDocsQuality;

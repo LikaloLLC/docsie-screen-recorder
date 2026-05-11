@@ -31,6 +31,7 @@ import {
 	estimateDocsieVideoToDocs,
 	generateDocsieVideoToDocs,
 	getDocsieBackgroundJob,
+	getDocsieCreditBalance,
 	getDocsieIntegrationState,
 	getDocsieVideoToDocsJobResult,
 	getDocsieVideoToDocsJobStatus,
@@ -890,6 +891,10 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("docsie:estimate-video-to-docs", async (_, input: DocsieEstimateInput) => {
 		return await estimateDocsieVideoToDocs(input);
+	});
+
+	ipcMain.handle("docsie:get-credit-balance", async () => {
+		return await getDocsieCreditBalance();
 	});
 
 	ipcMain.handle("docsie:start-video-to-docs", async (_, input: DocsieStartVideoToDocsInput) => {
