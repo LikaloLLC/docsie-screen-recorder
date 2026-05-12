@@ -133,6 +133,8 @@ The Docsie integration is a desktop client bridge to the existing Docsie externa
 ### Renderer/UI
 
 - Publish dialog: `src/components/video-editor/DocsiePublishDialog.tsx`
+- Template browser: `src/components/video-editor/DocsieTemplatePicker.tsx`
+- Docsie auth gate: `src/components/docsie/DocsieAuthGate.tsx`
 - Launch point in editor toolbar: `src/components/video-editor/VideoEditor.tsx`
 - Shared request/response types: `src/lib/docsieIntegration.ts`
 
@@ -140,35 +142,46 @@ The dialog currently supports:
 
 - Docsie API base URL
 - `Api-Key` or `Bearer` auth mode
+- Docsie web sign-in / desktop handoff connection flow
 - workspace selection
+- target Docsie shelf selection, including creating a new shelf from the book title and reusing it on future runs
 - quality tier
 - language
 - doc style
 - rewrite instructions
-- template instructions
+- Docsie generation template selection through a searchable template browser
+- fallback template instructions when no generation template is selected
 - auto-generate toggle
 - cost estimate
+- current Docsie credit balance display
 - job polling
-- markdown/result preview
+- retry / "Run Analysis Again" after failed jobs
+- generated file actions for markdown, DOCX, and PDF
+- local analysis history per source video, with completed result reopening inside the dialog
 
 ### Electron/Main Process
 
 - Preload bridge: `electron/preload.ts`
 - IPC handlers: `electron/ipc/handlers.ts`
 - Docsie API implementation: `electron/ipc/docsie.ts`
+- Update checker: `electron/updateChecker.ts`
 
 Current flow:
 
 1. Save Docsie connection settings locally
-2. List Docsie workspaces
-3. Estimate video-to-docs credits
-4. Read the current exported/recorded video from disk
-5. Request a temporary upload URL from Docsie
-6. Upload the binary to Docsie storage
-7. Register the uploaded file in Docsie
-8. Submit the `video-to-docs` job
-9. Poll analysis/generation status
-10. Fetch final result payload and markdown preview
+2. Optionally exchange a Docsie web desktop-auth handoff for a bearer token
+3. List Docsie workspaces
+4. List target documentation shelves for the selected workspace
+5. List Docsie video-to-docs generation templates
+6. Fetch current Docsie credit balance and estimate video-to-docs credits
+7. Read the current exported/recorded video from disk
+8. Request a temporary upload URL from Docsie
+9. Upload the binary to Docsie storage
+10. Register the uploaded file in Docsie
+11. Submit the `video-to-docs` job with workspace, target shelf, style, template, language, and generation options
+12. Poll analysis/generation status
+13. Fetch final result payload, generated file links, and markdown preview
+14. Save completed results into local per-video history
 
 ### Token Storage
 
@@ -181,6 +194,78 @@ The token is encrypted with `safeStorage` when available. If the platform cannot
 
 This is acceptable for the current bridge, but for production auth hardening we should move to a stronger session/token strategy.
 
+### Local Docsie State Files
+
+Additional Docsie-related local state also lives under `app.getPath("userData")`:
+
+- `docsie-video-to-docs-history.json`: completed Video to Docs results keyed by normalized source video path
+- `update-check.json`: skipped update version for the native update prompt
+
+Do not store these inside project files unless the product explicitly needs portable Docsie result history.
+
+### Desktop Auth Handoff
+
+The app registers the `docsie-screen://` protocol in `electron/main.ts`.
+
+Docsie web can redirect back to:
+
+- `docsie-screen://connect?handoff_id=...&state=...&api_base_url=...`
+
+The main process exchanges that handoff through:
+
+- `/desktop-auth/handoffs/exchange/`
+
+The returned bearer token and workspace defaults are persisted through the same encrypted local config path used by manual tokens.
+
+### Video To Docs Targeting
+
+The video-to-docs request path supports:
+
+- `workspace_id`
+- `target_documentation_id`
+- `book_title`
+- `generation_template_id`
+- `template_instruction`
+- `rewrite_instructions`
+- `auto_generate`
+
+When `generation_template_id` is selected, the renderer keeps custom template text as fallback only and the main process sends an empty `template_instruction`. This prevents conflicting template sources.
+
+The upload registration currently calls `/files/upload/` with `type: "file"` after uploading the video bytes through a temporary URL. The backend is expected to allow video media registration for the video-only API-key flow.
+
+### Result History
+
+Completed Video to Docs runs are saved locally per source video. The history entry stores:
+
+- workspace and organization context
+- selected quality, language, doc style, template, target shelf, and book title
+- analysis and generation job IDs
+- final Docsie job result, including markdown, file/export URLs, Docsie document identifiers, and credit details
+
+Opening an entry from history should load the saved result back into `DocsiePublishDialog`, not immediately navigate out to Docsie.
+
+### Release And Update Flow
+
+Release helpers:
+
+- `npm run release:patch`
+- `npm run release:minor`
+- `npm run release:major`
+- `npm run release:tag -- [tag]`
+- `npm run release:local`
+
+`scripts/release.mjs` bumps `package.json`, commits the version bump, pushes the branch, and pushes a fresh release tag. It defaults to the `private` remote when present.
+
+`.github/workflows/release.yml` builds Windows, Linux, and macOS artifacts on GitHub Actions and publishes the GitHub release. The README should use `/releases/latest/download/...` links so the current installer follows the latest published release.
+
+`electron/updateChecker.ts` checks GitHub's latest release API on startup and through `Help -> Check for Updates...`. It compares the latest tag against `app.getVersion()`, prompts the user when a newer release exists, and opens the best installer asset for the current OS/architecture.
+
+Important limitations:
+
+- This is an update notification/download flow, not silent in-app self-update.
+- Builds before the update checker existed cannot notify users retroactively; users must manually install one update that contains the checker.
+- macOS signing and notarization steps are present in the release workflow, but they are skipped unless Apple signing/notarization secrets are configured.
+
 ## What Is Implemented vs Not Implemented
 
 Implemented now:
@@ -190,14 +275,23 @@ Implemented now:
 - editor-side Docsie publishing dialog
 - Electron IPC bridge to Docsie external API
 - upload, submit, estimate, poll, and result preview
+- Docsie web desktop-auth handoff into the Electron app
+- Docsie workspace and shelf selection
+- Docsie generation template browser
+- current credit balance retrieval
+- failed-job retry through "Run Analysis Again"
+- local per-video analysis history
+- update notification prompt backed by GitHub releases
+- auto-incrementing release commands and GitHub release publishing
 
 Not implemented yet:
 
-- direct Docsie account sign-in / PKCE login flow
-- deep linking into a specific Docsie editor shelf/documentation target
+- full PKCE/OAuth inside Electron without the Docsie web handoff
 - importing Docsie-generated structure back into the local timeline automatically
 - server-driven auto-annotation writeback into the editor
 - doc-to-video authoring flow without a source recording
+- silent automatic update download/install
+- signed and notarized macOS releases until Apple credentials are configured
 
 ## Best Extension Point For LLM Auto-Annotations
 
@@ -258,10 +352,12 @@ In practice, this means the current editor is a strong foundation for doc-to-vid
 If continuing this work, the highest-value next additions are:
 
 1. Add a validated JSON import path for AI-generated annotations and zooms
-2. Add explicit Docsie auth/session handoff instead of manual token entry
+2. Harden Docsie auth/session lifecycle beyond the current encrypted local bearer-token cache
 3. Add result import from Docsie generation back into the local editor
 4. Define an intermediate "scene/step" model for documentation-to-video generation
 5. Extend the editor to support non-recording timelines for synthetic video creation
+6. Configure Apple Developer ID signing and notarization secrets in GitHub Actions
+7. Add a true auto-update installer path if we want updates to apply without manual download
 
 ## Files To Read First
 
@@ -272,7 +368,13 @@ For anyone extending this feature set, start here:
 - `src/components/video-editor/types.ts`
 - `src/components/video-editor/projectPersistence.ts`
 - `src/components/video-editor/DocsiePublishDialog.tsx`
+- `src/components/video-editor/DocsieTemplatePicker.tsx`
+- `src/components/docsie/DocsieAuthGate.tsx`
 - `electron/ipc/docsie.ts`
 - `electron/ipc/handlers.ts`
 - `electron/preload.ts`
+- `electron/main.ts`
+- `electron/updateChecker.ts`
+- `scripts/release.mjs`
+- `.github/workflows/release.yml`
 - `src/lib/exporter/frameRenderer.ts`
