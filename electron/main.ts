@@ -16,6 +16,7 @@ import type { DocsieDesktopAuthEvent } from "../src/lib/docsieIntegration";
 import { mainT, setMainLocale } from "./i18n";
 import { connectDocsieDesktopHandoff } from "./ipc/docsie";
 import { registerIpcHandlers } from "./ipc/handlers";
+import { checkForUpdates } from "./updateChecker";
 import {
 	createCountdownOverlayWindow,
 	createEditorWindow,
@@ -210,6 +211,18 @@ function setupApplicationMenu() {
 				: [{ role: "minimize" }, { role: "close" }],
 		},
 	);
+
+	template.push({
+		label: "Help",
+		submenu: [
+			{
+				label: "Check for Updates...",
+				click: () => {
+					void checkForUpdates({ manual: true, parent: BrowserWindow.getFocusedWindow() });
+				},
+			},
+		],
+	});
 
 	const menu = Menu.buildFromTemplate(template);
 	Menu.setApplicationMenu(menu);
@@ -601,6 +614,9 @@ app.whenReady().then(async () => {
 		switchToHudWrapper,
 	);
 	createWindow();
+	setTimeout(() => {
+		void checkForUpdates({ parent: mainWindow });
+	}, 3000);
 
 	if (pendingDesktopAuthUrl) {
 		void handleDesktopAuthUrl(pendingDesktopAuthUrl);
