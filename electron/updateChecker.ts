@@ -69,22 +69,27 @@ function isNewerVersion(candidate: string, current: string) {
 	return false;
 }
 
-function getPreferredAssetName() {
+function getPreferredAssetMatchers() {
 	if (process.platform === "darwin") {
-		return process.arch === "arm64"
-			? "docsie-screen-recorder-mac-arm64.dmg"
-			: "docsie-screen-recorder-mac-x64.dmg";
+		const arch = process.arch === "arm64" ? "arm64" : "x64";
+		return [
+			(name: string) => name === `docsie-screen-recorder-mac-${arch}.dmg`,
+			(name: string) => name.includes("mac") && name.includes(arch) && name.endsWith(".dmg"),
+		];
 	}
 
 	if (process.platform === "win32") {
-		return "Docsie.Screen.Recorder.Setup.exe";
+		return [
+			(name: string) =>
+				name.endsWith(".exe") && name.includes("setup") && !name.endsWith(".blockmap"),
+		];
 	}
 
 	if (process.platform === "linux") {
-		return "Docsie.Screen.Recorder-Linux.AppImage";
+		return [(name: string) => name.includes("linux") && name.endsWith(".appimage")];
 	}
 
-	return null;
+	return [];
 }
 
 function asString(value: unknown) {
@@ -92,14 +97,18 @@ function asString(value: unknown) {
 }
 
 function getPreferredDownloadUrl(release: GitHubRelease) {
-	const preferredAssetName = getPreferredAssetName();
+	const preferredAssetMatchers = getPreferredAssetMatchers();
 	const assets = Array.isArray(release.assets) ? release.assets : [];
 
-	if (preferredAssetName) {
+	for (const matchesAsset of preferredAssetMatchers) {
 		for (const asset of assets) {
 			const entry = asset as GitHubReleaseAsset;
-			if (asString(entry.name) === preferredAssetName) {
-				return asString(entry.browser_download_url);
+			const assetName = asString(entry.name)?.toLowerCase();
+			if (assetName && matchesAsset(assetName)) {
+				const downloadUrl = asString(entry.browser_download_url);
+				if (downloadUrl) {
+					return downloadUrl;
+				}
 			}
 		}
 	}
