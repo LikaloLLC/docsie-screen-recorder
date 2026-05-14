@@ -54,6 +54,8 @@ jobs:
       mac_arch_matrix: ${{ steps.meta.outputs.mac_arch_matrix }}
       mac_signing_enabled: ${{ steps.meta.outputs.mac_signing_enabled }}
       mac_notarization_enabled: ${{ steps.meta.outputs.mac_notarization_enabled }}
+      mac_codesign_identity: ${{ steps.meta.outputs.mac_codesign_identity }}
+      apple_team_id: ${{ steps.meta.outputs.apple_team_id }}
       s3_prefix: ${{ steps.meta.outputs.s3_prefix }}
     steps:
       - name: Checkout code
@@ -72,6 +74,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          DEFAULT_MAC_CODESIGN_IDENTITY: "Developer ID Application: Docsie Inc. (KQ433V54UU)"
+          DEFAULT_APPLE_TEAM_ID: "KQ433V54UU"
           RELEASE_S3_BUCKET: ${{ vars.RELEASE_S3_BUCKET }}
           RELEASE_S3_PREFIX: ${{ vars.RELEASE_S3_PREFIX }}
           AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
@@ -125,14 +129,22 @@ jobs:
             exit 1
           fi
 
+          RESOLVED_MAC_CODESIGN_IDENTITY="${MAC_CODESIGN_IDENTITY:-$DEFAULT_MAC_CODESIGN_IDENTITY}"
+          RESOLVED_APPLE_TEAM_ID="${APPLE_TEAM_ID:-$DEFAULT_APPLE_TEAM_ID}"
+
           MAC_SIGNING_ENABLED=false
-          if [[ -n "$MAC_CERTIFICATE_P12" && -n "$MAC_CERTIFICATE_PASSWORD" && -n "$MAC_CODESIGN_IDENTITY" ]]; then
+          if [[ -n "$MAC_CERTIFICATE_P12" && -n "$MAC_CERTIFICATE_PASSWORD" && -n "$RESOLVED_MAC_CODESIGN_IDENTITY" ]]; then
             MAC_SIGNING_ENABLED=true
           fi
 
           MAC_NOTARIZATION_ENABLED=false
-          if [[ "$MAC_SIGNING_ENABLED" == "true" && -n "$APPLE_ID" && -n "$APPLE_TEAM_ID" && -n "$APPLE_APP_SPECIFIC_PASSWORD" ]]; then
+          if [[ "$MAC_SIGNING_ENABLED" == "true" && -n "$APPLE_ID" && -n "$RESOLVED_APPLE_TEAM_ID" && -n "$APPLE_APP_SPECIFIC_PASSWORD" ]]; then
             MAC_NOTARIZATION_ENABLED=true
+          fi
+
+          if [[ "$PUBLISH_TARGET" != "none" && "$MAC_NOTARIZATION_ENABLED" != "true" ]]; then
+            echo "::error::Publishing macOS releases now requires Developer ID signing and notarization. Configure MAC_CERTIFICATE_P12, MAC_CERTIFICATE_PASSWORD, APPLE_ID, and APPLE_APP_SPECIFIC_PASSWORD before publishing."
+            exit 1
           fi
 
           S3_CONFIGURED=false
@@ -174,6 +186,8 @@ jobs:
           echo "mac_arch_matrix=$MAC_ARCH_MATRIX" >> "$GITHUB_OUTPUT"
           echo "mac_signing_enabled=$MAC_SIGNING_ENABLED" >> "$GITHUB_OUTPUT"
           echo "mac_notarization_enabled=$MAC_NOTARIZATION_ENABLED" >> "$GITHUB_OUTPUT"
+          echo "mac_codesign_identity=$RESOLVED_MAC_CODESIGN_IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "apple_team_id=$RESOLVED_APPLE_TEAM_ID" >> "$GITHUB_OUTPUT"
           echo "s3_prefix=$NORMALIZED_S3_PREFIX" >> "$GITHUB_OUTPUT"
 
   build-windows:
@@ -305,7 +319,7 @@ jobs:
       - name: Package macOS app bundle
         run: npx electron-builder --mac --${{ matrix.arch }} --dir
         env:
-          CSC_NAME: ${{ secrets.MAC_CODESIGN_IDENTITY }}
+          CSC_NAME: ${{ needs.prepare.outputs.mac_signing_enabled == 'true' && needs.prepare.outputs.mac_codesign_identity || '' }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ needs.prepare.outputs.mac_signing_enabled == 'true' && 'true' || 'false' }}
 
       - name: Find .app bundle
@@ -364,7 +378,7 @@ jobs:
         if: ${{ needs.prepare.outputs.mac_signing_enabled == 'true' }}
         run: |
           codesign --force \
-            --sign "${{ secrets.MAC_CODESIGN_IDENTITY }}" \
+            --sign "${{ needs.prepare.outputs.mac_codesign_identity }}" \
             --timestamp \
             "${{ steps.dmg.outputs.dmg_path }}"
 
@@ -373,7 +387,7 @@ jobs:
         run: |
           xcrun notarytool submit "${{ steps.dmg.outputs.dmg_path }}" \
             --apple-id "${{ secrets.APPLE_ID }}" \
-            --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --team-id "${{ needs.prepare.outputs.apple_team_id }}" \
             --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" \
             --wait
         timeout-minutes: 20

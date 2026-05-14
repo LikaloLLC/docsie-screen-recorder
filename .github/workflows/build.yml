@@ -46,6 +46,9 @@ jobs:
 
   build-macos:
     runs-on: macos-latest
+    env:
+      DEFAULT_MAC_CODESIGN_IDENTITY: "Developer ID Application: Docsie Inc. (KQ433V54UU)"
+      DEFAULT_APPLE_TEAM_ID: "KQ433V54UU"
     strategy:
       matrix:
         arch: ${{ github.event.inputs.arch == 'both' && fromJSON('["arm64", "x64"]') || fromJSON(format('["{0}"]', github.event.inputs.arch)) }}
@@ -72,15 +75,51 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install app dependencies
+        run: npx electron-builder install-app-deps
+
+      - name: Resolve macOS signing settings
+        id: mac_signing
+        env:
+          MAC_CERTIFICATE_P12: ${{ secrets.MAC_CERTIFICATE_P12 }}
+          MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          MAC_CODESIGN_IDENTITY: ${{ secrets.MAC_CODESIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          RESOLVED_MAC_CODESIGN_IDENTITY="${MAC_CODESIGN_IDENTITY:-$DEFAULT_MAC_CODESIGN_IDENTITY}"
+          RESOLVED_APPLE_TEAM_ID="${APPLE_TEAM_ID:-$DEFAULT_APPLE_TEAM_ID}"
+
+          SIGNING_ENABLED=false
+          if [[ -n "$MAC_CERTIFICATE_P12" && -n "$MAC_CERTIFICATE_PASSWORD" && -n "$RESOLVED_MAC_CODESIGN_IDENTITY" ]]; then
+            SIGNING_ENABLED=true
+          fi
+
+          NOTARIZATION_ENABLED=false
+          if [[ "$SIGNING_ENABLED" == "true" && -n "$APPLE_ID" && -n "$RESOLVED_APPLE_TEAM_ID" && -n "$APPLE_APP_SPECIFIC_PASSWORD" ]]; then
+            NOTARIZATION_ENABLED=true
+          fi
+
+          echo "signing_enabled=$SIGNING_ENABLED" >> "$GITHUB_OUTPUT"
+          echo "notarization_enabled=$NOTARIZATION_ENABLED" >> "$GITHUB_OUTPUT"
+          echo "codesign_identity=$RESOLVED_MAC_CODESIGN_IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "apple_team_id=$RESOLVED_APPLE_TEAM_ID" >> "$GITHUB_OUTPUT"
+
       # ─── Import Code Signing Certificate ──────────────────────
       # This is the KEY step that makes CI signing work.
       # We create a temporary keychain, import the .p12 cert into it,
       # and set it as the default so codesign can find it.
       - name: Import code signing certificate
+        if: ${{ steps.mac_signing.outputs.signing_enabled == 'true' }}
         env:
           MAC_CERTIFICATE_P12: ${{ secrets.MAC_CERTIFICATE_P12 }}
           MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
         run: |
+          set -euo pipefail
+
           # Create a temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain-db
           KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
@@ -121,7 +160,8 @@ jobs:
       - name: Package .app bundle
         run: npx electron-builder --mac --${{ matrix.arch }} --dir
         env:
-          CSC_NAME: "Samir Patil (N26FZ4GW28)"
+          CSC_NAME: ${{ steps.mac_signing.outputs.signing_enabled == 'true' && steps.mac_signing.outputs.codesign_identity || '' }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.mac_signing.outputs.signing_enabled == 'true' && 'true' || 'false' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ─── Read version from package.json ───────────────────────
@@ -147,6 +187,7 @@ jobs:
 
       # ─── Verify .app signature ────────────────────────────────
       - name: Verify .app code signature
+        if: ${{ steps.mac_signing.outputs.signing_enabled == 'true' }}
         run: codesign --verify --deep --strict "${{ steps.find_app.outputs.app_bundle }}"
 
       # ─── Create DMG ───────────────────────────────────────────
@@ -155,7 +196,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           ARCH="${{ matrix.arch }}"
-          DMG_NAME="Openscreen-Mac-${ARCH}-${VERSION}.dmg"
+          DMG_NAME="docsie-screen-recorder-mac-${ARCH}-${VERSION}.dmg"
           RELEASE_DIR="release/${VERSION}"
           DMG_OUTPUT="${RELEASE_DIR}/${DMG_NAME}"
           STAGING="${RELEASE_DIR}/dmg-staging"
@@ -166,7 +207,7 @@ jobs:
 
           hdiutil create \
             -srcfolder "$STAGING" \
-            -volname "Openscreen" \
+            -volname "Docsie Screen Recorder" \
             -fs HFS+ \
             -fsargs "-c c=64,a=16,e=16" \
             -format UDBZ \
@@ -179,9 +220,10 @@ jobs:
 
       # ─── Sign DMG ─────────────────────────────────────────────
       - name: Sign DMG
+        if: ${{ steps.mac_signing.outputs.signing_enabled == 'true' }}
         run: |
           codesign --force \
-            --sign "Developer ID Application: Samir Patil (N26FZ4GW28)" \
+            --sign "${{ steps.mac_signing.outputs.codesign_identity }}" \
             --timestamp \
             "${{ steps.dmg.outputs.dmg_path }}"
 
@@ -189,20 +231,23 @@ jobs:
       # On CI we can't use keychain profiles for notarytool, so we
       # pass credentials directly via env vars / flags
       - name: Notarize DMG
+        if: ${{ steps.mac_signing.outputs.notarization_enabled == 'true' }}
         run: |
           xcrun notarytool submit "${{ steps.dmg.outputs.dmg_path }}" \
             --apple-id "${{ secrets.APPLE_ID }}" \
-            --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --team-id "${{ steps.mac_signing.outputs.apple_team_id }}" \
             --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" \
             --wait
         timeout-minutes: 15
 
       # ─── Staple ───────────────────────────────────────────────
       - name: Staple notarization ticket
+        if: ${{ steps.mac_signing.outputs.notarization_enabled == 'true' }}
         run: xcrun stapler staple "${{ steps.dmg.outputs.dmg_path }}"
 
       # ─── Validate ─────────────────────────────────────────────
       - name: Validate stapled DMG
+        if: ${{ steps.mac_signing.outputs.notarization_enabled == 'true' }}
         run: |
           xcrun stapler validate "${{ steps.dmg.outputs.dmg_path }}"
           spctl -a -vv -t install "${{ steps.dmg.outputs.dmg_path }}"
@@ -217,7 +262,7 @@ jobs:
 
       # ─── Cleanup Keychain ─────────────────────────────────────
       - name: Cleanup keychain
-        if: always()
+        if: ${{ always() && steps.mac_signing.outputs.signing_enabled == 'true' }}
         run: security delete-keychain $RUNNER_TEMP/build.keychain-db || true
 
   build-linux:

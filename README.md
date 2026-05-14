@@ -78,11 +78,17 @@ Build the macOS app:
 npm run build:mac
 ```
 
+Set up macOS release signing after exporting the Docsie `Developer ID Application` certificate as a `.p12`:
+
+```bash
+npm run signing:setup -- --p12 /path/to/DeveloperIDApplication.p12 --apple-id "<apple-id>"
+```
+
 Useful output paths after a mac build:
 
-- Apple Silicon app bundle: `release/1.3.1/mac-arm64/Docsie - Screen Recorder.app`
-- Intel app bundle: `release/1.3.1/mac/Docsie - Screen Recorder.app`
-- DMGs: `release/1.3.1/*.dmg`
+- Apple Silicon app bundle: `release/<version>/mac-arm64/Docsie Screen Recorder.app`
+- Intel app bundle: `release/<version>/mac/Docsie Screen Recorder.app`
+- DMGs: `release/<version>/*.dmg`
 
 Create a new patch release:
 
@@ -98,14 +104,14 @@ If the app opens but shows `Screens (0)` and `Windows (0)`, macOS screen capture
 
 1. Launch the app once.
 2. In the source picker, click `Open Settings`.
-3. Enable `Docsie - Screen Recorder` in `System Settings -> Privacy & Security -> Screen & System Audio Recording`.
+3. Enable `Docsie Screen Recorder` in `System Settings -> Privacy & Security -> Screen & System Audio Recording`.
 4. Fully quit the app.
 5. Reopen it.
 
-If Gatekeeper blocks the app on first launch, remove quarantine and retry:
+Official release DMGs are expected to be Developer ID signed and notarized. If Gatekeeper blocks an unsigned local test build, remove quarantine and retry:
 
 ```bash
-xattr -dr com.apple.quarantine "release/1.3.1/mac-arm64/Docsie - Screen Recorder.app"
+xattr -dr com.apple.quarantine "release/<version>/mac-arm64/Docsie Screen Recorder.app"
 ```
 
 ### Licensing Model
@@ -141,10 +147,10 @@ If you are developing locally, prefer the `Docsie Quick Start` section above ins
 
 ### macOS
 
-If you encounter issues with macOS Gatekeeper blocking the app (the current build is not Developer ID signed or notarized), you can bypass this by running the following command in your terminal after installation:
+Current release builds should be Developer ID signed and notarized. If you are testing an unsigned local build and macOS Gatekeeper blocks the app, you can bypass this by running the following command in your terminal after installation:
 
 ```bash
-xattr -rd com.apple.quarantine /Applications/Docsie\ -\ Screen\ Recorder.app
+xattr -rd com.apple.quarantine /Applications/Docsie\ Screen\ Recorder.app
 ```
 
 Note: Give your terminal Full Disk Access in **System Settings > Privacy & Security** to grant you access and then run the above command.

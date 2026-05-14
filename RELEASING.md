@@ -85,16 +85,60 @@ GitHub Releases:
 
 - none beyond the default `GITHUB_TOKEN`
 
-Optional macOS signing/notarization:
+macOS signing/notarization:
 
 - `MAC_CERTIFICATE_P12`: base64-encoded Developer ID `.p12`
 - `MAC_CERTIFICATE_PASSWORD`
-- `MAC_CODESIGN_IDENTITY`: full signing identity string
+- `MAC_CODESIGN_IDENTITY`: full signing identity string. Defaults to `Developer ID Application: Docsie Inc. (KQ433V54UU)` when omitted.
 - `APPLE_ID`
-- `APPLE_TEAM_ID`
+- `APPLE_TEAM_ID`: Docsie team ID. Defaults to `KQ433V54UU` when omitted.
 - `APPLE_APP_SPECIFIC_PASSWORD`
 
-If those macOS secrets are missing, the workflow still builds DMGs, but they will not be signed or notarized.
+Published releases require signed and notarized macOS DMGs. If those macOS secrets are missing, `.github/workflows/release.yml` fails before publishing. Use `publish_target: none` or the manual build workflow only when you intentionally need unsigned test artifacts.
+
+## macOS Signing Setup
+
+Use the Docsie Apple Developer organization account to create a `Developer ID Application` certificate, then export it from Keychain Access as a password-protected `.p12`.
+
+Convert the exported certificate for GitHub Actions:
+
+```bash
+base64 -i DeveloperIDApplication.p12 | pbcopy
+```
+
+Add the copied value as `MAC_CERTIFICATE_P12`, add the export password as `MAC_CERTIFICATE_PASSWORD`, and add the Apple account email plus an app-specific password as `APPLE_ID` and `APPLE_APP_SPECIFIC_PASSWORD`.
+
+You can also let the setup helper write all GitHub secrets and the local notary profile:
+
+```bash
+npm run signing:setup -- --p12 /path/to/DeveloperIDApplication.p12 --apple-id "<apple-id>"
+```
+
+The helper prompts for the `.p12` export password and Apple app-specific password without echoing them.
+
+The default signing metadata is:
+
+```text
+APPLE_TEAM_ID=KQ433V54UU
+MAC_CODESIGN_IDENTITY=Developer ID Application: Docsie Inc. (KQ433V54UU)
+```
+
+Set those explicitly as GitHub secrets if the certificate common name differs from the default.
+
+For a signed local macOS build, copy `.env.example` to `.env`, fill in `APPLE_ID`, then store notary credentials once:
+
+```bash
+xcrun notarytool store-credentials "Docsie-notary" \
+  --apple-id "<apple-id>" \
+  --team-id "KQ433V54UU" \
+  --password "<app-specific-password>"
+```
+
+Then run:
+
+```bash
+RELEASE_SIGN_MACOS=1 npm run release:local
+```
 
 Optional S3 publish:
 

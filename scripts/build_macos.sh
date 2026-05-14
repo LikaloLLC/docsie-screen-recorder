@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# OpenScreen macOS Build Script
-# Produces: release/<version>/OpenScreen-Mac-<arch>-<version>.dmg
+# Docsie Screen Recorder macOS Build Script
+# Produces: release/<version>/docsie-screen-recorder-mac-<arch>-<version>.dmg
 #
 # Usage: chmod +x scripts/build_macos.sh && ./scripts/build_macos.sh
 #
@@ -17,9 +17,7 @@ if [ -f "$ENV_FILE" ]; then
     source "$ENV_FILE"
     set +a
 else
-    echo "ERROR: .env file not found at ${ENV_FILE}"
-    echo "Create one with APP_NAME, SIGN_IDENTITY, NOTARY_PROFILE, etc."
-    exit 1
+    echo "No .env file found at ${ENV_FILE}; using shell environment and Docsie defaults."
 fi
 
 # ── Config ────────────────────────────────────────────────────────────
@@ -27,6 +25,19 @@ VERSION=$(node -p "require('${PROJECT_ROOT}/package.json').version")
 RELEASE_DIR="${PROJECT_ROOT}/release/${VERSION}"
 ENTITLEMENTS="${PROJECT_ROOT}/macos.entitlements"
 ARCHS=("arm64" "x64")
+DEFAULT_APP_NAME="Docsie Screen Recorder"
+DEFAULT_APP_ARTIFACT_BASENAME="docsie-screen-recorder"
+DEFAULT_APPLE_TEAM_ID="KQ433V54UU"
+DEFAULT_SIGN_IDENTITY="Developer ID Application: Docsie Inc. (${DEFAULT_APPLE_TEAM_ID})"
+
+APP_NAME="${APP_NAME:-$DEFAULT_APP_NAME}"
+APP_ARTIFACT_BASENAME="${APP_ARTIFACT_BASENAME:-$DEFAULT_APP_ARTIFACT_BASENAME}"
+APPLE_ID="${APPLE_ID:-}"
+APPLE_TEAM_ID="${APPLE_TEAM_ID:-${TEAM_ID:-$DEFAULT_APPLE_TEAM_ID}}"
+TEAM_ID="${TEAM_ID:-$APPLE_TEAM_ID}"
+SIGN_IDENTITY="${SIGN_IDENTITY:-$DEFAULT_SIGN_IDENTITY}"
+CSC_NAME="${CSC_NAME:-$SIGN_IDENTITY}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-Docsie-notary}"
 
 # ── Colors ────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -77,7 +88,7 @@ print_ok "Signing identity found: ${SIGN_IDENTITY}"
 # Check notary profile
 if ! xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" &> /dev/null; then
     print_err "Notary profile '${NOTARY_PROFILE}' not found in keychain."
-    print_err "Run: xcrun notarytool store-credentials \"${NOTARY_PROFILE}\" --apple-id \"${APPLE_ID}\" --team-id \"${TEAM_ID}\""
+    print_err "Run: xcrun notarytool store-credentials \"${NOTARY_PROFILE}\" --apple-id \"${APPLE_ID:-<apple-id>}\" --team-id \"${TEAM_ID}\""
     exit 1
 fi
 print_ok "Notary profile found: ${NOTARY_PROFILE}"
@@ -139,7 +150,7 @@ for ARCH in "${ARCHS[@]}"; do
     print_ok "[${ARCH}] .app signature verified"
 
     # ── Create DMG ────────────────────────────────────────────────
-    DMG_NAME="${APP_NAME}-Mac-${ARCH}-${VERSION}.dmg"
+    DMG_NAME="${APP_ARTIFACT_BASENAME}-mac-${ARCH}-${VERSION}.dmg"
     DMG_OUTPUT="${RELEASE_DIR}/${DMG_NAME}"
     DMG_STAGING="${RELEASE_DIR}/dmg-staging-${ARCH}"
 
@@ -201,7 +212,7 @@ echo -e "${GREEN}${BOLD}══════════════════�
 echo ""
 
 for ARCH in "${ARCHS[@]}"; do
-    DMG_NAME="${APP_NAME}-Mac-${ARCH}-${VERSION}.dmg"
+    DMG_NAME="${APP_ARTIFACT_BASENAME}-mac-${ARCH}-${VERSION}.dmg"
     DMG_PATH="${RELEASE_DIR}/${DMG_NAME}"
     if [ -f "$DMG_PATH" ]; then
         DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1)
