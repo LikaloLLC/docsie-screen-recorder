@@ -402,7 +402,7 @@ jobs:
             --team-id "$TEAM_ID" \
             --password "$APPLE_APP_SPECIFIC_PASSWORD" \
             --wait
-        timeout-minutes: 20
+        timeout-minutes: 60
 
       - name: Staple notarization ticket
         if: ${{ needs.prepare.outputs.mac_notarization_enabled == 'true' }}
