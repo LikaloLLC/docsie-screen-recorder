@@ -208,7 +208,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        shell: bash
+        run: |
+          npm ci || {
+            echo "npm ci failed; clearing cache and retrying once"
+            npm cache clean --force
+            npm ci
+          }
 
       - name: Install app dependencies
         run: npx electron-builder install-app-deps
@@ -241,7 +247,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        shell: bash
+        run: |
+          npm ci || {
+            echo "npm ci failed; clearing cache and retrying once"
+            npm cache clean --force
+            npm ci
+          }
 
       - name: Install app dependencies
         run: npx electron-builder install-app-deps
@@ -285,7 +297,13 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: npm ci
+        shell: bash
+        run: |
+          npm ci || {
+            echo "npm ci failed; clearing cache and retrying once"
+            npm cache clean --force
+            npm ci
+          }
 
       - name: Install app dependencies
         run: npx electron-builder install-app-deps
@@ -402,7 +420,7 @@ jobs:
             --team-id "$TEAM_ID" \
             --password "$APPLE_APP_SPECIFIC_PASSWORD" \
             --wait
-        timeout-minutes: 60
+        timeout-minutes: 180
 
       - name: Staple notarization ticket
         if: ${{ needs.prepare.outputs.mac_notarization_enabled == 'true' }}
