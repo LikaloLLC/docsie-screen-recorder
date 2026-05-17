@@ -3,8 +3,10 @@ import {
 	Copy,
 	Download,
 	ExternalLink,
+	FileText,
 	Loader2,
 	LogIn,
+	Presentation,
 	RefreshCcw,
 	ShieldCheck,
 	Sparkles,
@@ -30,6 +32,8 @@ import type {
 	DocsieGenerationTemplate,
 	DocsieIntegrationState,
 	DocsieOutputFormat,
+	DocsiePptxImageQuality,
+	DocsiePptxOptions,
 	DocsieVideoToDocsDocStyle,
 	DocsieVideoToDocsHistoryEntry,
 	DocsieVideoToDocsJobResult,
@@ -69,11 +73,14 @@ const DOC_STYLE_OPTIONS: DocsieVideoToDocsDocStyle[] = [
 	"policy",
 ];
 
-const GENERATION_OUTPUT_FORMATS: DocsieOutputFormat[] = ["md", "docx", "pdf"];
-const EXPORT_FORMATS = ["docx", "pdf"] as const;
+const DOCS_OUTPUT_FORMATS: DocsieOutputFormat[] = ["md", "docx", "pdf"];
+const PRESENTATION_OUTPUT_FORMATS: DocsieOutputFormat[] = ["md", "pptx"];
+const EXPORT_FORMATS = ["docx", "pdf", "pptx"] as const;
 const STATUS_MESSAGE_MAX_LENGTH = 360;
+const DEFAULT_PPTX_MAX_SLIDES = 12;
 
 type PublishPhase = "idle" | "starting" | "analysis" | "generation" | "completed" | "failed";
+type DocsieArtifactMode = "docs" | "presentation";
 type ExportFormat = (typeof EXPORT_FORMATS)[number];
 type ExportArtifactStatus = "queued" | "processing" | "ready" | "failed";
 
@@ -91,6 +98,7 @@ interface DocsiePublishDialogProps {
 	onOpenChange: (open: boolean) => void;
 	videoPath: string | null;
 	videoDurationSeconds?: number;
+	onCreditsChanged?: () => void | Promise<void>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -246,6 +254,50 @@ function normalizeMarkdownFileName(title: string) {
 	return `${title.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "docsie-result"}.md`;
 }
 
+function isExportFormat(format: DocsieOutputFormat): format is ExportFormat {
+	return format !== "md";
+}
+
+function getOutputFormatsForMode(mode: DocsieArtifactMode): DocsieOutputFormat[] {
+	return mode === "presentation" ? PRESENTATION_OUTPUT_FORMATS : DOCS_OUTPUT_FORMATS;
+}
+
+function getArtifactModeFromOutputFormats(
+	outputFormats: DocsieOutputFormat[] | undefined,
+): DocsieArtifactMode {
+	if (
+		outputFormats?.includes("pptx") &&
+		!outputFormats.includes("docx") &&
+		!outputFormats.includes("pdf")
+	) {
+		return "presentation";
+	}
+	return "docs";
+}
+
+function getDocStyleForArtifactMode(
+	mode: DocsieArtifactMode,
+	docStyle: DocsieVideoToDocsDocStyle,
+	pptxDeckType: string,
+): DocsieVideoToDocsDocStyle {
+	if (mode === "docs") {
+		return docStyle;
+	}
+
+	const deckType = pptxDeckType.trim();
+	return DOC_STYLE_OPTIONS.includes(deckType as DocsieVideoToDocsDocStyle)
+		? (deckType as DocsieVideoToDocsDocStyle)
+		: "training";
+}
+
+function normalizePptxMaxSlides(value: string | number | undefined | null) {
+	const numericValue = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+	if (!Number.isFinite(numericValue)) {
+		return DEFAULT_PPTX_MAX_SLIDES;
+	}
+	return Math.min(100, Math.max(1, Math.round(numericValue)));
+}
+
 function getDocsiePersistenceLabel(jobResult: DocsieVideoToDocsJobResult | null) {
 	return [jobResult?.documentationName ?? jobResult?.bookName ?? null, jobResult?.articleId ?? null]
 		.filter(Boolean)
@@ -345,6 +397,9 @@ function normalizeExportArtifacts(
 }
 
 function getExportLabel(format: ExportFormat) {
+	if (format === "pptx") {
+		return "PowerPoint";
+	}
 	return format.toUpperCase();
 }
 
@@ -353,6 +408,7 @@ export function DocsiePublishDialog({
 	onOpenChange,
 	videoPath,
 	videoDurationSeconds,
+	onCreditsChanged,
 }: DocsiePublishDialogProps) {
 	const [apiBaseUrl, setApiBaseUrl] = useState("");
 	const [webAppUrl, setWebAppUrl] = useState(getDocsieWebAppUrl(""));
@@ -365,10 +421,20 @@ export function DocsiePublishDialog({
 	const [quality, setQuality] = useState<DocsieVideoToDocsQuality>("standard");
 	const [language, setLanguage] = useState("english");
 	const [docStyle, setDocStyle] = useState<DocsieVideoToDocsDocStyle>("guide");
+	const [artifactMode, setArtifactMode] = useState<DocsieArtifactMode>("docs");
 	const [autoGenerate, setAutoGenerate] = useState(true);
 	const [rewriteInstructions, setRewriteInstructions] = useState("");
 	const [generationTemplateId, setGenerationTemplateId] = useState("");
 	const [templateInstruction, setTemplateInstruction] = useState("");
+	const [pptxDeckType, setPptxDeckType] = useState("training");
+	const [pptxSourceName, setPptxSourceName] = useState("Screen Recorder");
+	const [pptxEnhance, setPptxEnhance] = useState("required");
+	const [pptxAudience, setPptxAudience] = useState("");
+	const [pptxMaxSlides, setPptxMaxSlides] = useState(String(DEFAULT_PPTX_MAX_SLIDES));
+	const [pptxGenerateCoverImage, setPptxGenerateCoverImage] = useState(true);
+	const [pptxImageQuality, setPptxImageQuality] = useState<DocsiePptxImageQuality>("medium");
+	const [pptxIllustrationStyle, setPptxIllustrationStyle] = useState("corporate");
+	const [pptxEmbedImages, setPptxEmbedImages] = useState(true);
 	const [targetDocumentationId, setTargetDocumentationId] = useState("");
 	const [bookTitle, setBookTitle] = useState("Video Documentation");
 	const [workspaces, setWorkspaces] = useState<DocsieWorkspace[]>([]);
@@ -407,6 +473,47 @@ export function DocsiePublishDialog({
 	const selectedGenerationTemplate = useMemo(
 		() => generationTemplates.find((template) => template.id === generationTemplateId) ?? null,
 		[generationTemplateId, generationTemplates],
+	);
+	const requestedOutputFormats = useMemo(
+		() => getOutputFormatsForMode(artifactMode),
+		[artifactMode],
+	);
+	const requestedExportFormats = useMemo(
+		() => requestedOutputFormats.filter(isExportFormat),
+		[requestedOutputFormats],
+	);
+	const visibleExportFormats = useMemo(() => {
+		const formats = [...requestedExportFormats];
+		for (const format of EXPORT_FORMATS) {
+			if (exportArtifacts[format] && !formats.includes(format)) {
+				formats.push(format);
+			}
+		}
+		return formats;
+	}, [exportArtifacts, requestedExportFormats]);
+	const pptxOptions = useMemo<DocsiePptxOptions>(
+		() => ({
+			deckType: pptxDeckType.trim() || undefined,
+			sourceName: pptxSourceName.trim() || undefined,
+			enhance: pptxEnhance.trim() || undefined,
+			audience: pptxAudience.trim() || undefined,
+			maxSlides: normalizePptxMaxSlides(pptxMaxSlides),
+			generateCoverImage: pptxGenerateCoverImage,
+			imageQuality: pptxImageQuality,
+			illustrationStyle: pptxIllustrationStyle.trim() || undefined,
+			embedImages: pptxEmbedImages,
+		}),
+		[
+			pptxAudience,
+			pptxDeckType,
+			pptxEmbedImages,
+			pptxEnhance,
+			pptxGenerateCoverImage,
+			pptxIllustrationStyle,
+			pptxImageQuality,
+			pptxMaxSlides,
+			pptxSourceName,
+		],
 	);
 	const displayedWorkspaceName = selectedWorkspace?.name ?? storedWorkspaceName;
 	const hasConnectionCredentials = hasStoredToken || Boolean(tokenInput.trim());
@@ -496,6 +603,16 @@ export function DocsiePublishDialog({
 		setTemplateInstruction(state.defaultTemplateInstruction ?? "");
 		setTargetDocumentationId(state.targetDocumentationId ?? "");
 		setAutoGenerate(state.autoGenerate);
+		setArtifactMode(getArtifactModeFromOutputFormats(state.defaultOutputFormats));
+		setPptxDeckType(state.defaultPptxOptions.deckType ?? "training");
+		setPptxSourceName(state.defaultPptxOptions.sourceName ?? "Screen Recorder");
+		setPptxEnhance(state.defaultPptxOptions.enhance ?? "required");
+		setPptxAudience(state.defaultPptxOptions.audience ?? "");
+		setPptxMaxSlides(String(normalizePptxMaxSlides(state.defaultPptxOptions.maxSlides)));
+		setPptxGenerateCoverImage(state.defaultPptxOptions.generateCoverImage ?? true);
+		setPptxImageQuality(state.defaultPptxOptions.imageQuality ?? "medium");
+		setPptxIllustrationStyle(state.defaultPptxOptions.illustrationStyle ?? "corporate");
+		setPptxEmbedImages(state.defaultPptxOptions.embedImages ?? true);
 
 		if (state.hasToken) {
 			let nextWorkspaceId = state.workspaceId ?? "";
@@ -609,8 +726,11 @@ export function DocsiePublishDialog({
 			return;
 		}
 
-		void loadCreditBalance();
-	}, [hasStoredToken, isOpen, loadCreditBalance, phase]);
+		void (async () => {
+			await loadCreditBalance();
+			await onCreditsChanged?.();
+		})();
+	}, [hasStoredToken, isOpen, loadCreditBalance, onCreditsChanged, phase]);
 
 	const persistConfig = useCallback(async () => {
 		setSavingConfig(true);
@@ -630,6 +750,8 @@ export function DocsiePublishDialog({
 				defaultTemplateInstruction: templateInstruction,
 				targetDocumentationId: targetDocumentationId.trim() || undefined,
 				autoGenerate,
+				defaultOutputFormats: requestedOutputFormats,
+				defaultPptxOptions: pptxOptions,
 			});
 
 			if (!result.success || !result.state) {
@@ -656,7 +778,9 @@ export function DocsiePublishDialog({
 		generationTemplateId,
 		language,
 		organizationName,
+		pptxOptions,
 		quality,
+		requestedOutputFormats,
 		rewriteInstructions,
 		selectedWorkspace?.name,
 		storedWorkspaceName,
@@ -680,6 +804,8 @@ export function DocsiePublishDialog({
 				rewriteInstructions,
 				targetDocumentationId,
 				autoGenerate,
+				outputFormats: requestedOutputFormats,
+				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
 			},
 		);
 
@@ -692,11 +818,14 @@ export function DocsiePublishDialog({
 		toast.success("Opened Docsie sign-in in your browser");
 	}, [
 		apiBaseUrl,
+		artifactMode,
 		autoGenerate,
 		docStyle,
 		generationTemplateId,
 		language,
+		pptxOptions,
 		quality,
+		requestedOutputFormats,
 		rewriteInstructions,
 		targetDocumentationId,
 		templateInstruction,
@@ -717,6 +846,8 @@ export function DocsiePublishDialog({
 				rewriteInstructions,
 				targetDocumentationId,
 				autoGenerate,
+				outputFormats: requestedOutputFormats,
+				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
 			},
 		);
 
@@ -729,11 +860,14 @@ export function DocsiePublishDialog({
 		toast.success("Opened Docsie sign-up in your browser");
 	}, [
 		apiBaseUrl,
+		artifactMode,
 		autoGenerate,
 		docStyle,
 		generationTemplateId,
 		language,
+		pptxOptions,
 		quality,
+		requestedOutputFormats,
 		rewriteInstructions,
 		targetDocumentationId,
 		templateInstruction,
@@ -780,18 +914,24 @@ export function DocsiePublishDialog({
 
 	const runGeneration = useCallback(
 		async (sourceJobId: string) => {
-			setBusyMessage("Docsie is generating markdown, PDF, and DOCX output.");
+			setBusyMessage(
+				artifactMode === "presentation"
+					? "Docsie is generating markdown and a PowerPoint deck."
+					: "Docsie is generating markdown, PDF, and DOCX output.",
+			);
 
 			const result = await window.electronAPI.docsieGenerateVideoToDocs({
 				jobId: sourceJobId,
-				docStyle,
+				docStyle: getDocStyleForArtifactMode(artifactMode, docStyle, pptxDeckType),
 				rewriteInstructions,
-				generationTemplateId: generationTemplateId || undefined,
-				templateInstruction,
+				generationTemplateId:
+					artifactMode === "docs" ? generationTemplateId || undefined : undefined,
+				templateInstruction: artifactMode === "docs" ? templateInstruction : undefined,
 				targetLanguage: language,
 				targetDocumentationId: targetDocumentationId.trim() || undefined,
 				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
-				outputFormats: GENERATION_OUTPUT_FORMATS,
+				outputFormats: requestedOutputFormats,
+				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
 			});
 
 			if (!result.success || !result.generateJobId) {
@@ -801,14 +941,22 @@ export function DocsiePublishDialog({
 			setGenerationJobId(result.generateJobId);
 			setActiveJobId(result.generateJobId);
 			setPhase("generation");
-			setBusyMessage("Docsie is building the finished documentation and export files.");
+			setBusyMessage(
+				artifactMode === "presentation"
+					? "Docsie is building the presentation and export file."
+					: "Docsie is building the finished documentation and export files.",
+			);
 			toast.success("Docsie generation started");
 		},
 		[
+			artifactMode,
 			bookTitle,
 			docStyle,
 			generationTemplateId,
 			language,
+			pptxDeckType,
+			pptxOptions,
+			requestedOutputFormats,
 			rewriteInstructions,
 			targetDocumentationId,
 			templateInstruction,
@@ -873,7 +1021,9 @@ export function DocsiePublishDialog({
 			setBusyMessage(
 				phase === "analysis"
 					? "Docsie finished the analysis. You can generate the final docs when ready."
-					: "Docsie finished converting this recording into documentation.",
+					: artifactMode === "presentation"
+						? "Docsie finished converting this recording into a presentation."
+						: "Docsie finished converting this recording into documentation.",
 			);
 		};
 
@@ -886,7 +1036,7 @@ export function DocsiePublishDialog({
 			cancelled = true;
 			window.clearInterval(intervalId);
 		};
-	}, [activeJobId, autoGenerate, isOpen, phase, runGeneration]);
+	}, [activeJobId, artifactMode, autoGenerate, isOpen, phase, runGeneration]);
 
 	useEffect(() => {
 		const baseArtifacts = normalizeExportArtifacts(jobResult?.exports);
@@ -898,7 +1048,9 @@ export function DocsiePublishDialog({
 
 		let cancelled = false;
 		let timeoutId: number | null = null;
-		let currentArtifacts: Partial<Record<ExportFormat, ExportArtifact>> = { ...baseArtifacts };
+		let currentArtifacts: Partial<Record<ExportFormat, ExportArtifact>> = {
+			...baseArtifacts,
+		};
 
 		const pollExports = async () => {
 			const updatedArtifacts: Partial<Record<ExportFormat, ExportArtifact>> = {
@@ -1002,10 +1154,14 @@ export function DocsiePublishDialog({
 				docStyle,
 				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
 				targetDocumentationId: targetDocumentationId.trim() || undefined,
-				generationTemplateId: generationTemplateId || undefined,
-				generationTemplateName: selectedGenerationTemplate?.name,
-				templateInstruction,
+				generationTemplateId:
+					artifactMode === "docs" ? generationTemplateId || undefined : undefined,
+				generationTemplateName:
+					artifactMode === "docs" ? selectedGenerationTemplate?.name : undefined,
+				templateInstruction: artifactMode === "docs" ? templateInstruction : undefined,
 				rewriteInstructions,
+				outputFormats: requestedOutputFormats,
+				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
 				analysisJobId: analysisJobId ?? undefined,
 				generationJobId: generationJobId ?? undefined,
 				jobResult,
@@ -1032,6 +1188,7 @@ export function DocsiePublishDialog({
 			});
 	}, [
 		analysisJobId,
+		artifactMode,
 		bookTitle,
 		docStyle,
 		generationTemplateId,
@@ -1040,7 +1197,9 @@ export function DocsiePublishDialog({
 		jobResult,
 		language,
 		phase,
+		pptxOptions,
 		quality,
+		requestedOutputFormats,
 		rewriteInstructions,
 		selectedGenerationTemplate?.name,
 		targetDocumentationId,
@@ -1090,6 +1249,8 @@ export function DocsiePublishDialog({
 			defaultTemplateInstruction: templateInstruction,
 			targetDocumentationId: generatedShelfId,
 			autoGenerate,
+			defaultOutputFormats: requestedOutputFormats,
+			defaultPptxOptions: pptxOptions,
 		});
 	}, [
 		apiBaseUrl,
@@ -1103,7 +1264,9 @@ export function DocsiePublishDialog({
 		language,
 		organizationName,
 		phase,
+		pptxOptions,
 		quality,
+		requestedOutputFormats,
 		rewriteInstructions,
 		selectedWorkspace?.name,
 		storedWorkspaceName,
@@ -1139,13 +1302,16 @@ export function DocsiePublishDialog({
 				quality,
 				language,
 				workspaceId,
-				docStyle,
+				docStyle: getDocStyleForArtifactMode(artifactMode, docStyle, pptxDeckType),
 				rewriteInstructions,
-				generationTemplateId: generationTemplateId || undefined,
-				templateInstruction,
+				generationTemplateId:
+					artifactMode === "docs" ? generationTemplateId || undefined : undefined,
+				templateInstruction: artifactMode === "docs" ? templateInstruction : undefined,
 				targetDocumentationId: targetDocumentationId.trim() || undefined,
 				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
 				autoGenerate: false,
+				outputFormats: requestedOutputFormats,
+				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
 			});
 
 			if (!result.success || !result.jobId) {
@@ -1157,7 +1323,9 @@ export function DocsiePublishDialog({
 			setPhase("analysis");
 			setBusyMessage(
 				autoGenerate
-					? "Docsie accepted the recording. Analysis is running before docs generation."
+					? artifactMode === "presentation"
+						? "Docsie accepted the recording. Analysis is running before presentation generation."
+						: "Docsie accepted the recording. Analysis is running before docs generation."
 					: "Docsie accepted the recording. Analysis is running.",
 			);
 			toast.success("Recording sent to Docsie");
@@ -1168,6 +1336,7 @@ export function DocsiePublishDialog({
 			toast.error(message);
 		}
 	}, [
+		artifactMode,
 		autoGenerate,
 		bookTitle,
 		docStyle,
@@ -1175,7 +1344,10 @@ export function DocsiePublishDialog({
 		hasConnectionCredentials,
 		language,
 		persistConfig,
+		pptxDeckType,
+		pptxOptions,
 		quality,
+		requestedOutputFormats,
 		rewriteInstructions,
 		targetDocumentationId,
 		templateInstruction,
@@ -1220,6 +1392,25 @@ export function DocsiePublishDialog({
 		setJobStatus(null);
 		setJobResult(entry.jobResult);
 		setExportArtifacts(normalizeExportArtifacts(entry.jobResult.exports));
+		setArtifactMode(
+			getArtifactModeFromOutputFormats(
+				entry.outputFormats ??
+					(entry.jobResult.exports && "pptx" in entry.jobResult.exports
+						? PRESENTATION_OUTPUT_FORMATS
+						: DOCS_OUTPUT_FORMATS),
+			),
+		);
+		if (entry.pptxOptions) {
+			setPptxDeckType(entry.pptxOptions.deckType ?? "training");
+			setPptxSourceName(entry.pptxOptions.sourceName ?? "Screen Recorder");
+			setPptxEnhance(entry.pptxOptions.enhance ?? "required");
+			setPptxAudience(entry.pptxOptions.audience ?? "");
+			setPptxMaxSlides(String(normalizePptxMaxSlides(entry.pptxOptions.maxSlides)));
+			setPptxGenerateCoverImage(entry.pptxOptions.generateCoverImage ?? true);
+			setPptxImageQuality(entry.pptxOptions.imageQuality ?? "medium");
+			setPptxIllustrationStyle(entry.pptxOptions.illustrationStyle ?? "corporate");
+			setPptxEmbedImages(entry.pptxOptions.embedImages ?? true);
+		}
 		setAnalysisJobId(entry.analysisJobId ?? null);
 		setGenerationJobId(entry.generationJobId ?? entry.jobResult.jobId ?? null);
 		setActiveJobId(null);
@@ -1285,6 +1476,9 @@ export function DocsiePublishDialog({
 	const showAnalysisScreen = phase !== "idle" || Boolean(jobResult) || Boolean(activeJobId);
 	const showAdvancedOutputs = isWorking || phase === "completed";
 	const recordingSummary = videoPath ? videoPath.split("/").pop() : "No loaded recording";
+	const artifactLabel = artifactMode === "presentation" ? "Presentation" : "Docs";
+	const artifactActionLabel =
+		artifactMode === "presentation" ? "Create Presentation" : "Convert Video To Docs";
 	const docsiePersistenceLabel = getDocsiePersistenceLabel(jobResult);
 	const statusMessage = formatStatusMessage(
 		busyMessage ?? "Docsie is preparing the current recording.",
@@ -1302,11 +1496,12 @@ export function DocsiePublishDialog({
 			? "Open In Docsie"
 			: phase === "failed"
 				? "Run Analysis Again"
-				: "Convert Video To Docs";
+				: artifactActionLabel;
 	const compactSummary = [
 		hasStoredToken
 			? displayedWorkspaceName || organizationName || "Docsie connected"
 			: "Sign in required",
+		artifactLabel,
 		recordingSummary,
 		typeof videoDurationSeconds === "number" && videoDurationSeconds > 0
 			? formatDuration(videoDurationSeconds)
@@ -1332,6 +1527,57 @@ export function DocsiePublishDialog({
 		await handleStart();
 	}, [handleConnect, handleOpenResult, handleStart, hasStoredToken, isWorking, jobResult, phase]);
 
+	const artifactModeSelector = (
+		<div className="grid gap-2 sm:grid-cols-2">
+			{[
+				{
+					mode: "docs" as const,
+					label: "Docs",
+					description: "Markdown, DOCX, and PDF",
+					icon: FileText,
+				},
+				{
+					mode: "presentation" as const,
+					label: "Presentation",
+					description: "Markdown and PowerPoint",
+					icon: Presentation,
+				},
+			].map((option) => {
+				const Icon = option.icon;
+				const selected = artifactMode === option.mode;
+				return (
+					<button
+						key={option.mode}
+						type="button"
+						onClick={() => setArtifactMode(option.mode)}
+						disabled={isWorking}
+						className={cn(
+							"flex min-h-20 items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors",
+							selected
+								? "border-[#FF6738] bg-[rgba(255,103,56,0.14)] text-[#fff0e4]"
+								: "border-white/10 bg-[#17110f] text-[#c6b4a8] hover:bg-white/5",
+						)}
+					>
+						<span
+							className={cn(
+								"flex h-10 w-10 shrink-0 items-center justify-center rounded-full border",
+								selected
+									? "border-[rgba(255,103,56,0.34)] bg-[rgba(255,103,56,0.18)] text-[#FEA85E]"
+									: "border-white/10 bg-white/5 text-[#8f7e73]",
+							)}
+						>
+							<Icon className="h-5 w-5" />
+						</span>
+						<span className="min-w-0">
+							<span className="block text-sm font-semibold">{option.label}</span>
+							<span className="mt-0.5 block text-xs text-[#8f7e73]">{option.description}</span>
+						</span>
+					</button>
+				);
+			})}
+		</div>
+	);
+
 	const statusPanel = (
 		<div className="rounded-3xl border border-[rgba(254,168,94,0.16)] bg-[radial-gradient(circle_at_top,rgba(255,103,56,0.18),transparent_42%),linear-gradient(135deg,#241917_0%,#17110f_100%)] p-6">
 			<div className="flex items-center gap-3">
@@ -1356,7 +1602,11 @@ export function DocsiePublishDialog({
 					)}
 				</div>
 				<div>
-					<div className="text-lg font-semibold text-[#fff0e4]">{formatJobPhase(phase)}</div>
+					<div className="text-lg font-semibold text-[#fff0e4]">
+						{phase === "generation" && artifactMode === "presentation"
+							? "Building presentation"
+							: formatJobPhase(phase)}
+					</div>
 					<div className="max-h-28 overflow-y-auto break-words text-sm text-[#c6b4a8]">
 						{statusMessage}
 					</div>
@@ -1388,7 +1638,7 @@ export function DocsiePublishDialog({
 						done: phase === "analysis" || phase === "generation" || phase === "completed",
 					},
 					{
-						label: "Generate",
+						label: artifactMode === "presentation" ? "Build Deck" : "Generate",
 						active: phase === "generation" || phase === "completed",
 						done: phase === "completed" || Boolean(generationJobId),
 					},
@@ -1471,7 +1721,12 @@ export function DocsiePublishDialog({
 				</div>
 			</div>
 
-			<div className="grid gap-3 sm:grid-cols-3">
+			<div
+				className={cn(
+					"grid gap-3",
+					visibleExportFormats.length > 1 ? "sm:grid-cols-3" : "sm:grid-cols-2",
+				)}
+			>
 				<div className="rounded-xl border border-white/10 bg-[#17110f] p-3">
 					<div className="flex items-start justify-between gap-3">
 						<div className="min-w-0">
@@ -1512,7 +1767,7 @@ export function DocsiePublishDialog({
 					</div>
 				</div>
 
-				{EXPORT_FORMATS.map((format) => {
+				{visibleExportFormats.map((format) => {
 					const artifact = exportArtifacts[format];
 					return (
 						<div key={format} className="rounded-xl border border-white/10 bg-[#17110f] p-3">
@@ -1666,6 +1921,7 @@ export function DocsiePublishDialog({
 											{connectionSummary}
 										</div>
 										<div className="mt-3 text-sm text-[#c6b4a8]">{compactSummary}</div>
+										<div className="mt-6 w-full">{artifactModeSelector}</div>
 										{hasStoredToken ? (
 											<div className="mt-5 border-t border-white/10 pt-4">
 												<div className="text-xs font-medium uppercase tracking-[0.16em] text-[#8f7e73]">
@@ -1747,7 +2003,7 @@ export function DocsiePublishDialog({
 								className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
 							>
 								<Sparkles className="mr-2 h-4 w-4" />
-								Generate Docs
+								{artifactMode === "presentation" ? "Generate Presentation" : "Generate Docs"}
 							</Button>
 						) : null}
 					</DialogFooter>
@@ -1819,6 +2075,8 @@ export function DocsiePublishDialog({
 								</div>
 							</div>
 
+							<div className="mb-4">{artifactModeSelector}</div>
+
 							<div className="grid gap-3 md:grid-cols-2">
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
@@ -1881,24 +2139,45 @@ export function DocsiePublishDialog({
 										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
 									/>
 								</div>
-								<div className="space-y-1.5">
-									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Doc Style
-									</label>
-									<select
-										value={docStyle}
-										onChange={(event) =>
-											setDocStyle(event.target.value as DocsieVideoToDocsDocStyle)
-										}
-										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-									>
-										{DOC_STYLE_OPTIONS.map((option) => (
-											<option key={option} value={option}>
-												{option}
-											</option>
-										))}
-									</select>
-								</div>
+								{artifactMode === "docs" ? (
+									<div className="space-y-1.5">
+										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Doc Style
+										</label>
+										<select
+											value={docStyle}
+											onChange={(event) =>
+												setDocStyle(event.target.value as DocsieVideoToDocsDocStyle)
+											}
+											className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+										>
+											{DOC_STYLE_OPTIONS.map((option) => (
+												<option key={option} value={option}>
+													{option}
+												</option>
+											))}
+										</select>
+									</div>
+								) : (
+									<div className="space-y-1.5">
+										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Deck Type
+										</label>
+										<select
+											value={pptxDeckType}
+											onChange={(event) => setPptxDeckType(event.target.value)}
+											className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+										>
+											{["training", "tutorial", "sales", "executive", "support", "onboarding"].map(
+												(option) => (
+													<option key={option} value={option}>
+														{option}
+													</option>
+												),
+											)}
+										</select>
+									</div>
+								)}
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
 										Book Title
@@ -1948,11 +2227,73 @@ export function DocsiePublishDialog({
 										</button>
 									</div>
 								</div>
+								{artifactMode === "presentation" ? (
+									<>
+										<div className="space-y-1.5">
+											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+												Audience
+											</label>
+											<Input
+												value={pptxAudience}
+												onChange={(event) => setPptxAudience(event.target.value)}
+												placeholder="support team"
+												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+											/>
+										</div>
+										<div className="space-y-1.5">
+											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+												Max Slides
+											</label>
+											<Input
+												type="number"
+												min={1}
+												max={100}
+												value={pptxMaxSlides}
+												onChange={(event) => setPptxMaxSlides(event.target.value)}
+												onBlur={() =>
+													setPptxMaxSlides(String(normalizePptxMaxSlides(pptxMaxSlides)))
+												}
+												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+											/>
+										</div>
+										<div className="space-y-1.5">
+											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+												Image Quality
+											</label>
+											<select
+												value={pptxImageQuality}
+												onChange={(event) =>
+													setPptxImageQuality(event.target.value as DocsiePptxImageQuality)
+												}
+												className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+											>
+												<option value="low">low</option>
+												<option value="medium">medium</option>
+												<option value="high">high</option>
+											</select>
+										</div>
+										<div className="space-y-1.5">
+											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+												Illustration Style
+											</label>
+											<Input
+												value={pptxIllustrationStyle}
+												onChange={(event) => setPptxIllustrationStyle(event.target.value)}
+												placeholder="corporate"
+												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+											/>
+										</div>
+									</>
+								) : null}
 							</div>
 
 							<div className="mt-3 rounded-xl border border-white/10 bg-[#17110f] p-3">
 								<label className="flex items-center justify-between gap-4">
-									<div className="text-sm font-medium text-[#fff0e4]">Auto-generate docs</div>
+									<div className="text-sm font-medium text-[#fff0e4]">
+										{artifactMode === "presentation"
+											? "Auto-generate presentation"
+											: "Auto-generate docs"}
+									</div>
 									<button
 										type="button"
 										onClick={() => setAutoGenerate((current) => !current)}
@@ -1971,6 +2312,72 @@ export function DocsiePublishDialog({
 								</label>
 							</div>
 
+							{artifactMode === "presentation" ? (
+								<div className="mt-3 grid gap-3 md:grid-cols-2">
+									<div className="space-y-1.5">
+										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Source Name
+										</label>
+										<Input
+											value={pptxSourceName}
+											onChange={(event) => setPptxSourceName(event.target.value)}
+											placeholder="Screen Recorder"
+											className="border-white/10 bg-[#17110f] text-[#fff0e4]"
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Enhancement
+										</label>
+										<select
+											value={pptxEnhance}
+											onChange={(event) => setPptxEnhance(event.target.value)}
+											className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+										>
+											<option value="required">required</option>
+											<option value="enhanced">enhanced</option>
+											<option value="standard">standard</option>
+										</select>
+									</div>
+									<label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-[#17110f] p-3">
+										<div className="text-sm font-medium text-[#fff0e4]">Generate cover image</div>
+										<button
+											type="button"
+											onClick={() => setPptxGenerateCoverImage((current) => !current)}
+											className={cn(
+												"relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+												pptxGenerateCoverImage ? "bg-[#FF6738]" : "bg-white/10",
+											)}
+										>
+											<span
+												className={cn(
+													"inline-block h-5 w-5 transform rounded-full bg-white transition-transform",
+													pptxGenerateCoverImage ? "translate-x-5" : "translate-x-1",
+												)}
+											/>
+										</button>
+									</label>
+									<label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-[#17110f] p-3">
+										<div className="text-sm font-medium text-[#fff0e4]">Embed images</div>
+										<button
+											type="button"
+											onClick={() => setPptxEmbedImages((current) => !current)}
+											className={cn(
+												"relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+												pptxEmbedImages ? "bg-[#FF6738]" : "bg-white/10",
+											)}
+										>
+											<span
+												className={cn(
+													"inline-block h-5 w-5 transform rounded-full bg-white transition-transform",
+													pptxEmbedImages ? "translate-x-5" : "translate-x-1",
+												)}
+											/>
+										</button>
+									</label>
+								</div>
+							) : null}
+
 							<div className="mt-3 grid gap-3">
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
@@ -1982,111 +2389,56 @@ export function DocsiePublishDialog({
 										className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 									/>
 								</div>
-								<div className="space-y-1.5">
-									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Output Template
-									</label>
-									<DocsieTemplatePicker
-										templates={generationTemplates}
-										isLoading={loadingTemplates}
-										selectedTemplateId={generationTemplateId}
-										onOpen={async () => {
-											if (!hasConnectionCredentials) {
-												toast.error("Connect this recorder to Docsie first");
-												return false;
-											}
-											try {
-												if (!hasStoredToken) {
-													const state = await persistConfig();
-													if (!state.hasToken) {
-														toast.error("Save a Docsie API token before browsing templates");
-														return false;
-													}
+								{artifactMode === "docs" ? (
+									<div className="space-y-1.5">
+										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Output Template
+										</label>
+										<DocsieTemplatePicker
+											templates={generationTemplates}
+											isLoading={loadingTemplates}
+											selectedTemplateId={generationTemplateId}
+											onOpen={async () => {
+												if (!hasConnectionCredentials) {
+													toast.error("Connect this recorder to Docsie first");
+													return false;
 												}
-												await loadGenerationTemplates();
-											} catch (error) {
-												toast.error(error instanceof Error ? error.message : String(error));
-												return false;
-											}
-										}}
-										onSelect={(template) => {
-											setGenerationTemplateId(template.id);
-											toast.success(`Template selected: ${template.name}`);
-										}}
-										onClear={() => {
-											setGenerationTemplateId("");
-											toast.info("Template selection cleared");
-										}}
-									/>
-									<div className="text-xs text-[#8f7e73]">
-										{generationTemplateId
-											? "The selected library template id is sent to Docsie. Custom text below is kept as a fallback only."
-											: "Pick a library template or enter a custom structure below."}
+												try {
+													if (!hasStoredToken) {
+														const state = await persistConfig();
+														if (!state.hasToken) {
+															toast.error("Save a Docsie API token before browsing templates");
+															return false;
+														}
+													}
+													await loadGenerationTemplates();
+												} catch (error) {
+													toast.error(error instanceof Error ? error.message : String(error));
+													return false;
+												}
+											}}
+											onSelect={(template) => {
+												setGenerationTemplateId(template.id);
+												toast.success(`Template selected: ${template.name}`);
+											}}
+											onClear={() => {
+												setGenerationTemplateId("");
+												toast.info("Template selection cleared");
+											}}
+										/>
+										<div className="text-xs text-[#8f7e73]">
+											{generationTemplateId
+												? "The selected library template id is sent to Docsie. Custom text below is kept as a fallback only."
+												: "Pick a library template or enter a custom structure below."}
+										</div>
+										<textarea
+											value={templateInstruction}
+											onChange={(event) => setTemplateInstruction(event.target.value)}
+											placeholder="Optional custom structure when no library template is selected."
+											className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
+										/>
 									</div>
-									<textarea
-										value={templateInstruction}
-										onChange={(event) => setTemplateInstruction(event.target.value)}
-										placeholder="Optional custom structure when no library template is selected."
-										className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-									/>
-								</div>
-							</div>
-						</div>
-
-						<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
-							<div className="mb-3 text-sm font-semibold text-[#fff0e4]">Connection fallback</div>
-							<div className="grid gap-3 md:grid-cols-2">
-								<div className="space-y-1.5 md:col-span-2">
-									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Docsie URL
-									</label>
-									<Input
-										value={webAppUrl}
-										onChange={(event) => setWebAppUrl(event.target.value)}
-										placeholder="https://app.docsie.io"
-										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-									/>
-								</div>
-								<div className="space-y-1.5">
-									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										API Base URL
-									</label>
-									<Input
-										value={apiBaseUrl}
-										onChange={(event) => setApiBaseUrl(event.target.value)}
-										placeholder="https://app.docsie.io/api_v2/003"
-										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-									/>
-								</div>
-								<div className="space-y-1.5">
-									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Auth Mode
-									</label>
-									<select
-										value={authMode}
-										onChange={(event) => setAuthMode(event.target.value as DocsieAuthMode)}
-										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-									>
-										<option value="bearer">Bearer</option>
-										<option value="apiKey">Api-Key</option>
-									</select>
-								</div>
-								<div className="space-y-1.5 md:col-span-2">
-									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Token
-									</label>
-									<Input
-										type="password"
-										value={tokenInput}
-										onChange={(event) => setTokenInput(event.target.value)}
-										placeholder={
-											hasStoredToken
-												? "Leave blank to keep the saved token"
-												: "Paste Docsie API token"
-										}
-										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
-									/>
-								</div>
+								) : null}
 							</div>
 						</div>
 

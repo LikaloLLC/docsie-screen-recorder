@@ -1,5 +1,5 @@
 import type { Span } from "dnd-timeline";
-import { FolderOpen, Languages, Save, Sparkles, Video } from "lucide-react";
+import { Coins, FolderOpen, Languages, Save, Settings2, Sparkles, Video } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -16,7 +16,12 @@ import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { INITIAL_EDITOR_STATE, useEditorHistory } from "@/hooks/useEditorHistory";
 import { type Locale } from "@/i18n/config";
 import { getAvailableLocales, getLocaleName } from "@/i18n/loader";
-import type { DocsieDesktopAuthEvent } from "@/lib/docsieIntegration";
+import {
+	type DocsieCreditBalance,
+	type DocsieDesktopAuthEvent,
+	type DocsieIntegrationState,
+	getDocsieWebAppUrl,
+} from "@/lib/docsieIntegration";
 import {
 	calculateOutputDimensions,
 	type ExportFormat,
@@ -38,6 +43,7 @@ import {
 	getNativeAspectRatioValue,
 	isPortraitAspectRatio,
 } from "@/utils/aspectRatioUtils";
+import { AISettingsDialog } from "./AISettingsDialog";
 import { DocsiePublishDialog } from "./DocsiePublishDialog";
 import { ExportDialog } from "./ExportDialog";
 import PlaybackControls from "./PlaybackControls";
@@ -78,6 +84,19 @@ import {
 import VideoPlayback, { VideoPlaybackRef } from "./VideoPlayback";
 import { TRANSITION_WINDOW_MS, ZOOM_IN_TRANSITION_WINDOW_MS } from "./videoPlayback/constants";
 
+function normalizeBillingOrgSegment(value?: string | null) {
+	const raw = value?.trim();
+	if (!raw) {
+		return "";
+	}
+	return raw
+		.toLowerCase()
+		.replace(/[^a-z0-9_-]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+}
+
+const AUDIO_EDITING_ENABLED = false;
+
 export default function VideoEditor() {
 	const {
 		state: editorState,
@@ -105,6 +124,7 @@ export default function VideoEditor() {
 		webcamMaskShape,
 		webcamSizePreset,
 		webcamPosition,
+		voiceover,
 	} = editorState;
 
 	// ── Non-undoable state
@@ -112,6 +132,7 @@ export default function VideoEditor() {
 	const [videoSourcePath, setVideoSourcePath] = useState<string | null>(null);
 	const [webcamVideoPath, setWebcamVideoPath] = useState<string | null>(null);
 	const [webcamVideoSourcePath, setWebcamVideoSourcePath] = useState<string | null>(null);
+	const [audioSourcePath, setAudioSourcePath] = useState<string | null>(null);
 	const [currentProjectPath, setCurrentProjectPath] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -133,6 +154,7 @@ export default function VideoEditor() {
 	const [exportError, setExportError] = useState<string | null>(null);
 	const [showExportDialog, setShowExportDialog] = useState(false);
 	const [showDocsiePublishDialog, setShowDocsiePublishDialog] = useState(false);
+	const [showAISettingsDialog, setShowAISettingsDialog] = useState(false);
 	const [showNewRecordingDialog, setShowNewRecordingDialog] = useState(false);
 	const [exportQuality, setExportQuality] = useState<ExportQuality>("good");
 	const [exportFormat, setExportFormat] = useState<ExportFormat>("mp4");
@@ -147,6 +169,8 @@ export default function VideoEditor() {
 		format: string;
 	} | null>(null);
 	const [isFullscreen, setIsFullscreen] = useState(false);
+	const [aiState, setAIState] = useState<DocsieIntegrationState | null>(null);
+	const [aiCreditBalance, setAICreditBalance] = useState<DocsieCreditBalance | null>(null);
 
 	const playerContainerRef = useRef<HTMLDivElement>(null);
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -165,14 +189,39 @@ export default function VideoEditor() {
 	const nextAnnotationZIndexRef = useRef(1);
 	const exporterRef = useRef<VideoExporter | null>(null);
 
+	const refreshAIState = useCallback(async () => {
+		try {
+			const stateResult = await window.electronAPI.docsieGetState();
+			if (!stateResult.success || !stateResult.state) {
+				setAIState(null);
+				setAICreditBalance(null);
+				return;
+			}
+
+			setAIState(stateResult.state);
+			if (!stateResult.state.hasToken) {
+				setAICreditBalance(null);
+				return;
+			}
+
+			const balanceResult = await window.electronAPI.docsieGetCreditBalance();
+			setAICreditBalance(balanceResult.success ? (balanceResult.balance ?? null) : null);
+		} catch {
+			setAIState(null);
+			setAICreditBalance(null);
+		}
+	}, []);
+
 	useEffect(() => {
 		const handleDesktopAuthEvent = (event: Event) => {
 			const customEvent = event as CustomEvent<DocsieDesktopAuthEvent>;
 			if (customEvent.detail?.status === "success") {
-				setShowDocsiePublishDialog(true);
+				void refreshAIState();
+				setShowAISettingsDialog(true);
 			}
 		};
 
+		void refreshAIState();
 		window.addEventListener("docsie-desktop-auth-event", handleDesktopAuthEvent as EventListener);
 		return () => {
 			window.removeEventListener(
@@ -180,7 +229,7 @@ export default function VideoEditor() {
 				handleDesktopAuthEvent as EventListener,
 			);
 		};
-	}, []);
+	}, [refreshAIState]);
 
 	const annotationOnlyRegions = useMemo(
 		() => annotationRegions.filter((region) => region.type !== "blur"),
@@ -199,10 +248,12 @@ export default function VideoEditor() {
 
 		const webcamSourcePath =
 			webcamVideoSourcePath ?? (webcamVideoPath ? fromFileUrl(webcamVideoPath) : null);
-		return webcamSourcePath
-			? { screenVideoPath, webcamVideoPath: webcamSourcePath }
-			: { screenVideoPath };
-	}, [videoPath, videoSourcePath, webcamVideoPath, webcamVideoSourcePath]);
+		return {
+			screenVideoPath,
+			...(webcamSourcePath ? { webcamVideoPath: webcamSourcePath } : {}),
+			...(audioSourcePath ? { audioPath: audioSourcePath } : {}),
+		};
+	}, [audioSourcePath, videoPath, videoSourcePath, webcamVideoPath, webcamVideoSourcePath]);
 
 	const applyLoadedProject = useCallback(
 		async (candidate: unknown, path?: string | null) => {
@@ -217,6 +268,7 @@ export default function VideoEditor() {
 			}
 			const sourcePath = fromFileUrl(media.screenVideoPath);
 			const webcamSourcePath = media.webcamVideoPath ? fromFileUrl(media.webcamVideoPath) : null;
+			const audioPath = media.audioPath ? fromFileUrl(media.audioPath) : null;
 			const normalizedEditor = normalizeProjectEditor(project.editor);
 
 			try {
@@ -233,6 +285,7 @@ export default function VideoEditor() {
 			setVideoPath(toFileUrl(sourcePath));
 			setWebcamVideoSourcePath(webcamSourcePath);
 			setWebcamVideoPath(webcamSourcePath ? toFileUrl(webcamSourcePath) : null);
+			setAudioSourcePath(audioPath);
 			setCurrentProjectPath(path ?? null);
 
 			pushState({
@@ -252,6 +305,7 @@ export default function VideoEditor() {
 				webcamMaskShape: normalizedEditor.webcamMaskShape,
 				webcamSizePreset: normalizedEditor.webcamSizePreset,
 				webcamPosition: normalizedEditor.webcamPosition,
+				voiceover: normalizedEditor.voiceover,
 			});
 			setExportQuality(normalizedEditor.exportQuality);
 			setExportFormat(normalizedEditor.exportFormat);
@@ -289,9 +343,11 @@ export default function VideoEditor() {
 
 			setLastSavedSnapshot(
 				createProjectSnapshot(
-					webcamSourcePath
-						? { screenVideoPath: sourcePath, webcamVideoPath: webcamSourcePath }
-						: { screenVideoPath: sourcePath },
+					{
+						screenVideoPath: sourcePath,
+						...(webcamSourcePath ? { webcamVideoPath: webcamSourcePath } : {}),
+						...(audioPath ? { audioPath } : {}),
+					},
 					normalizedEditor,
 				),
 			);
@@ -325,6 +381,7 @@ export default function VideoEditor() {
 			gifFrameRate,
 			gifLoop,
 			gifSizePreset,
+			voiceover,
 		});
 	}, [
 		currentProjectMedia,
@@ -348,6 +405,7 @@ export default function VideoEditor() {
 		gifFrameRate,
 		gifLoop,
 		gifSizePreset,
+		voiceover,
 	]);
 
 	const hasUnsavedChanges = hasProjectUnsavedChanges(currentProjectSnapshot, lastSavedSnapshot);
@@ -373,16 +431,20 @@ export default function VideoEditor() {
 					const webcamSourcePath = session.webcamVideoPath
 						? fromFileUrl(session.webcamVideoPath)
 						: null;
+					const audioPath = session.audioPath ? fromFileUrl(session.audioPath) : null;
 					setVideoSourcePath(sourcePath);
 					setVideoPath(toFileUrl(sourcePath));
 					setWebcamVideoSourcePath(webcamSourcePath);
 					setWebcamVideoPath(webcamSourcePath ? toFileUrl(webcamSourcePath) : null);
+					setAudioSourcePath(audioPath);
 					setCurrentProjectPath(null);
 					setLastSavedSnapshot(
 						createProjectSnapshot(
-							webcamSourcePath
-								? { screenVideoPath: sourcePath, webcamVideoPath: webcamSourcePath }
-								: { screenVideoPath: sourcePath },
+							{
+								screenVideoPath: sourcePath,
+								...(webcamSourcePath ? { webcamVideoPath: webcamSourcePath } : {}),
+								...(audioPath ? { audioPath } : {}),
+							},
 							INITIAL_EDITOR_STATE,
 						),
 					);
@@ -396,6 +458,7 @@ export default function VideoEditor() {
 					setVideoPath(toFileUrl(sourcePath));
 					setWebcamVideoSourcePath(null);
 					setWebcamVideoPath(null);
+					setAudioSourcePath(null);
 					setCurrentProjectPath(null);
 					setLastSavedSnapshot(
 						createProjectSnapshot({ screenVideoPath: sourcePath }, INITIAL_EDITOR_STATE),
@@ -469,6 +532,7 @@ export default function VideoEditor() {
 				gifFrameRate,
 				gifLoop,
 				gifSizePreset,
+				voiceover,
 			});
 
 			const fileNameBase =
@@ -524,6 +588,7 @@ export default function VideoEditor() {
 			gifFrameRate,
 			gifLoop,
 			gifSizePreset,
+			voiceover,
 			videoPath,
 			t,
 			webcamSizePreset,
@@ -981,7 +1046,11 @@ export default function VideoEditor() {
 			pushState((prev) => ({
 				zoomRegions: prev.zoomRegions.map((region) =>
 					region.id === id
-						? { ...region, zoomInDurationMs: zoomIn, zoomOutDurationMs: zoomOut }
+						? {
+								...region,
+								zoomInDurationMs: zoomIn,
+								zoomOutDurationMs: zoomOut,
+							}
 						: region,
 				),
 			}));
@@ -1547,6 +1616,10 @@ export default function VideoEditor() {
 						webcamMaskShape,
 						webcamSizePreset,
 						webcamPosition,
+						voiceoverAudioUrl:
+							AUDIO_EDITING_ENABLED && voiceover.enabled && voiceover.audioFilePath
+								? voiceover.audioFileUrl || toFileUrl(voiceover.audioFilePath)
+								: undefined,
 						previewWidth,
 						previewHeight,
 						cursorTelemetry,
@@ -1621,6 +1694,7 @@ export default function VideoEditor() {
 			exportQuality,
 			handleExportSaved,
 			cursorTelemetry,
+			voiceover,
 		],
 	);
 
@@ -1696,6 +1770,48 @@ export default function VideoEditor() {
 		}
 	}, []);
 
+	const aiCreditLabel = useMemo(() => {
+		if (typeof aiCreditBalance?.totalAvailable === "number") {
+			return `${aiCreditBalance.totalAvailable.toLocaleString()} credits`;
+		}
+		return aiState?.hasToken ? "Credits unavailable" : "Connect AI";
+	}, [aiCreditBalance?.totalAvailable, aiState?.hasToken]);
+
+	const buyCreditsUrl = useMemo(() => {
+		if (!aiState?.hasToken) {
+			return null;
+		}
+		const orgSegment = normalizeBillingOrgSegment(
+			aiState.organizationSlug ?? aiState.organizationName ?? aiState.organizationId,
+		);
+		if (!orgSegment) {
+			return null;
+		}
+		return `${getDocsieWebAppUrl(aiState.apiBaseUrl)}/billing/${encodeURIComponent(orgSegment)}/#/buy-credits`;
+	}, [
+		aiState?.apiBaseUrl,
+		aiState?.hasToken,
+		aiState?.organizationId,
+		aiState?.organizationName,
+		aiState?.organizationSlug,
+	]);
+
+	const voiceoverExportActive = Boolean(
+		AUDIO_EDITING_ENABLED && voiceover.enabled && voiceover.audioFilePath,
+	);
+
+	const handleOpenBuyCredits = useCallback(async () => {
+		if (!buyCreditsUrl) {
+			setShowAISettingsDialog(true);
+			return;
+		}
+
+		const result = await window.electronAPI.openExternalUrl(buyCreditsUrl);
+		if (!result.success) {
+			toast.error(result.error ?? "Failed to open Docsie billing");
+		}
+	}, [buyCreditsUrl]);
+
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-screen bg-background">
@@ -1755,7 +1871,7 @@ export default function VideoEditor() {
 				style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
 			>
 				<div
-					className="flex-1 flex items-center gap-1"
+					className="flex min-w-0 flex-1 items-center gap-1"
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
 					<div
@@ -1809,6 +1925,28 @@ export default function VideoEditor() {
 					>
 						<Sparkles size={14} />
 						Video To Docs
+					</button>
+				</div>
+				<div
+					className="flex shrink-0 items-center gap-1"
+					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+				>
+					<button
+						type="button"
+						onClick={() => void handleOpenBuyCredits()}
+						title={buyCreditsUrl ? "Buy AI credits" : "Connect Docsie AI"}
+						className="flex items-center gap-1 rounded-md border border-[rgba(254,168,94,0.18)] bg-[rgba(254,168,94,0.08)] px-2 py-1 text-[11px] font-medium text-[#FEA85E] transition-all duration-150 hover:bg-[rgba(254,168,94,0.14)] hover:text-[#fff0e4]"
+					>
+						<Coins size={14} />
+						{aiCreditLabel}
+					</button>
+					<button
+						type="button"
+						onClick={() => setShowAISettingsDialog(true)}
+						className="flex items-center gap-1 px-2 py-1 rounded-md text-white/50 hover:text-white/90 hover:bg-[rgba(255,103,56,0.12)] transition-all duration-150 text-[11px] font-medium"
+					>
+						<Settings2 size={14} />
+						AI Settings
 					</button>
 				</div>
 			</div>
@@ -1915,55 +2053,68 @@ export default function VideoEditor() {
 						{/* Timeline section */}
 						<Panel defaultSize={30} maxSize={60} minSize={30}>
 							<div className="h-full bg-[#17110f] rounded-2xl border border-[rgba(254,168,94,0.12)] shadow-lg overflow-hidden flex flex-col">
-								<TimelineEditor
-									videoDuration={duration}
-									currentTime={currentTime}
-									onSeek={handleSeek}
-									cursorTelemetry={cursorTelemetry}
-									zoomRegions={zoomRegions}
-									onZoomAdded={handleZoomAdded}
-									onZoomSuggested={handleZoomSuggested}
-									onZoomSpanChange={handleZoomSpanChange}
-									onZoomDurationChange={handleZoomDurationChange}
-									onZoomDelete={handleZoomDelete}
-									selectedZoomId={selectedZoomId}
-									onSelectZoom={handleSelectZoom}
-									trimRegions={trimRegions}
-									onTrimAdded={handleTrimAdded}
-									onTrimSpanChange={handleTrimSpanChange}
-									onTrimDelete={handleTrimDelete}
-									selectedTrimId={selectedTrimId}
-									onSelectTrim={handleSelectTrim}
-									speedRegions={speedRegions}
-									onSpeedAdded={handleSpeedAdded}
-									onSpeedSpanChange={handleSpeedSpanChange}
-									onSpeedDelete={handleSpeedDelete}
-									selectedSpeedId={selectedSpeedId}
-									onSelectSpeed={handleSelectSpeed}
-									annotationRegions={annotationOnlyRegions}
-									onAnnotationAdded={handleAnnotationAdded}
-									onAnnotationSpanChange={handleAnnotationSpanChange}
-									onAnnotationDelete={handleAnnotationDelete}
-									selectedAnnotationId={selectedAnnotationId}
-									onSelectAnnotation={handleSelectAnnotation}
-									blurRegions={blurRegions}
-									onBlurAdded={handleBlurAdded}
-									onBlurSpanChange={handleAnnotationSpanChange}
-									onBlurDelete={handleAnnotationDelete}
-									selectedBlurId={selectedBlurId}
-									onSelectBlur={handleSelectBlur}
-									aspectRatio={aspectRatio}
-									onAspectRatioChange={(ar) =>
-										pushState({
-											aspectRatio: ar,
-											webcamLayoutPreset:
-												(isPortraitAspectRatio(ar) && webcamLayoutPreset === "dual-frame") ||
-												(!isPortraitAspectRatio(ar) && webcamLayoutPreset === "vertical-stack")
-													? "picture-in-picture"
-													: webcamLayoutPreset,
-										})
-									}
-								/>
+								<div className="flex items-center justify-between gap-3 border-b border-white/5 bg-[#17110f] px-4 py-2">
+									<div className="flex h-7 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-slate-300">
+										<Video size={14} />
+										Video Editing
+									</div>
+									{voiceoverExportActive ? (
+										<div className="rounded-full border border-[#FEA85E]/25 bg-[#FEA85E]/10 px-2.5 py-1 text-[10px] font-medium text-[#FEA85E]">
+											AI voiceover enabled for export
+										</div>
+									) : null}
+								</div>
+								<div className="min-h-0 flex-1">
+									<TimelineEditor
+										videoDuration={duration}
+										currentTime={currentTime}
+										onSeek={handleSeek}
+										cursorTelemetry={cursorTelemetry}
+										zoomRegions={zoomRegions}
+										onZoomAdded={handleZoomAdded}
+										onZoomSuggested={handleZoomSuggested}
+										onZoomSpanChange={handleZoomSpanChange}
+										onZoomDurationChange={handleZoomDurationChange}
+										onZoomDelete={handleZoomDelete}
+										selectedZoomId={selectedZoomId}
+										onSelectZoom={handleSelectZoom}
+										trimRegions={trimRegions}
+										onTrimAdded={handleTrimAdded}
+										onTrimSpanChange={handleTrimSpanChange}
+										onTrimDelete={handleTrimDelete}
+										selectedTrimId={selectedTrimId}
+										onSelectTrim={handleSelectTrim}
+										speedRegions={speedRegions}
+										onSpeedAdded={handleSpeedAdded}
+										onSpeedSpanChange={handleSpeedSpanChange}
+										onSpeedDelete={handleSpeedDelete}
+										selectedSpeedId={selectedSpeedId}
+										onSelectSpeed={handleSelectSpeed}
+										annotationRegions={annotationOnlyRegions}
+										onAnnotationAdded={handleAnnotationAdded}
+										onAnnotationSpanChange={handleAnnotationSpanChange}
+										onAnnotationDelete={handleAnnotationDelete}
+										selectedAnnotationId={selectedAnnotationId}
+										onSelectAnnotation={handleSelectAnnotation}
+										blurRegions={blurRegions}
+										onBlurAdded={handleBlurAdded}
+										onBlurSpanChange={handleAnnotationSpanChange}
+										onBlurDelete={handleAnnotationDelete}
+										selectedBlurId={selectedBlurId}
+										onSelectBlur={handleSelectBlur}
+										aspectRatio={aspectRatio}
+										onAspectRatioChange={(ar) =>
+											pushState({
+												aspectRatio: ar,
+												webcamLayoutPreset:
+													(isPortraitAspectRatio(ar) && webcamLayoutPreset === "dual-frame") ||
+													(!isPortraitAspectRatio(ar) && webcamLayoutPreset === "vertical-stack")
+														? "picture-in-picture"
+														: webcamLayoutPreset,
+											})
+										}
+									/>
+								</div>
 							</div>
 						</Panel>
 					</PanelGroup>
@@ -2104,6 +2255,12 @@ export default function VideoEditor() {
 				onOpenChange={setShowDocsiePublishDialog}
 				videoPath={videoSourcePath ?? (videoPath ? fromFileUrl(videoPath) : null)}
 				videoDurationSeconds={duration || undefined}
+				onCreditsChanged={refreshAIState}
+			/>
+			<AISettingsDialog
+				isOpen={showAISettingsDialog}
+				onOpenChange={setShowAISettingsDialog}
+				onSaved={refreshAIState}
 			/>
 		</div>
 	);

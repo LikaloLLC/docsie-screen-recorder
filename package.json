@@ -1,7 +1,7 @@
 {
 	"name": "docsie-screen-recorder",
 	"private": true,
-	"version": "1.3.4",
+	"version": "1.3.5",
 	"type": "module",
 	"packageManager": "npm@10.9.4",
 	"engines": {
@@ -21,6 +21,9 @@
 		"i18n:check": "node scripts/i18n-check.mjs",
 		"preview": "vite preview",
 		"build:mac": "tsc && vite build && electron-builder --mac",
+		"build:mas": "bash scripts/build_mas.sh",
+		"mas:validate": "bash scripts/upload_mas.sh validate",
+		"mas:upload": "bash scripts/upload_mas.sh upload",
 		"build:win": "tsc && vite build && electron-builder --win",
 		"build:linux": "tsc && vite build && electron-builder --linux AppImage deb",
 		"release:local": "node scripts/release.mjs local",
@@ -29,6 +32,7 @@
 		"release:minor": "node scripts/release.mjs bump minor",
 		"release:major": "node scripts/release.mjs bump major",
 		"signing:setup": "bash scripts/setup_macos_signing_secrets.sh",
+		"signing:setup:mas": "bash scripts/setup_mas_signing_secrets.sh",
 		"test": "vitest --run",
 		"test:watch": "vitest",
 		"build-vite": "tsc && vite build",

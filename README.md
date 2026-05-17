@@ -78,10 +78,29 @@ Build the macOS app:
 npm run build:mac
 ```
 
+Build a Mac App Store package:
+
+```bash
+npm run build:mas
+```
+
+Validate or upload the Mac App Store package after creating the app record in App Store Connect:
+
+```bash
+APPLE_ID="<apple-id>" APPLE_APP_SPECIFIC_PASSWORD="<app-specific-password>" npm run mas:validate
+APPLE_ID="<apple-id>" APPLE_APP_SPECIFIC_PASSWORD="<app-specific-password>" npm run mas:upload
+```
+
 Set up macOS release signing after exporting the Docsie `Developer ID Application` certificate as a `.p12`:
 
 ```bash
 npm run signing:setup -- --p12 /path/to/DeveloperIDApplication.p12 --apple-id "<apple-id>"
+```
+
+Set up Mac App Store signing after Apple issues `Mac App Distribution` and `Mac Installer Distribution` certificates:
+
+```bash
+npm run signing:setup:mas -- --app-cer /path/to/mac_app.cer --installer-cer /path/to/mac_installer.cer --apple-id "<apple-id>"
 ```
 
 Useful output paths after a mac build:
@@ -89,6 +108,7 @@ Useful output paths after a mac build:
 - Apple Silicon app bundle: `release/<version>/mac-arm64/Docsie Screen Recorder.app`
 - Intel app bundle: `release/<version>/mac/Docsie Screen Recorder.app`
 - DMGs: `release/<version>/*.dmg`
+- Mac App Store package: `release/<version>/mas-arm64/Docsie Screen Recorder-Mac-App-Store-arm64-<version>.pkg`
 
 Create a new patch release:
 

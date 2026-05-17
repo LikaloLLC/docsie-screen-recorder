@@ -38,6 +38,7 @@ interface VideoExporterConfig extends ExportConfig {
 	webcamSizePreset?: WebcamSizePreset;
 	webcamPosition?: { cx: number; cy: number } | null;
 	annotationRegions?: AnnotationRegion[];
+	voiceoverAudioUrl?: string;
 	previewWidth?: number;
 	previewHeight?: number;
 	cursorTelemetry?: import("@/components/video-editor/types").CursorTelemetryPoint[];
@@ -156,7 +157,8 @@ export class VideoExporter {
 
 			await this.initializeEncoder(encoderPreference);
 
-			const hasAudio = videoInfo.hasAudio;
+			const hasVoiceoverAudio = Boolean(this.config.voiceoverAudioUrl);
+			const hasAudio = hasVoiceoverAudio || videoInfo.hasAudio;
 			const muxer = new VideoMuxer(this.config, hasAudio);
 			this.muxer = muxer;
 			await muxer.initialize();
@@ -166,6 +168,7 @@ export class VideoExporter {
 				this.config.trimRegions,
 				this.config.speedRegions,
 			);
+			const exportDurationSec = totalFrames / this.config.frameRate;
 
 			const frameDuration = 1_000_000 / this.config.frameRate;
 			let frameIndex = 0;
@@ -256,7 +259,10 @@ export class VideoExporter {
 								},
 							});
 						} else {
-							exportFrame = new VideoFrame(canvas, { timestamp, duration: frameDuration });
+							exportFrame = new VideoFrame(canvas, {
+								timestamp,
+								duration: frameDuration,
+							});
 						}
 
 						while (
@@ -277,7 +283,9 @@ export class VideoExporter {
 
 						if (this.encoder && this.encoder.state === "configured") {
 							this.encodeQueue++;
-							this.encoder.encode(exportFrame, { keyFrame: frameIndex % 150 === 0 });
+							this.encoder.encode(exportFrame, {
+								keyFrame: frameIndex % 150 === 0,
+							});
 						} else {
 							console.warn(
 								`[Frame ${frameIndex}] Encoder not ready! State: ${this.encoder?.state}`,
@@ -338,18 +346,27 @@ export class VideoExporter {
 			});
 
 			if (hasAudio && !this.cancelled) {
-				const demuxer = streamingDecoder.getDemuxer();
-				if (demuxer) {
-					console.log("[VideoExporter] Processing audio track...");
-					this.audioProcessor = new AudioProcessor();
-					await this.audioProcessor.process(
-						demuxer,
+				this.audioProcessor = new AudioProcessor();
+				if (hasVoiceoverAudio && this.config.voiceoverAudioUrl) {
+					console.log("[VideoExporter] Processing AI voiceover audio...");
+					await this.audioProcessor.processVoiceover(
+						this.config.voiceoverAudioUrl,
 						muxer,
-						this.config.videoUrl,
-						this.config.trimRegions,
-						this.config.speedRegions,
-						videoInfo.duration,
+						exportDurationSec,
 					);
+				} else {
+					const demuxer = streamingDecoder.getDemuxer();
+					if (demuxer) {
+						console.log("[VideoExporter] Processing audio track...");
+						await this.audioProcessor.process(
+							demuxer,
+							muxer,
+							this.config.videoUrl,
+							this.config.trimRegions,
+							this.config.speedRegions,
+							videoInfo.duration,
+						);
+					}
 				}
 			}
 

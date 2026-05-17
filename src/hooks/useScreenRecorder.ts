@@ -30,6 +30,9 @@ const CHROME_MEDIA_SOURCE = "desktop";
 const RECORDING_FILE_PREFIX = "recording-";
 const VIDEO_FILE_EXTENSION = ".webm";
 const WEBCAM_FILE_SUFFIX = "-webcam";
+const AUDIO_FILE_SUFFIX = "-audio";
+const AUDIO_FILE_EXTENSION = ".webm";
+const AUDIO_SIDECAR_RECORDING_ENABLED = false;
 
 const AUDIO_BITRATE_VOICE = 128_000;
 const AUDIO_BITRATE_SYSTEM = 192_000;
@@ -86,6 +89,19 @@ function createRecorderHandle(stream: MediaStream, options: MediaRecorderOptions
 	return { recorder, recordedBlobPromise };
 }
 
+function stopRecorder(handle: RecorderHandle | null | undefined) {
+	const recorder = handle?.recorder;
+	if (!recorder || recorder.state === "inactive") {
+		return;
+	}
+
+	try {
+		recorder.stop();
+	} catch {
+		// Recorder may already be stopping.
+	}
+}
+
 export function useScreenRecorder(): UseScreenRecorderReturn {
 	const t = useScopedT("editor");
 	const [recording, setRecording] = useState(false);
@@ -98,6 +114,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const [webcamEnabled, setWebcamEnabledState] = useState(false);
 	const screenRecorder = useRef<RecorderHandle | null>(null);
 	const webcamRecorder = useRef<RecorderHandle | null>(null);
+	const audioRecorder = useRef<RecorderHandle | null>(null);
 	const stream = useRef<MediaStream | null>(null);
 	const screenStream = useRef<MediaStream | null>(null);
 	const microphoneStream = useRef<MediaStream | null>(null);
@@ -131,6 +148,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		];
 
 		return preferred.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm";
+	};
+
+	const selectAudioMimeType = () => {
+		const preferred = ["audio/webm;codecs=opus", "audio/webm"];
+		return preferred.find((type) => MediaRecorder.isTypeSupported(type)) ?? "audio/webm";
 	};
 
 	const computeBitrate = (width: number, height: number) => {
@@ -285,6 +307,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		(
 			activeScreenRecorder: RecorderHandle,
 			activeWebcamRecorder: RecorderHandle | null,
+			activeAudioRecorder: RecorderHandle | null,
 			duration: number,
 			activeRecordingId: number,
 		) => {
@@ -299,6 +322,12 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			if (activeWebcamRecorder && webcamRecorder.current === activeWebcamRecorder) {
 				webcamRecorder.current = null;
 			}
+			if (activeAudioRecorder && audioRecorder.current === activeAudioRecorder) {
+				audioRecorder.current = null;
+			}
+
+			stopRecorder(activeWebcamRecorder);
+			stopRecorder(activeAudioRecorder);
 
 			teardownMedia();
 			setRecording(false);
@@ -326,9 +355,17 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 							fixedWebcamBlob = await fixWebmDuration(webcamBlob, duration);
 						}
 					}
+					let fixedAudioBlob: Blob | null = null;
+					if (activeAudioRecorder) {
+						const audioBlob = await activeAudioRecorder.recordedBlobPromise.catch(() => null);
+						if (audioBlob && audioBlob.size > 0) {
+							fixedAudioBlob = await fixWebmDuration(audioBlob, duration);
+						}
+					}
 
 					const screenFileName = `${RECORDING_FILE_PREFIX}${activeRecordingId}${VIDEO_FILE_EXTENSION}`;
 					const webcamFileName = `${RECORDING_FILE_PREFIX}${activeRecordingId}${WEBCAM_FILE_SUFFIX}${VIDEO_FILE_EXTENSION}`;
+					const audioFileName = `${RECORDING_FILE_PREFIX}${activeRecordingId}${AUDIO_FILE_SUFFIX}${AUDIO_FILE_EXTENSION}`;
 					const result = await window.electronAPI.storeRecordedSession({
 						screen: {
 							videoData: await fixedScreenBlob.arrayBuffer(),
@@ -338,6 +375,12 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 							? {
 									videoData: await fixedWebcamBlob.arrayBuffer(),
 									fileName: webcamFileName,
+								}
+							: undefined,
+						audio: fixedAudioBlob
+							? {
+									audioData: await fixedAudioBlob.arrayBuffer(),
+									fileName: audioFileName,
 								}
 							: undefined,
 						createdAt: activeRecordingId,
@@ -377,38 +420,19 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		}
 
 		const activeWebcamRecorder = webcamRecorder.current;
+		const activeAudioRecorder = audioRecorder.current;
 		const duration = getRecordingDurationMs();
 		const activeRecordingId = recordingId.current;
 
 		finalizeRecording(
 			activeScreenRecorder,
 			activeWebcamRecorder ?? null,
+			activeAudioRecorder ?? null,
 			duration,
 			activeRecordingId,
 		);
 
-		if (
-			activeScreenRecorder.recorder.state === "recording" ||
-			activeScreenRecorder.recorder.state === "paused"
-		) {
-			try {
-				activeScreenRecorder.recorder.stop();
-			} catch {
-				// Recorder may already be stopping.
-			}
-		}
-		if (activeWebcamRecorder) {
-			if (
-				activeWebcamRecorder.recorder.state === "recording" ||
-				activeWebcamRecorder.recorder.state === "paused"
-			) {
-				try {
-					activeWebcamRecorder.recorder.stop();
-				} catch {
-					// Recorder may already be stopping.
-				}
-			}
-		}
+		stopRecorder(activeScreenRecorder);
 	});
 
 	useEffect(() => {
@@ -429,28 +453,12 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			restarting.current = false;
 			discardRecordingId.current = null;
 
-			if (
-				screenRecorder.current?.recorder.state === "recording" ||
-				screenRecorder.current?.recorder.state === "paused"
-			) {
-				try {
-					screenRecorder.current.recorder.stop();
-				} catch {
-					// Ignore recorder teardown errors during cleanup.
-				}
-			}
-			if (
-				webcamRecorder.current?.recorder.state === "recording" ||
-				webcamRecorder.current?.recorder.state === "paused"
-			) {
-				try {
-					webcamRecorder.current.recorder.stop();
-				} catch {
-					// Ignore recorder teardown errors during cleanup.
-				}
-			}
+			stopRecorder(screenRecorder.current);
+			stopRecorder(webcamRecorder.current);
+			stopRecorder(audioRecorder.current);
 			screenRecorder.current = null;
 			webcamRecorder.current = null;
+			audioRecorder.current = null;
 			teardownMedia();
 		};
 	}, [safeHideCountdownOverlay, teardownMedia]);
@@ -746,6 +754,20 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					? { audioBitsPerSecond: systemAudioTrack ? AUDIO_BITRATE_SYSTEM : AUDIO_BITRATE_VOICE }
 					: {}),
 			});
+			const recordingAudioTrack = AUDIO_SIDECAR_RECORDING_ENABLED
+				? stream.current.getAudioTracks()[0]
+				: undefined;
+			if (recordingAudioTrack) {
+				try {
+					audioRecorder.current = createRecorderHandle(new MediaStream([recordingAudioTrack]), {
+						mimeType: selectAudioMimeType(),
+						audioBitsPerSecond: systemAudioTrack ? AUDIO_BITRATE_SYSTEM : AUDIO_BITRATE_VOICE,
+					});
+				} catch (audioError) {
+					console.warn("Failed to start separate audio recording:", audioError);
+					audioRecorder.current = null;
+				}
+			}
 			screenRecorder.current.recorder.addEventListener(
 				"error",
 				() => {
@@ -772,6 +794,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 			const activeScreenRecorder = screenRecorder.current;
 			const activeWebcamRecorder = webcamRecorder.current;
+			const activeAudioRecorder = audioRecorder.current;
 			const activeRecordingId = recordingId.current;
 			if (activeScreenRecorder) {
 				activeScreenRecorder.recorder.addEventListener(
@@ -783,6 +806,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						finalizeRecording(
 							activeScreenRecorder,
 							activeWebcamRecorder ?? null,
+							activeAudioRecorder ?? null,
 							Math.max(0, getRecordingDurationMs()),
 							activeRecordingId,
 						);
@@ -805,6 +829,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			segmentStartedAt.current = null;
 			screenRecorder.current = null;
 			webcamRecorder.current = null;
+			audioRecorder.current = null;
 			teardownMedia();
 		}
 	};
@@ -816,12 +841,16 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		}
 
 		const activeWebcamRecorder = webcamRecorder.current?.recorder;
+		const activeAudioRecorder = audioRecorder.current?.recorder;
 
 		if (activeScreenRecorder.state === "paused") {
 			try {
 				activeScreenRecorder.resume();
 				if (activeWebcamRecorder?.state === "paused") {
 					activeWebcamRecorder.resume();
+				}
+				if (activeAudioRecorder?.state === "paused") {
+					activeAudioRecorder.resume();
 				}
 				segmentStartedAt.current = Date.now();
 				setPaused(false);
@@ -842,6 +871,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			activeScreenRecorder.pause();
 			if (activeWebcamRecorder?.state === "recording") {
 				activeWebcamRecorder.pause();
+			}
+			if (activeAudioRecorder?.state === "recording") {
+				activeAudioRecorder.pause();
 			}
 			setPaused(true);
 		} catch (error) {

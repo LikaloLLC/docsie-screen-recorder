@@ -1,6 +1,7 @@
 export type DocsieAuthMode = "apiKey" | "bearer";
 export type DocsieVideoToDocsQuality = "draft" | "standard" | "detailed" | "ultra";
-export type DocsieOutputFormat = "md" | "docx" | "pdf";
+export type DocsieOutputFormat = "md" | "docx" | "pdf" | "pptx";
+export type DocsiePptxImageQuality = "low" | "medium" | "high";
 export type DocsieVideoToDocsDocStyle =
 	| "guide"
 	| "sop"
@@ -13,6 +14,124 @@ export type DocsieVideoToDocsDocStyle =
 	| "reference"
 	| "product"
 	| "policy";
+
+export interface DocsiePptxOptions {
+	deckType?: string;
+	sourceName?: string;
+	enhance?: string;
+	audience?: string;
+	maxSlides?: number;
+	generateCoverImage?: boolean;
+	imageQuality?: DocsiePptxImageQuality;
+	illustrationStyle?: string;
+	theme?: unknown;
+	embedImages?: boolean;
+}
+
+export interface DocsieVoiceDefaultOptions {
+	provider?: string;
+	voice_id?: string;
+	response_format?: string;
+	speed?: number;
+	[key: string]: unknown;
+}
+
+export interface DocsieVoiceOption {
+	provider: string;
+	id: string;
+	name: string;
+	tier?: string;
+	model?: string;
+	raw?: Record<string, unknown>;
+}
+
+export interface DocsieVoiceProvider {
+	provider: string;
+	configured: boolean;
+	defaultModel?: string;
+	voices: DocsieVoiceOption[];
+	message?: string;
+	raw?: Record<string, unknown>;
+}
+
+export interface DocsieVoiceOptionsResult {
+	success: boolean;
+	source?: string;
+	preferredProvider?: string;
+	tiers: string[];
+	providers: DocsieVoiceProvider[];
+	defaultVoiceOptions?: DocsieVoiceDefaultOptions;
+	error?: string;
+}
+
+export interface DocsieListVoiceOptionsInput {
+	provider?: string;
+	tier?: string;
+}
+
+export interface DocsieGenerateVoiceoverInput {
+	text: string;
+	provider?: string;
+	voiceId?: string;
+	responseFormat?: string;
+	speed?: number;
+	filename?: string;
+	options?: DocsieVoiceDefaultOptions;
+}
+
+export interface DocsieTranscriptionOption {
+	code: string;
+	name?: string;
+	raw?: Record<string, unknown>;
+}
+
+export interface DocsieTranscriptionOptionsResult {
+	success: boolean;
+	source?: string;
+	languages: DocsieTranscriptionOption[];
+	defaultLanguage?: string;
+	audioPath?: string;
+	directUpload?: boolean;
+	maxBytes?: number;
+	raw?: Record<string, unknown>;
+	error?: string;
+}
+
+export interface DocsieTranscribeAudioInput {
+	audioData?: ArrayBuffer;
+	audioPath?: string;
+	fileName: string;
+	contentType?: string;
+	language?: string;
+}
+
+export interface DocsieTranscriptionResult {
+	success: boolean;
+	filename?: string;
+	contentType?: string | null;
+	language?: string | null;
+	text?: string;
+	segments: unknown[];
+	segmentCount?: number;
+	durationSeconds?: number;
+	creditsCharged?: number;
+	creditBalanceAfter?: number;
+	raw?: Record<string, unknown>;
+	error?: string;
+}
+
+export interface DocsieGenerateVoiceoverResult {
+	success: boolean;
+	audioFilePath?: string;
+	audioFileUrl?: string;
+	filename?: string;
+	contentType?: string | null;
+	provider?: string | null;
+	model?: string | null;
+	voiceName?: string | null;
+	source?: string | null;
+	error?: string;
+}
 
 export interface DocsieWorkspace {
 	id: string;
@@ -57,6 +176,8 @@ export interface DocsieDesktopConnectParams {
 	rewriteInstructions?: string;
 	targetDocumentationId?: string;
 	autoGenerate?: boolean;
+	outputFormats?: DocsieOutputFormat[];
+	pptxOptions?: DocsiePptxOptions;
 }
 
 export const DEFAULT_DOCSIE_WEB_APP_URL = "https://app.docsie.io";
@@ -113,6 +234,42 @@ export function buildDocsieDesktopConnectUrl(
 	if (typeof params?.autoGenerate === "boolean") {
 		connectUrl.searchParams.set("auto_generate", params.autoGenerate ? "true" : "false");
 	}
+	if (params?.outputFormats?.length) {
+		connectUrl.searchParams.set("output_formats", params.outputFormats.join(","));
+	}
+	if (params?.pptxOptions) {
+		const options = params.pptxOptions;
+		if (options.deckType?.trim()) {
+			connectUrl.searchParams.set("pptx_deck_type", options.deckType.trim());
+		}
+		if (options.sourceName?.trim()) {
+			connectUrl.searchParams.set("pptx_source_name", options.sourceName.trim());
+		}
+		if (options.enhance?.trim()) {
+			connectUrl.searchParams.set("pptx_enhance", options.enhance.trim());
+		}
+		if (options.audience?.trim()) {
+			connectUrl.searchParams.set("pptx_audience", options.audience.trim());
+		}
+		if (typeof options.maxSlides === "number" && Number.isFinite(options.maxSlides)) {
+			connectUrl.searchParams.set("pptx_max_slides", String(options.maxSlides));
+		}
+		if (typeof options.generateCoverImage === "boolean") {
+			connectUrl.searchParams.set(
+				"pptx_generate_cover_image",
+				options.generateCoverImage ? "true" : "false",
+			);
+		}
+		if (options.imageQuality?.trim()) {
+			connectUrl.searchParams.set("pptx_image_quality", options.imageQuality.trim());
+		}
+		if (options.illustrationStyle?.trim()) {
+			connectUrl.searchParams.set("pptx_illustration_style", options.illustrationStyle.trim());
+		}
+		if (typeof options.embedImages === "boolean") {
+			connectUrl.searchParams.set("pptx_embed_images", options.embedImages ? "true" : "false");
+		}
+	}
 
 	return connectUrl.toString();
 }
@@ -140,6 +297,7 @@ export interface DocsieIntegrationConfigInput {
 	token?: string;
 	organizationId?: string;
 	organizationName?: string;
+	organizationSlug?: string;
 	workspaceId?: string;
 	workspaceName?: string;
 	defaultQuality?: DocsieVideoToDocsQuality;
@@ -150,6 +308,15 @@ export interface DocsieIntegrationConfigInput {
 	defaultTemplateInstruction?: string;
 	targetDocumentationId?: string;
 	autoGenerate?: boolean;
+	defaultOutputFormats?: DocsieOutputFormat[];
+	defaultPptxOptions?: DocsiePptxOptions;
+	voiceApiEnabled?: boolean;
+	voiceOptionsPath?: string;
+	voiceSpeechPath?: string;
+	defaultVoiceOptions?: DocsieVoiceDefaultOptions;
+	transcriptionApiEnabled?: boolean;
+	transcriptionOptionsPath?: string;
+	transcriptionAudioPath?: string;
 }
 
 export interface DocsieIntegrationState {
@@ -158,6 +325,7 @@ export interface DocsieIntegrationState {
 	hasToken: boolean;
 	organizationId?: string;
 	organizationName?: string;
+	organizationSlug?: string;
 	workspaceId?: string;
 	workspaceName?: string;
 	defaultQuality: DocsieVideoToDocsQuality;
@@ -168,6 +336,15 @@ export interface DocsieIntegrationState {
 	defaultTemplateInstruction?: string;
 	targetDocumentationId?: string;
 	autoGenerate: boolean;
+	defaultOutputFormats: DocsieOutputFormat[];
+	defaultPptxOptions: DocsiePptxOptions;
+	voiceApiEnabled: boolean;
+	voiceOptionsPath?: string;
+	voiceSpeechPath?: string;
+	defaultVoiceOptions: DocsieVoiceDefaultOptions;
+	transcriptionApiEnabled: boolean;
+	transcriptionOptionsPath?: string;
+	transcriptionAudioPath?: string;
 }
 
 export interface DocsieDesktopHandoffInput {
@@ -182,6 +359,7 @@ export interface DocsieDesktopHandoffExchangeResult {
 	state?: DocsieIntegrationState;
 	organizationId?: string;
 	organizationName?: string;
+	organizationSlug?: string;
 	workspaceId?: string | null;
 	workspaceName?: string | null;
 	returnUrl?: string | null;
@@ -195,6 +373,7 @@ export interface DocsieDesktopAuthEvent {
 	message: string;
 	state?: DocsieIntegrationState;
 	organizationName?: string;
+	organizationSlug?: string;
 	workspaceName?: string | null;
 	returnUrl?: string | null;
 	error?: string;
@@ -253,6 +432,8 @@ export interface DocsieStartVideoToDocsInput {
 	targetDocumentationId?: string;
 	bookTitle?: string;
 	autoGenerate?: boolean;
+	outputFormats?: DocsieOutputFormat[];
+	pptxOptions?: DocsiePptxOptions;
 }
 
 export interface DocsieStartVideoToDocsResult {
@@ -277,6 +458,7 @@ export interface DocsieGenerateVideoToDocsInput {
 	targetDocumentationId?: string;
 	bookTitle?: string;
 	outputFormats?: DocsieOutputFormat[];
+	pptxOptions?: DocsiePptxOptions;
 }
 
 export interface DocsieGenerateVideoToDocsResult {
@@ -370,6 +552,8 @@ export interface DocsieVideoToDocsHistoryEntry {
 	generationTemplateName?: string;
 	templateInstruction?: string;
 	rewriteInstructions?: string;
+	outputFormats?: DocsieOutputFormat[];
+	pptxOptions?: DocsiePptxOptions;
 	analysisJobId?: string;
 	generationJobId?: string;
 	jobResult: DocsieVideoToDocsJobResult;
@@ -387,6 +571,8 @@ export interface DocsieSaveVideoToDocsHistoryInput {
 	generationTemplateName?: string;
 	templateInstruction?: string;
 	rewriteInstructions?: string;
+	outputFormats?: DocsieOutputFormat[];
+	pptxOptions?: DocsiePptxOptions;
 	analysisJobId?: string;
 	generationJobId?: string;
 	jobResult: DocsieVideoToDocsJobResult;

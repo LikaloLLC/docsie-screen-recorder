@@ -3,10 +3,13 @@ import type {
 	DocsieDesktopAuthEvent,
 	DocsieEstimateInput,
 	DocsieGenerateVideoToDocsInput,
+	DocsieGenerateVoiceoverInput,
 	DocsieIntegrationConfigInput,
 	DocsieListDocumentationShelvesInput,
+	DocsieListVoiceOptionsInput,
 	DocsieSaveVideoToDocsHistoryInput,
 	DocsieStartVideoToDocsInput,
+	DocsieTranscribeAudioInput,
 } from "../src/lib/docsieIntegration";
 import type { RecordingSession, StoreRecordedSessionInput } from "../src/lib/recordingSession";
 
@@ -88,6 +91,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	docsieListGenerationTemplates: () => {
 		return ipcRenderer.invoke("docsie:list-generation-templates");
+	},
+	docsieListVoiceOptions: (input?: DocsieListVoiceOptionsInput) => {
+		return ipcRenderer.invoke("docsie:list-voice-options", input ?? {});
+	},
+	docsieListTranscriptionOptions: () => {
+		return ipcRenderer.invoke("docsie:list-transcription-options");
+	},
+	docsieTranscribeAudio: (input: DocsieTranscribeAudioInput) => {
+		return ipcRenderer.invoke("docsie:transcribe-audio", input);
+	},
+	docsieGenerateVoiceover: (input: DocsieGenerateVoiceoverInput) => {
+		return ipcRenderer.invoke("docsie:generate-voiceover", input);
 	},
 	docsieEstimateVideoToDocs: (input: DocsieEstimateInput) => {
 		return ipcRenderer.invoke("docsie:estimate-video-to-docs", input);

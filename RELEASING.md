@@ -140,6 +140,63 @@ Then run:
 RELEASE_SIGN_MACOS=1 npm run release:local
 ```
 
+## Mac App Store Setup
+
+The Mac App Store path is separate from the signed DMG release path. It uses Apple App Store certificates and produces a `.pkg` for App Store Connect.
+
+Create these Apple certificates:
+
+- `Mac App Distribution`
+- `Mac Installer Distribution`
+
+When Apple asks for CSRs, use:
+
+```text
+.apple-signing/docsie-mac-app-distribution.certSigningRequest
+.apple-signing/docsie-mac-installer-distribution.certSigningRequest
+```
+
+After downloading both `.cer` files, run:
+
+```bash
+npm run signing:setup:mas -- \
+  --app-cer /path/to/mac_app.cer \
+  --installer-cer /path/to/mac_installer.cer \
+  --apple-id "<apple-id>"
+```
+
+Build the App Store package locally:
+
+```bash
+npm run build:mas
+```
+
+The output package is:
+
+```text
+release/<version>/mas-arm64/Docsie Screen Recorder-Mac-App-Store-arm64-<version>.pkg
+```
+
+App Store builds do not use notarization. App Store Connect performs its own validation after upload.
+
+Before uploading the first build, create the macOS app record in App Store Connect with bundle ID `io.docsie.screenrecorder`.
+
+Validate or upload the package from the command line:
+
+```bash
+APPLE_ID="<apple-id>" APPLE_APP_SPECIFIC_PASSWORD="<app-specific-password>" npm run mas:validate
+APPLE_ID="<apple-id>" APPLE_APP_SPECIFIC_PASSWORD="<app-specific-password>" npm run mas:upload
+```
+
+To keep the app-specific password out of shell history, store it in Keychain and use `ALTOOL_PASSWORD_REF`:
+
+```bash
+xcrun altool --store-password-in-keychain-item DocsieAppStoreConnect -u "<apple-id>" -p "<app-specific-password>"
+APPLE_ID="<apple-id>" ALTOOL_PASSWORD_REF="@keychain:DocsieAppStoreConnect" npm run mas:upload
+```
+
+You can also run `.github/workflows/mac-app-store.yml` manually. Leave `upload_to_app_store` disabled to only produce a package artifact, or enable it after the App Store Connect app record exists.
+
 Optional S3 publish:
 
 - Preferred auth: `AWS_ROLE_TO_ASSUME`

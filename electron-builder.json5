@@ -54,6 +54,21 @@
       "com.apple.security.device.audio-input": true
     }
   },
+  "mas": {
+    "hardenedRuntime": false,
+    "timestamp": "none",
+    "entitlements": "mas.entitlements",
+    "entitlementsInherit": "mas.inherit.entitlements",
+    "type": "distribution",
+    "artifactName": "${productName}-Mac-App-Store-${arch}-${version}.${ext}",
+    "extendInfo": {
+      "ITSAppUsesNonExemptEncryption": false,
+      "NSAudioCaptureUsageDescription": "Docsie Screen Recorder needs audio capture permission to record system audio.",
+      "NSMicrophoneUsageDescription": "Docsie Screen Recorder needs microphone access to record voice audio.",
+      "NSCameraUsageDescription": "Docsie Screen Recorder needs camera access to record webcam video.",
+      "NSCameraUseContinuityCameraDeviceType": true
+    }
+  },
   "linux": {
     "target": [
       "AppImage"

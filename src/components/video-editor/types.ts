@@ -205,6 +205,41 @@ export interface SpeedRegion {
 	speed: PlaybackSpeed;
 }
 
+export type VoiceoverExportMode = "replace";
+
+export interface VoiceoverTranscriptSegment {
+	startMs: number;
+	endMs: number;
+	text: string;
+}
+
+export interface VoiceoverState {
+	enabled: boolean;
+	script: string;
+	transcriptSegments?: VoiceoverTranscriptSegment[];
+	transcriptionDurationSeconds?: number;
+	audioFilePath?: string;
+	audioFileUrl?: string;
+	provider?: string | null;
+	model?: string | null;
+	voiceName?: string | null;
+	voiceId?: string;
+	responseFormat?: string;
+	speed: number;
+	contentType?: string | null;
+	filename?: string;
+	source?: string | null;
+	generatedAt?: string;
+	exportMode: VoiceoverExportMode;
+}
+
+export const DEFAULT_VOICEOVER_STATE: VoiceoverState = {
+	enabled: false,
+	script: "",
+	speed: 1,
+	exportMode: "replace",
+};
+
 export const SPEED_OPTIONS: Array<{ speed: PlaybackSpeed; label: string }> = [
 	{ speed: 0.25, label: "0.25×" },
 	{ speed: 0.5, label: "0.5×" },

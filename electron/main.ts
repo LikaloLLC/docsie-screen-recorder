@@ -365,6 +365,7 @@ async function handleDesktopAuthUrl(rawUrl: string) {
 						: "Connected to Docsie.",
 			state: result.state,
 			organizationName: result.organizationName,
+			organizationSlug: result.organizationSlug,
 			workspaceName: result.workspaceName,
 			returnUrl: result.returnUrl,
 		});

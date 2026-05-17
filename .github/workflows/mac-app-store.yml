@@ -1,0 +1,145 @@
+name: Build Mac App Store Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      mas_arch:
+        description: "Mac App Store build architecture"
+        required: true
+        default: "universal"
+        type: choice
+        options:
+          - universal
+          - arm64
+          - x64
+      upload_to_app_store:
+        description: "Upload the built package to App Store Connect"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22.22.1"
+  MAS_CODESIGN_QUALIFIER: "Docsie Inc. (KQ433V54UU)"
+
+jobs:
+  build-mas:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install app dependencies
+        run: npx electron-builder install-app-deps
+
+      - name: Validate MAS signing secrets
+        env:
+          MAS_APP_CERTIFICATE_P12: ${{ secrets.MAS_APP_CERTIFICATE_P12 }}
+          MAS_INSTALLER_CERTIFICATE_P12: ${{ secrets.MAS_INSTALLER_CERTIFICATE_P12 }}
+          MAS_CERTIFICATE_PASSWORD: ${{ secrets.MAS_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$MAS_APP_CERTIFICATE_P12" || -z "$MAS_INSTALLER_CERTIFICATE_P12" || -z "$MAS_CERTIFICATE_PASSWORD" ]]; then
+            echo "::error::Missing MAS signing secrets. Run npm run signing:setup:mas after Apple issues the Mac App Distribution and Mac Installer Distribution certificates."
+            exit 1
+          fi
+
+      - name: Import MAS signing certificates
+        env:
+          MAS_APP_CERTIFICATE_P12: ${{ secrets.MAS_APP_CERTIFICATE_P12 }}
+          MAS_INSTALLER_CERTIFICATE_P12: ${{ secrets.MAS_INSTALLER_CERTIFICATE_P12 }}
+          MAS_CERTIFICATE_PASSWORD: ${{ secrets.MAS_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/mas-build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          printf '%s' "$MAS_APP_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/mas-app.p12"
+          printf '%s' "$MAS_INSTALLER_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/mas-installer.p12"
+
+          security import "$RUNNER_TEMP/mas-app.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$MAS_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productbuild \
+            -T /usr/bin/security
+
+          security import "$RUNNER_TEMP/mas-installer.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$MAS_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productbuild \
+            -T /usr/bin/security
+
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          rm -f "$RUNNER_TEMP/mas-app.p12" "$RUNNER_TEMP/mas-installer.p12"
+
+      - name: Decode MAS provisioning profile
+        env:
+          MAS_PROVISIONING_PROFILE: ${{ secrets.MAS_PROVISIONING_PROFILE }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$MAS_PROVISIONING_PROFILE" ]]; then
+            echo "::warning::MAS_PROVISIONING_PROFILE is not set. Continuing without an embedded provisioning profile."
+            exit 0
+          fi
+
+          mkdir -p build
+          printf '%s' "$MAS_PROVISIONING_PROFILE" | base64 --decode > build/mas.provisionprofile
+
+      - name: Build Mac App Store package
+        run: npm run build:mas
+        env:
+          MAS_CODESIGN_QUALIFIER_SECRET: ${{ secrets.MAS_CODESIGN_QUALIFIER }}
+          CSC_NAME: ${{ secrets.MAS_CODESIGN_QUALIFIER }}
+          MAS_ARCH: ${{ inputs.mas_arch }}
+          MAS_INSTALLER_CODESIGN_IDENTITY: ${{ secrets.MAS_INSTALLER_CODESIGN_IDENTITY }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "true"
+
+      - name: Upload package to App Store Connect
+        if: ${{ inputs.upload_to_app_store }}
+        run: npm run mas:upload
+        env:
+          MAS_ARCH: ${{ inputs.mas_arch }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+
+      - name: Upload Mac App Store package
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-app-store-package
+          path: |
+            release/**/*.pkg
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Cleanup keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/mas-build.keychain-db" || true

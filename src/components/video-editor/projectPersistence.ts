@@ -17,6 +17,7 @@ import {
 	DEFAULT_CROP_REGION,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
+	DEFAULT_VOICEOVER_STATE,
 	DEFAULT_WEBCAM_LAYOUT_PRESET,
 	DEFAULT_WEBCAM_MASK_SHAPE,
 	DEFAULT_WEBCAM_POSITION,
@@ -30,6 +31,8 @@ import {
 	MIN_PLAYBACK_SPEED,
 	type SpeedRegion,
 	type TrimRegion,
+	type VoiceoverState,
+	type VoiceoverTranscriptSegment,
 	type WebcamLayoutPreset,
 	type WebcamMaskShape,
 	type WebcamPosition,
@@ -45,7 +48,7 @@ export const WALLPAPER_PATHS = Array.from(
 	(_, i) => `/wallpapers/wallpaper${i + 1}.jpg`,
 );
 
-export const PROJECT_VERSION = 2;
+export const PROJECT_VERSION = 3;
 
 export interface ProjectEditorState {
 	wallpaper: string;
@@ -69,6 +72,7 @@ export interface ProjectEditorState {
 	gifFrameRate: GifFrameRate;
 	gifLoop: boolean;
 	gifSizePreset: GifSizePreset;
+	voiceover: VoiceoverState;
 }
 
 export interface EditorProjectData {
@@ -104,6 +108,68 @@ function computeNormalizedWebcamLayoutPreset(
 
 function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
+}
+
+function normalizeVoiceoverState(value: unknown): VoiceoverState {
+	if (!value || typeof value !== "object" || Array.isArray(value)) {
+		return { ...DEFAULT_VOICEOVER_STATE };
+	}
+
+	const raw = value as Partial<VoiceoverState>;
+	const transcriptSegments = Array.isArray(raw.transcriptSegments)
+		? raw.transcriptSegments
+				.map((segment) => {
+					if (!segment || typeof segment !== "object" || Array.isArray(segment)) {
+						return null;
+					}
+					const candidate = segment as Partial<VoiceoverTranscriptSegment>;
+					return isFiniteNumber(candidate.startMs) &&
+						isFiniteNumber(candidate.endMs) &&
+						typeof candidate.text === "string" &&
+						candidate.text.trim() &&
+						candidate.endMs > candidate.startMs
+						? {
+								startMs: Math.max(0, Math.round(candidate.startMs)),
+								endMs: Math.max(0, Math.round(candidate.endMs)),
+								text: candidate.text.trim(),
+							}
+						: null;
+				})
+				.filter((segment): segment is NonNullable<typeof segment> => Boolean(segment))
+		: undefined;
+	const audioFilePath =
+		typeof raw.audioFilePath === "string" && raw.audioFilePath.trim()
+			? fromFileUrl(raw.audioFilePath.trim())
+			: undefined;
+	const audioFileUrl =
+		typeof raw.audioFileUrl === "string" && raw.audioFileUrl.trim()
+			? raw.audioFileUrl.trim()
+			: audioFilePath
+				? toFileUrl(audioFilePath)
+				: undefined;
+	const speed = isFiniteNumber(raw.speed) ? clamp(raw.speed, 0.5, 2) : 1;
+
+	return {
+		enabled: Boolean(raw.enabled && audioFilePath),
+		script: typeof raw.script === "string" ? raw.script : "",
+		transcriptSegments,
+		transcriptionDurationSeconds: isFiniteNumber(raw.transcriptionDurationSeconds)
+			? Math.max(0, raw.transcriptionDurationSeconds)
+			: undefined,
+		audioFilePath,
+		audioFileUrl,
+		provider: typeof raw.provider === "string" ? raw.provider : null,
+		model: typeof raw.model === "string" ? raw.model : null,
+		voiceName: typeof raw.voiceName === "string" ? raw.voiceName : null,
+		voiceId: typeof raw.voiceId === "string" ? raw.voiceId : undefined,
+		responseFormat: typeof raw.responseFormat === "string" ? raw.responseFormat : undefined,
+		speed,
+		contentType: typeof raw.contentType === "string" ? raw.contentType : null,
+		filename: typeof raw.filename === "string" ? raw.filename : undefined,
+		source: typeof raw.source === "string" ? raw.source : null,
+		generatedAt: typeof raw.generatedAt === "string" ? raw.generatedAt : undefined,
+		exportMode: "replace",
+	};
 }
 
 function isFileUrl(value: string): boolean {
@@ -480,6 +546,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			editor.gifSizePreset === "original"
 				? editor.gifSizePreset
 				: "medium",
+		voiceover: normalizeVoiceoverState(editor.voiceover),
 	};
 }
 

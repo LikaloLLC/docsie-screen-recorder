@@ -48,6 +48,7 @@ jobs:
     runs-on: macos-latest
     env:
       DEFAULT_MAC_CODESIGN_IDENTITY: "Developer ID Application: Docsie Inc. (KQ433V54UU)"
+      DEFAULT_MAC_CODESIGN_QUALIFIER: "Docsie Inc. (KQ433V54UU)"
       DEFAULT_APPLE_TEAM_ID: "KQ433V54UU"
     strategy:
       matrix:
@@ -91,10 +92,17 @@ jobs:
           set -euo pipefail
 
           RESOLVED_MAC_CODESIGN_IDENTITY="${MAC_CODESIGN_IDENTITY:-$DEFAULT_MAC_CODESIGN_IDENTITY}"
+          RESOLVED_MAC_CODESIGN_QUALIFIER="$DEFAULT_MAC_CODESIGN_QUALIFIER"
           RESOLVED_APPLE_TEAM_ID="${APPLE_TEAM_ID:-$DEFAULT_APPLE_TEAM_ID}"
 
+          if [[ -n "$MAC_CODESIGN_IDENTITY" ]]; then
+            RESOLVED_MAC_CODESIGN_QUALIFIER="$MAC_CODESIGN_IDENTITY"
+            RESOLVED_MAC_CODESIGN_QUALIFIER="${RESOLVED_MAC_CODESIGN_QUALIFIER#Developer ID Application: }"
+            RESOLVED_MAC_CODESIGN_QUALIFIER="${RESOLVED_MAC_CODESIGN_QUALIFIER#Developer ID Installer: }"
+          fi
+
           SIGNING_ENABLED=false
-          if [[ -n "$MAC_CERTIFICATE_P12" && -n "$MAC_CERTIFICATE_PASSWORD" && -n "$RESOLVED_MAC_CODESIGN_IDENTITY" ]]; then
+          if [[ -n "$MAC_CERTIFICATE_P12" && -n "$MAC_CERTIFICATE_PASSWORD" && -n "$RESOLVED_MAC_CODESIGN_IDENTITY" && -n "$RESOLVED_MAC_CODESIGN_QUALIFIER" ]]; then
             SIGNING_ENABLED=true
           fi
 
@@ -106,6 +114,7 @@ jobs:
           echo "signing_enabled=$SIGNING_ENABLED" >> "$GITHUB_OUTPUT"
           echo "notarization_enabled=$NOTARIZATION_ENABLED" >> "$GITHUB_OUTPUT"
           echo "codesign_identity=$RESOLVED_MAC_CODESIGN_IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "codesign_qualifier=$RESOLVED_MAC_CODESIGN_QUALIFIER" >> "$GITHUB_OUTPUT"
           echo "apple_team_id=$RESOLVED_APPLE_TEAM_ID" >> "$GITHUB_OUTPUT"
 
       # ─── Import Code Signing Certificate ──────────────────────
@@ -160,7 +169,7 @@ jobs:
       - name: Package .app bundle
         run: npx electron-builder --mac --${{ matrix.arch }} --dir
         env:
-          CSC_NAME: ${{ steps.mac_signing.outputs.signing_enabled == 'true' && steps.mac_signing.outputs.codesign_identity || '' }}
+          CSC_NAME: ${{ steps.mac_signing.outputs.signing_enabled == 'true' && steps.mac_signing.outputs.codesign_qualifier || '' }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.mac_signing.outputs.signing_enabled == 'true' && 'true' || 'false' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

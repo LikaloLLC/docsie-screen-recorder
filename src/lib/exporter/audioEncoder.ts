@@ -52,6 +52,17 @@ export class AudioProcessor {
 		await this.processTrimOnlyAudio(demuxer, muxer, sortedTrims, readEndSec);
 	}
 
+	async processVoiceover(
+		audioUrl: string,
+		muxer: VideoMuxer,
+		exportDurationSec: number,
+	): Promise<void> {
+		const renderedAudioBlob = await this.renderExternalAudio(audioUrl, exportDurationSec);
+		if (!this.cancelled && renderedAudioBlob.size > 0) {
+			await this.muxRenderedAudioBlob(renderedAudioBlob, muxer);
+		}
+	}
+
 	// Legacy trim-only path. This is still used for projects without speed regions.
 	private async processTrimOnlyAudio(
 		demuxer: WebDemuxer,
@@ -125,7 +136,10 @@ export class AudioProcessor {
 		}
 
 		// Phase 2: Re-encode with timestamps adjusted for trim gaps
-		const encodedChunks: { chunk: EncodedAudioChunk; meta?: EncodedAudioChunkMetadata }[] = [];
+		const encodedChunks: {
+			chunk: EncodedAudioChunk;
+			meta?: EncodedAudioChunkMetadata;
+		}[] = [];
 
 		const encoder = new AudioEncoder({
 			output: (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) => {
@@ -387,11 +401,122 @@ export class AudioProcessor {
 		return recordedBlob;
 	}
 
+	private async renderExternalAudio(audioUrl: string, exportDurationSec: number): Promise<Blob> {
+		const media = document.createElement("audio");
+		media.src = audioUrl;
+		media.preload = "auto";
+
+		await this.waitForLoadedMetadata(media);
+		if (this.cancelled) {
+			throw new Error("Export cancelled");
+		}
+
+		const effectiveEnd =
+			Number.isFinite(exportDurationSec) && exportDurationSec > 0
+				? exportDurationSec
+				: media.duration;
+		if (!Number.isFinite(effectiveEnd) || effectiveEnd <= 0) {
+			return new Blob([], { type: "audio/webm" });
+		}
+
+		const audioContext = new AudioContext();
+		const sourceNode = audioContext.createMediaElementSource(media);
+		const destinationNode = audioContext.createMediaStreamDestination();
+		sourceNode.connect(destinationNode);
+
+		let rafId: number | null = null;
+		let recorder: MediaRecorder | null = null;
+		let recordedBlobPromise: Promise<Blob> | null = null;
+
+		try {
+			if (audioContext.state === "suspended") {
+				await audioContext.resume();
+			}
+
+			const recording = this.startAudioRecording(destinationNode.stream);
+			recorder = recording.recorder;
+			recordedBlobPromise = recording.recordedBlobPromise;
+			await media.play();
+
+			await new Promise<void>((resolve, reject) => {
+				const cleanup = () => {
+					if (rafId !== null) {
+						cancelAnimationFrame(rafId);
+						rafId = null;
+					}
+					media.removeEventListener("error", onError);
+					media.removeEventListener("ended", onEnded);
+				};
+
+				const onError = () => {
+					cleanup();
+					reject(new Error("Failed while rendering AI voiceover audio"));
+				};
+
+				const onEnded = () => {
+					cleanup();
+					resolve();
+				};
+
+				const tick = () => {
+					if (this.cancelled) {
+						cleanup();
+						resolve();
+						return;
+					}
+
+					if (media.currentTime >= effectiveEnd) {
+						media.pause();
+						cleanup();
+						resolve();
+						return;
+					}
+
+					if (!media.paused && !media.ended) {
+						rafId = requestAnimationFrame(tick);
+					} else {
+						cleanup();
+						resolve();
+					}
+				};
+
+				media.addEventListener("error", onError, { once: true });
+				media.addEventListener("ended", onEnded, { once: true });
+				rafId = requestAnimationFrame(tick);
+			});
+		} finally {
+			if (rafId !== null) {
+				cancelAnimationFrame(rafId);
+			}
+			media.pause();
+			if (recorder && recorder.state !== "inactive") {
+				recorder.stop();
+			}
+			destinationNode.stream.getTracks().forEach((track) => track.stop());
+			sourceNode.disconnect();
+			destinationNode.disconnect();
+			await audioContext.close();
+			media.src = "";
+			media.load();
+		}
+
+		if (!recordedBlobPromise) {
+			throw new Error("Audio recorder finished without assigning recordedBlobPromise");
+		}
+		const recordedBlob = await recordedBlobPromise;
+		if (this.cancelled) {
+			throw new Error("Export cancelled");
+		}
+		return recordedBlob;
+	}
+
 	// Demuxes the rendered speed-adjusted blob and feeds encoded chunks into the MP4 muxer.
 	private async muxRenderedAudioBlob(blob: Blob, muxer: VideoMuxer): Promise<void> {
 		if (this.cancelled) return;
 
-		const file = new File([blob], "speed-audio.webm", { type: blob.type || "audio/webm" });
+		const file = new File([blob], "rendered-audio.webm", {
+			type: blob.type || "audio/webm",
+		});
 		const wasmUrl = new URL("./wasm/web-demuxer.wasm", window.location.href).href;
 		const demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
 
@@ -448,7 +573,7 @@ export class AudioProcessor {
 				}
 			};
 			recorder.onerror = () => {
-				reject(new Error("MediaRecorder failed while capturing speed-adjusted audio"));
+				reject(new Error("MediaRecorder failed while capturing rendered audio"));
 			};
 			recorder.onstop = () => {
 				const type = mimeType || chunks[0]?.type || "audio/webm";

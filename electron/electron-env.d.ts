@@ -25,7 +25,10 @@ declare namespace NodeJS {
 interface Window {
 	electronAPI: {
 		getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>;
-		openScreenCaptureSettings: () => Promise<{ success: boolean; error?: string }>;
+		openScreenCaptureSettings: () => Promise<{
+			success: boolean;
+			error?: string;
+		}>;
 		switchToEditor: () => Promise<void>;
 		switchToHud: () => Promise<void>;
 		startNewRecording: () => Promise<{ success: boolean; error?: string }>;
@@ -106,6 +109,18 @@ interface Window {
 			templates: import("../src/lib/docsieIntegration").DocsieGenerationTemplate[];
 			error?: string;
 		}>;
+		docsieListVoiceOptions: (
+			input?: import("../src/lib/docsieIntegration").DocsieListVoiceOptionsInput,
+		) => Promise<import("../src/lib/docsieIntegration").DocsieVoiceOptionsResult>;
+		docsieListTranscriptionOptions: () => Promise<
+			import("../src/lib/docsieIntegration").DocsieTranscriptionOptionsResult
+		>;
+		docsieTranscribeAudio: (
+			input: import("../src/lib/docsieIntegration").DocsieTranscribeAudioInput,
+		) => Promise<import("../src/lib/docsieIntegration").DocsieTranscriptionResult>;
+		docsieGenerateVoiceover: (
+			input: import("../src/lib/docsieIntegration").DocsieGenerateVoiceoverInput,
+		) => Promise<import("../src/lib/docsieIntegration").DocsieGenerateVoiceoverResult>;
 		docsieEstimateVideoToDocs: (
 			input: import("../src/lib/docsieIntegration").DocsieEstimateInput,
 		) => Promise<import("../src/lib/docsieIntegration").DocsieEstimateResult>;
@@ -147,7 +162,12 @@ interface Window {
 		saveExportedVideo: (
 			videoData: ArrayBuffer,
 			fileName: string,
-		) => Promise<{ success: boolean; path?: string; message?: string; canceled?: boolean }>;
+		) => Promise<{
+			success: boolean;
+			path?: string;
+			message?: string;
+			canceled?: boolean;
+		}>;
 		saveTextFile: (
 			textContent: string,
 			fileName: string,
@@ -159,7 +179,11 @@ interface Window {
 			canceled?: boolean;
 			error?: string;
 		}>;
-		openVideoFilePicker: () => Promise<{ success: boolean; path?: string; canceled?: boolean }>;
+		openVideoFilePicker: () => Promise<{
+			success: boolean;
+			path?: string;
+			canceled?: boolean;
+		}>;
 		setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>;
 		setCurrentRecordingSession: (
 			session: import("../src/lib/recordingSession").RecordingSession | null,

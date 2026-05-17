@@ -14,10 +14,13 @@ import {
 import type {
 	DocsieEstimateInput,
 	DocsieGenerateVideoToDocsInput,
+	DocsieGenerateVoiceoverInput,
 	DocsieIntegrationConfigInput,
 	DocsieListDocumentationShelvesInput,
+	DocsieListVoiceOptionsInput,
 	DocsieSaveVideoToDocsHistoryInput,
 	DocsieStartVideoToDocsInput,
+	DocsieTranscribeAudioInput,
 } from "../../src/lib/docsieIntegration";
 import {
 	normalizeProjectMedia,
@@ -31,6 +34,7 @@ import { RECORDINGS_DIR } from "../main";
 import {
 	estimateDocsieVideoToDocs,
 	generateDocsieVideoToDocs,
+	generateDocsieVoiceover,
 	getDocsieBackgroundJob,
 	getDocsieCreditBalance,
 	getDocsieIntegrationState,
@@ -38,11 +42,14 @@ import {
 	getDocsieVideoToDocsJobStatus,
 	listDocsieDocumentationShelves,
 	listDocsieGenerationTemplates,
+	listDocsieTranscriptionOptions,
 	listDocsieVideoToDocsHistory,
+	listDocsieVoiceOptions,
 	listDocsieWorkspaces,
 	saveDocsieIntegrationConfig,
 	saveDocsieVideoToDocsHistory,
 	startDocsieVideoToDocs,
+	transcribeDocsieAudio,
 } from "./docsie";
 
 const PROJECT_FILE_EXTENSION = "docsiescreen";
@@ -181,9 +188,19 @@ async function getApprovedProjectSession(
 		throw new Error("Project references an invalid or unsupported webcam video path");
 	}
 
-	return webcamVideoPath
-		? { screenVideoPath, webcamVideoPath, createdAt: Date.now() }
-		: { screenVideoPath, createdAt: Date.now() };
+	const audioPath = media.audioPath
+		? await approveReadableVideoPath(media.audioPath, trustedDirs)
+		: undefined;
+	if (media.audioPath && !audioPath) {
+		throw new Error("Project references an invalid or unsupported audio path");
+	}
+
+	return {
+		screenVideoPath,
+		...(webcamVideoPath ? { webcamVideoPath } : {}),
+		...(audioPath ? { audioPath } : {}),
+		createdAt: Date.now(),
+	};
 }
 
 type SelectedSource = {
@@ -264,6 +281,11 @@ async function loadRecordedSessionForVideoPath(
 							normalizeVideoSourcePath(session.webcamVideoPath) ?? session.webcamVideoPath,
 					}
 				: {}),
+			...(session.audioPath
+				? {
+						audioPath: normalizeVideoSourcePath(session.audioPath) ?? session.audioPath,
+					}
+				: {}),
 		};
 
 		const targetPath = normalizePath(normalizedVideoPath);
@@ -292,9 +314,18 @@ async function storeRecordedSessionFiles(payload: StoreRecordedSessionInput) {
 		await fs.writeFile(webcamVideoPath, Buffer.from(payload.webcam.videoData));
 	}
 
-	const session: RecordingSession = webcamVideoPath
-		? { screenVideoPath, webcamVideoPath, createdAt }
-		: { screenVideoPath, createdAt };
+	let audioPath: string | undefined;
+	if (payload.audio) {
+		audioPath = resolveRecordingOutputPath(payload.audio.fileName);
+		await fs.writeFile(audioPath, Buffer.from(payload.audio.audioData));
+	}
+
+	const session: RecordingSession = {
+		screenVideoPath,
+		...(webcamVideoPath ? { webcamVideoPath } : {}),
+		...(audioPath ? { audioPath } : {}),
+		createdAt,
+	};
 	setCurrentRecordingSessionState(session);
 	currentProjectPath = null;
 
@@ -737,7 +768,11 @@ export function registerIpcHandlers(
 			return { success: true, path: videoPath };
 		} catch (error) {
 			console.error("Failed to get video path:", error);
-			return { success: false, message: "Failed to get video path", error: String(error) };
+			return {
+				success: false,
+				message: "Failed to get video path",
+				error: String(error),
+			};
 		}
 	});
 
@@ -753,7 +788,10 @@ export function registerIpcHandlers(
 					"[read-binary-file] Rejected path outside allowed directories:",
 					normalizedPath,
 				);
-				return { success: false, message: "Access denied: path outside allowed directories" };
+				return {
+					success: false,
+					message: "Access denied: path outside allowed directories",
+				};
 			}
 
 			const data = await fs.readFile(normalizedPath);
@@ -866,7 +904,10 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("docsie:save-config", async (_, input: DocsieIntegrationConfigInput) => {
 		try {
-			return { success: true, state: await saveDocsieIntegrationConfig(input) };
+			return {
+				success: true,
+				state: await saveDocsieIntegrationConfig(input),
+			};
 		} catch (error) {
 			console.error("Failed to save Docsie integration config:", error);
 			return { success: false, error: String(error) };
@@ -886,7 +927,10 @@ export function registerIpcHandlers(
 		"docsie:list-documentation-shelves",
 		async (_, input: DocsieListDocumentationShelvesInput) => {
 			try {
-				return { success: true, shelves: await listDocsieDocumentationShelves(input) };
+				return {
+					success: true,
+					shelves: await listDocsieDocumentationShelves(input),
+				};
 			} catch (error) {
 				console.error("Failed to list Docsie shelves:", error);
 				return { success: false, error: String(error), shelves: [] };
@@ -896,11 +940,62 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("docsie:list-generation-templates", async () => {
 		try {
-			return { success: true, templates: await listDocsieGenerationTemplates() };
+			return {
+				success: true,
+				templates: await listDocsieGenerationTemplates(),
+			};
 		} catch (error) {
 			console.error("Failed to list Docsie generation templates:", error);
 			return { success: false, error: String(error), templates: [] };
 		}
+	});
+
+	ipcMain.handle("docsie:list-voice-options", async (_, input: DocsieListVoiceOptionsInput) => {
+		return await listDocsieVoiceOptions(input ?? {});
+	});
+
+	ipcMain.handle("docsie:list-transcription-options", async () => {
+		return await listDocsieTranscriptionOptions();
+	});
+
+	ipcMain.handle("docsie:transcribe-audio", async (_, input: DocsieTranscribeAudioInput) => {
+		try {
+			if (input.audioPath && !input.audioData) {
+				const approvedAudioPath = await approveReadableVideoPath(input.audioPath);
+				if (!approvedAudioPath) {
+					return {
+						success: false,
+						segments: [],
+						error: "Selected audio is not readable or is outside approved locations",
+					};
+				}
+
+				const audioBuffer = await fs.readFile(approvedAudioPath);
+				return await transcribeDocsieAudio({
+					...input,
+					audioPath: undefined,
+					audioData: audioBuffer.buffer.slice(
+						audioBuffer.byteOffset,
+						audioBuffer.byteOffset + audioBuffer.byteLength,
+					),
+					fileName: input.fileName || path.basename(approvedAudioPath),
+					contentType: input.contentType || "audio/webm",
+				});
+			}
+
+			return await transcribeDocsieAudio(input);
+		} catch (error) {
+			console.error("Failed to transcribe Docsie audio:", error);
+			return {
+				success: false,
+				segments: [],
+				error: error instanceof Error ? error.message : String(error),
+			};
+		}
+	});
+
+	ipcMain.handle("docsie:generate-voiceover", async (_, input: DocsieGenerateVoiceoverInput) => {
+		return await generateDocsieVoiceover(input);
 	});
 
 	ipcMain.handle("docsie:estimate-video-to-docs", async (_, input: DocsieEstimateInput) => {
@@ -959,7 +1054,11 @@ export function registerIpcHandlers(
 		try {
 			const approvedVideoPath = await approveReadableVideoPath(videoPath);
 			if (!approvedVideoPath) {
-				return { success: false, error: "Selected video is not readable", entries: [] };
+				return {
+					success: false,
+					error: "Selected video is not readable",
+					entries: [],
+				};
 			}
 
 			return {
@@ -1009,7 +1108,10 @@ export function registerIpcHandlers(
 			}
 
 			if (!ALLOWED_SCHEMES.includes(parsed.protocol)) {
-				return { success: false, error: `Unsupported URL scheme: ${parsed.protocol}` };
+				return {
+					success: false,
+					error: `Unsupported URL scheme: ${parsed.protocol}`,
+				};
 			}
 
 			await shell.openExternal(parsed.toString());
@@ -1050,8 +1152,18 @@ export function registerIpcHandlers(
 			// Determine file type from extension
 			const isGif = fileName.toLowerCase().endsWith(".gif");
 			const filters = isGif
-				? [{ name: mainT("dialogs", "fileDialogs.gifImage"), extensions: ["gif"] }]
-				: [{ name: mainT("dialogs", "fileDialogs.mp4Video"), extensions: ["mp4"] }];
+				? [
+						{
+							name: mainT("dialogs", "fileDialogs.gifImage"),
+							extensions: ["gif"],
+						},
+					]
+				: [
+						{
+							name: mainT("dialogs", "fileDialogs.mp4Video"),
+							extensions: ["mp4"],
+						},
+					];
 
 			const result = await dialog.showSaveDialog({
 				title: isGif
@@ -1197,7 +1309,10 @@ export function registerIpcHandlers(
 					// openPath returned an error message
 					return { success: false, error: openPathResult };
 				}
-				return { success: true, message: "Could not reveal item, but opened directory." };
+				return {
+					success: true,
+					message: "Could not reveal item, but opened directory.",
+				};
 			} catch (openError) {
 				console.error(`Error opening directory: ${path.dirname(filePath)}`, openError);
 				return { success: false, error: String(error) };
@@ -1289,7 +1404,11 @@ export function registerIpcHandlers(
 			});
 
 			if (result.canceled || result.filePaths.length === 0) {
-				return { success: false, canceled: true, message: "Open project canceled" };
+				return {
+					success: false,
+					canceled: true,
+					message: "Open project canceled",
+				};
 			}
 
 			const filePath = result.filePaths[0];
@@ -1363,6 +1482,9 @@ export function registerIpcHandlers(
 			approveFilePath(restoredSession.screenVideoPath);
 			if (restoredSession.webcamVideoPath) {
 				approveFilePath(restoredSession.webcamVideoPath);
+			}
+			if (restoredSession.audioPath) {
+				approveFilePath(restoredSession.audioPath);
 			}
 			setCurrentRecordingSessionState(restoredSession);
 		} else {

@@ -4,6 +4,7 @@ import type {
 	CropRegion,
 	SpeedRegion,
 	TrimRegion,
+	VoiceoverState,
 	WebcamLayoutPreset,
 	WebcamMaskShape,
 	WebcamPosition,
@@ -12,6 +13,7 @@ import type {
 } from "@/components/video-editor/types";
 import {
 	DEFAULT_CROP_REGION,
+	DEFAULT_VOICEOVER_STATE,
 	DEFAULT_WEBCAM_LAYOUT_PRESET,
 	DEFAULT_WEBCAM_MASK_SHAPE,
 	DEFAULT_WEBCAM_POSITION,
@@ -38,6 +40,7 @@ export interface EditorState {
 	webcamMaskShape: WebcamMaskShape;
 	webcamSizePreset: WebcamSizePreset;
 	webcamPosition: WebcamPosition | null;
+	voiceover: VoiceoverState;
 }
 
 export const INITIAL_EDITOR_STATE: EditorState = {
@@ -57,6 +60,7 @@ export const INITIAL_EDITOR_STATE: EditorState = {
 	webcamMaskShape: DEFAULT_WEBCAM_MASK_SHAPE,
 	webcamSizePreset: DEFAULT_WEBCAM_SIZE_PRESET,
 	webcamPosition: DEFAULT_WEBCAM_POSITION,
+	voiceover: DEFAULT_VOICEOVER_STATE,
 };
 
 type StateUpdate = Partial<EditorState> | ((prev: EditorState) => Partial<EditorState>);
@@ -83,7 +87,11 @@ function withCheckpoint(history: History, newPresent: EditorState): History {
 }
 
 export function useEditorHistory(initial: EditorState = INITIAL_EDITOR_STATE) {
-	const [history, setHistory] = useState<History>({ past: [], present: initial, future: [] });
+	const [history, setHistory] = useState<History>({
+		past: [],
+		present: initial,
+		future: [],
+	});
 
 	// Tracks whether a live-update series (e.g. slider drag) is in progress.
 	// The first updateState call saves the pre-interaction state as a checkpoint.
@@ -124,7 +132,11 @@ export function useEditorHistory(initial: EditorState = INITIAL_EDITOR_STATE) {
 		setHistory((prev) => {
 			if (!prev.future.length) return prev;
 			const [next, ...remainingFuture] = prev.future;
-			return { past: [...prev.past, prev.present], present: next, future: remainingFuture };
+			return {
+				past: [...prev.past, prev.present],
+				present: next,
+				future: remainingFuture,
+			};
 		});
 		dirtyRef.current = false;
 	}, []);

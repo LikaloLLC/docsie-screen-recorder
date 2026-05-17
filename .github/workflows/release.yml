@@ -55,6 +55,7 @@ jobs:
       mac_signing_enabled: ${{ steps.meta.outputs.mac_signing_enabled }}
       mac_notarization_enabled: ${{ steps.meta.outputs.mac_notarization_enabled }}
       mac_codesign_identity: ${{ steps.meta.outputs.mac_codesign_identity }}
+      mac_codesign_qualifier: ${{ steps.meta.outputs.mac_codesign_qualifier }}
       apple_team_id: ${{ steps.meta.outputs.apple_team_id }}
       s3_prefix: ${{ steps.meta.outputs.s3_prefix }}
     steps:
@@ -75,6 +76,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           DEFAULT_MAC_CODESIGN_IDENTITY: "Developer ID Application: Docsie Inc. (KQ433V54UU)"
+          DEFAULT_MAC_CODESIGN_QUALIFIER: "Docsie Inc. (KQ433V54UU)"
           DEFAULT_APPLE_TEAM_ID: "KQ433V54UU"
           RELEASE_S3_BUCKET: ${{ vars.RELEASE_S3_BUCKET }}
           RELEASE_S3_PREFIX: ${{ vars.RELEASE_S3_PREFIX }}
@@ -130,10 +132,17 @@ jobs:
           fi
 
           RESOLVED_MAC_CODESIGN_IDENTITY="${MAC_CODESIGN_IDENTITY:-$DEFAULT_MAC_CODESIGN_IDENTITY}"
+          RESOLVED_MAC_CODESIGN_QUALIFIER="$DEFAULT_MAC_CODESIGN_QUALIFIER"
           RESOLVED_APPLE_TEAM_ID="${APPLE_TEAM_ID:-$DEFAULT_APPLE_TEAM_ID}"
 
+          if [[ -n "$MAC_CODESIGN_IDENTITY" ]]; then
+            RESOLVED_MAC_CODESIGN_QUALIFIER="$MAC_CODESIGN_IDENTITY"
+            RESOLVED_MAC_CODESIGN_QUALIFIER="${RESOLVED_MAC_CODESIGN_QUALIFIER#Developer ID Application: }"
+            RESOLVED_MAC_CODESIGN_QUALIFIER="${RESOLVED_MAC_CODESIGN_QUALIFIER#Developer ID Installer: }"
+          fi
+
           MAC_SIGNING_ENABLED=false
-          if [[ -n "$MAC_CERTIFICATE_P12" && -n "$MAC_CERTIFICATE_PASSWORD" && -n "$RESOLVED_MAC_CODESIGN_IDENTITY" ]]; then
+          if [[ -n "$MAC_CERTIFICATE_P12" && -n "$MAC_CERTIFICATE_PASSWORD" && -n "$RESOLVED_MAC_CODESIGN_IDENTITY" && -n "$RESOLVED_MAC_CODESIGN_QUALIFIER" ]]; then
             MAC_SIGNING_ENABLED=true
           fi
 
@@ -187,6 +196,7 @@ jobs:
           echo "mac_signing_enabled=$MAC_SIGNING_ENABLED" >> "$GITHUB_OUTPUT"
           echo "mac_notarization_enabled=$MAC_NOTARIZATION_ENABLED" >> "$GITHUB_OUTPUT"
           echo "mac_codesign_identity=$RESOLVED_MAC_CODESIGN_IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "mac_codesign_qualifier=$RESOLVED_MAC_CODESIGN_QUALIFIER" >> "$GITHUB_OUTPUT"
           echo "apple_team_id=$RESOLVED_APPLE_TEAM_ID" >> "$GITHUB_OUTPUT"
           echo "s3_prefix=$NORMALIZED_S3_PREFIX" >> "$GITHUB_OUTPUT"
 
@@ -319,7 +329,7 @@ jobs:
       - name: Package macOS app bundle
         run: npx electron-builder --mac --${{ matrix.arch }} --dir
         env:
-          CSC_NAME: ${{ needs.prepare.outputs.mac_signing_enabled == 'true' && needs.prepare.outputs.mac_codesign_identity || '' }}
+          CSC_NAME: ${{ needs.prepare.outputs.mac_signing_enabled == 'true' && needs.prepare.outputs.mac_codesign_qualifier || '' }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ needs.prepare.outputs.mac_signing_enabled == 'true' && 'true' || 'false' }}
 
       - name: Find .app bundle
