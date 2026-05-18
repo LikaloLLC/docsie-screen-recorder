@@ -488,15 +488,7 @@ jobs:
               continue
             fi
 
-            STATUS="$(python3 - "$INFO_JSON" <<'PY'
-            import json
-            import sys
-            from pathlib import Path
-
-            payload = json.loads(Path(sys.argv[1]).read_text())
-            print(payload.get("status", "Unknown"))
-            PY
-            )"
+            STATUS="$(python3 -c 'import json, sys; from pathlib import Path; print(json.loads(Path(sys.argv[1]).read_text()).get("status", "Unknown"))' "$INFO_JSON")"
 
             echo "Notarization status for ${SUBMISSION_ID}: ${STATUS}"
 
