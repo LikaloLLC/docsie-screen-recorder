@@ -23,9 +23,10 @@ on:
       mac_arch:
         description: "macOS architectures to build"
         required: true
-        default: both
+        default: universal
         type: choice
         options:
+          - universal
           - both
           - arm64
           - x64
@@ -86,11 +87,11 @@ jobs:
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             RELEASE_TAG="$RELEASE_TAG_INPUT"
             PUBLISH_TARGET="${PUBLISH_TARGET_INPUT:-github}"
-            MAC_ARCH="${MAC_ARCH_INPUT:-both}"
+            MAC_ARCH="${MAC_ARCH_INPUT:-universal}"
           else
             RELEASE_TAG="${GITHUB_REF_NAME}"
             PUBLISH_TARGET="github"
-            MAC_ARCH="both"
+            MAC_ARCH="universal"
           fi
 
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+(\.[0-9]+){2}([.-][0-9A-Za-z.-]+)?$ ]]; then
@@ -107,6 +108,7 @@ jobs:
           esac
 
           case "$MAC_ARCH" in
+            universal) MAC_ARCH_MATRIX='["universal"]' ;;
             both) MAC_ARCH_MATRIX='["arm64","x64"]' ;;
             arm64|x64) MAC_ARCH_MATRIX="[\"$MAC_ARCH\"]" ;;
             *)
@@ -407,20 +409,118 @@ jobs:
             --timestamp \
             "${{ steps.dmg.outputs.dmg_path }}"
 
-      - name: Notarize DMG
+      - name: Submit DMG for notarization
+        id: notarize
         if: ${{ needs.prepare.outputs.mac_notarization_enabled == 'true' }}
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
+          set -euo pipefail
+
           TEAM_ID="${APPLE_TEAM_ID:-KQ433V54UU}"
+          NOTARY_DIR="$RUNNER_TEMP/notary-${{ matrix.arch }}"
+          SUBMIT_JSON="$NOTARY_DIR/submit.json"
+          mkdir -p "$NOTARY_DIR"
+
           xcrun notarytool submit "${{ steps.dmg.outputs.dmg_path }}" \
             --apple-id "$APPLE_ID" \
             --team-id "$TEAM_ID" \
             --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --wait
-        timeout-minutes: 180
+            --output-format json > "$SUBMIT_JSON"
+
+          cat "$SUBMIT_JSON"
+
+          SUBMISSION_ID="$(python3 - "$SUBMIT_JSON" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          payload = json.loads(Path(sys.argv[1]).read_text())
+          print(payload.get("id", ""))
+          PY
+          )"
+
+          if [[ -z "$SUBMISSION_ID" ]]; then
+            echo "::error::Apple notarization submission did not return an id."
+            exit 1
+          fi
+
+          echo "$SUBMISSION_ID" > "$NOTARY_DIR/submission-id.txt"
+          echo "submission_id=$SUBMISSION_ID" >> "$GITHUB_OUTPUT"
+          echo "notary_dir=$NOTARY_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Upload pending notarization package
+        if: ${{ needs.prepare.outputs.mac_notarization_enabled == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: notary-pending-macos-${{ matrix.arch }}
+          path: |
+            ${{ steps.dmg.outputs.dmg_path }}
+            ${{ steps.notarize.outputs.notary_dir }}/**
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Wait for notarization
+        if: ${{ needs.prepare.outputs.mac_notarization_enabled == 'true' }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          TEAM_ID="${APPLE_TEAM_ID:-KQ433V54UU}"
+          SUBMISSION_ID="${{ steps.notarize.outputs.submission_id }}"
+          DEADLINE=$((SECONDS + 19800))
+
+          while true; do
+            INFO_JSON="$(mktemp)"
+
+            if ! xcrun notarytool info "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --team-id "$TEAM_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --output-format json > "$INFO_JSON"; then
+              echo "::warning::Failed to query notarization status; retrying in 60 seconds."
+              sleep 60
+              continue
+            fi
+
+            STATUS="$(python3 - "$INFO_JSON" <<'PY'
+            import json
+            import sys
+            from pathlib import Path
+
+            payload = json.loads(Path(sys.argv[1]).read_text())
+            print(payload.get("status", "Unknown"))
+            PY
+            )"
+
+            echo "Notarization status for ${SUBMISSION_ID}: ${STATUS}"
+
+            case "$STATUS" in
+              Accepted)
+                exit 0
+                ;;
+              Invalid|Rejected)
+                xcrun notarytool log "$SUBMISSION_ID" \
+                  --apple-id "$APPLE_ID" \
+                  --team-id "$TEAM_ID" \
+                  --password "$APPLE_APP_SPECIFIC_PASSWORD" || true
+                exit 1
+                ;;
+            esac
+
+            if (( SECONDS >= DEADLINE )); then
+              echo "::error::Notarization did not complete before the CI wait ceiling. Submission ID: ${SUBMISSION_ID}"
+              exit 1
+            fi
+
+            sleep 60
+          done
+        timeout-minutes: 330
 
       - name: Staple notarization ticket
         if: ${{ needs.prepare.outputs.mac_notarization_enabled == 'true' }}
@@ -484,10 +584,16 @@ jobs:
             echo "::warning::Could not create $alias because none of the expected source files exist: $*"
           }
 
+          copy_first "docsie-screen-recorder-mac-universal.dmg" \
+            "docsie-screen-recorder-mac-universal-${VERSION}.dmg"
           copy_first "docsie-screen-recorder-mac-arm64.dmg" \
-            "docsie-screen-recorder-mac-arm64-${VERSION}.dmg"
+            "docsie-screen-recorder-mac-arm64-${VERSION}.dmg" \
+            "docsie-screen-recorder-mac-universal-${VERSION}.dmg" \
+            "docsie-screen-recorder-mac-universal.dmg"
           copy_first "docsie-screen-recorder-mac-x64.dmg" \
-            "docsie-screen-recorder-mac-x64-${VERSION}.dmg"
+            "docsie-screen-recorder-mac-x64-${VERSION}.dmg" \
+            "docsie-screen-recorder-mac-universal-${VERSION}.dmg" \
+            "docsie-screen-recorder-mac-universal.dmg"
           copy_first "Docsie.Screen.Recorder.Setup.exe" \
             "Docsie.Screen.Recorder.Setup.${VERSION}.exe" \
             "Docsie-Screen-Recorder-Setup-${VERSION}.exe"

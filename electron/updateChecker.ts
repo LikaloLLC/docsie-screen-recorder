@@ -75,6 +75,8 @@ function getPreferredAssetMatchers() {
 		return [
 			(name: string) => name === `docsie-screen-recorder-mac-${arch}.dmg`,
 			(name: string) => name.includes("mac") && name.includes(arch) && name.endsWith(".dmg"),
+			(name: string) => name === "docsie-screen-recorder-mac-universal.dmg",
+			(name: string) => name.includes("mac") && name.includes("universal") && name.endsWith(".dmg"),
 		];
 	}
 
