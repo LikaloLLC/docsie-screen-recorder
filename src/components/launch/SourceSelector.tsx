@@ -47,18 +47,26 @@ export function SourceSelector() {
 				thumbnailSize: { width: 320, height: 180 },
 				fetchWindowIcons: true,
 			});
-			setSources(
-				rawSources.map((source) => ({
-					id: source.id,
-					name:
-						source.id.startsWith("window:") && source.name.includes(" — ")
-							? source.name.split(" — ")[1] || source.name
-							: source.name,
-					thumbnail: source.thumbnail,
-					display_id: source.display_id,
-					appIcon: source.appIcon,
-				})),
-			);
+			const nextSources = rawSources.map((source) => ({
+				id: source.id,
+				name:
+					source.id.startsWith("window:") && source.name.includes(" — ")
+						? source.name.split(" — ")[1] || source.name
+						: source.name,
+				thumbnail: source.thumbnail,
+				display_id: source.display_id,
+				appIcon: source.appIcon,
+			}));
+			setSources(nextSources);
+			setSelectedSource((current) => {
+				if (current && nextSources.some((source) => source.id === current.id)) {
+					return current;
+				}
+
+				return (
+					nextSources.find((source) => source.id.startsWith("screen:")) ?? nextSources[0] ?? null
+				);
+			});
 		} catch (error) {
 			console.error("Error loading sources:", error);
 		} finally {

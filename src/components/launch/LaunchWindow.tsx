@@ -261,7 +261,7 @@ export function LaunchWindow() {
 		return () => cancelAnimationFrame(id);
 	}, [isLanguageMenuOpen]);
 
-	const [selectedSource, setSelectedSource] = useState("Screen");
+	const [selectedSource, setSelectedSource] = useState(t("sourceSelector.chooseSource"));
 	const [hasSelectedSource, setHasSelectedSource] = useState(false);
 
 	useEffect(() => {
@@ -272,7 +272,7 @@ export function LaunchWindow() {
 					setSelectedSource(source.name);
 					setHasSelectedSource(true);
 				} else {
-					setSelectedSource("Screen");
+					setSelectedSource(t("sourceSelector.chooseSource"));
 					setHasSelectedSource(false);
 				}
 			}
@@ -282,12 +282,38 @@ export function LaunchWindow() {
 
 		const interval = setInterval(checkSelectedSource, 500);
 		return () => clearInterval(interval);
-	}, []);
+	}, [t]);
 
 	const openSourceSelector = () => {
 		if (window.electronAPI) {
 			window.electronAPI.openSourceSelector();
 		}
+	};
+
+	const handleRecordButtonClick = async () => {
+		if (recording) {
+			toggleRecording();
+			return;
+		}
+
+		if (!hasSelectedSource) {
+			try {
+				const source = await window.electronAPI.selectDefaultSource();
+				if (source) {
+					setSelectedSource(source.name);
+					setHasSelectedSource(true);
+					toggleRecording();
+					return;
+				}
+			} catch (error) {
+				console.warn("Failed to auto-select default screen source:", error);
+			}
+
+			openSourceSelector();
+			return;
+		}
+
+		toggleRecording();
 	};
 
 	const openVideoFile = async () => {
@@ -617,14 +643,15 @@ export function LaunchWindow() {
 									: "bg-red-500/12 hover:bg-red-500/16"
 								: "bg-[rgba(255,103,56,0.12)] hover:bg-[rgba(255,103,56,0.18)]"
 						}`}
-						onClick={toggleRecording}
-						disabled={!hasSelectedSource && !recording}
+						onClick={() => {
+							void handleRecordButtonClick();
+						}}
 						style={{ flex: "0 0 auto" }}
 					>
 						<div className={`flex items-center justify-center ${recording ? "gap-1.5" : ""}`}>
 							{recording
 								? getIcon("stop", paused ? "text-amber-400" : "text-red-400")
-								: getIcon("record", hasSelectedSource ? "text-white/80" : "text-white/30")}
+								: getIcon("record", hasSelectedSource ? "text-white/80" : "text-white/55")}
 							{recording && (
 								<span
 									className={`${paused ? "text-amber-400" : "text-red-400"} inline-block w-[34px] text-left text-xs font-semibold tabular-nums`}

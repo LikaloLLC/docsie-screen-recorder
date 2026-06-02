@@ -33,6 +33,7 @@ interface Window {
 			height: number,
 		) => Promise<{ success: boolean; error?: string }>;
 		selectSource: (source: ProcessedDesktopSource) => Promise<ProcessedDesktopSource | null>;
+		selectDefaultSource: () => Promise<ProcessedDesktopSource | null>;
 		getSelectedSource: () => Promise<ProcessedDesktopSource | null>;
 		requestCameraAccess: () => Promise<{
 			success: boolean;
