@@ -26,14 +26,22 @@
 
 .windowHeader {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	justify-content: space-between;
 	gap: 1rem;
 }
 
+.titleBlock {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	min-width: 0;
+}
+
 .brandMark {
-	width: 3.75rem;
+	width: 2.85rem;
 	height: auto;
+	flex-shrink: 0;
 	display: block;
 	filter: drop-shadow(0 0 10px rgba(243, 125, 69, 0.15));
 }
@@ -74,7 +82,7 @@
 
 .sourceCard {
 	corner-shape: squircle;
-	border-radius: 20px;
+	border-radius: 16px;
 	background: linear-gradient(120deg, rgba(53, 37, 32, 0.98) 0%, rgba(34, 25, 23, 0.96) 100%);
 	border: 1px solid rgba(254, 168, 94, 0.12);
 	box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.18);
@@ -112,10 +120,10 @@
 }
 
 .name {
-	font-size: 0.8rem;
+	font-size: 0.74rem;
 	color: #fff0e4;
 	font-weight: 500;
-	letter-spacing: 0.01em;
+	letter-spacing: 0;
 }
 
 .cardText {

@@ -201,14 +201,14 @@ export function SourceSelector() {
 		return (
 			<div
 				key={source.id}
-				className={`${styles.sourceCard} ${isSelected ? styles.selected : ""} p-2`}
+				className={`${styles.sourceCard} ${isSelected ? styles.selected : ""} p-1.5`}
 				onClick={() => handleSourceSelect(source)}
 			>
-				<div className="relative mb-1.5">
+				<div className="relative mb-1">
 					<img
 						src={source.thumbnail || ""}
 						alt={source.name}
-						className="w-full aspect-video object-cover rounded-xl [corner-shape:squircle] "
+						className="w-full aspect-video object-cover rounded-lg [corner-shape:squircle]"
 					/>
 					{isSelected && (
 						<div className="absolute -top-1 -right-1">
@@ -229,14 +229,22 @@ export function SourceSelector() {
 	};
 
 	return (
-		<div className={`min-h-screen flex flex-col ${styles.glassContainer} ${styles.electronDrag}`}>
-			<div className="flex-1 flex flex-col w-full px-4 pt-4">
-				<div className="mb-3 px-1">
+		<div
+			className={`h-screen max-h-screen overflow-hidden flex flex-col ${styles.glassContainer} ${styles.electronDrag}`}
+		>
+			<div className="flex-1 min-h-0 flex flex-col w-full px-4 pt-3">
+				<div className="mb-2 shrink-0 px-1">
 					<div className={styles.windowHeader}>
-						<div>
+						<div className={styles.titleBlock}>
 							<img src={docsieMarkUrl} alt="Docsie" className={styles.brandMark} />
-							<h1 className="text-lg font-semibold text-[#FFF0E4]">Screen Recorder</h1>
-							<p className="text-xs text-[#FDD2A3]/70">Choose the screen or window to capture.</p>
+							<div>
+								<h1 className="text-base font-semibold leading-tight text-[#FFF0E4]">
+									Screen Recorder
+								</h1>
+								<p className="text-xs leading-tight text-[#FDD2A3]/70">
+									Choose the screen or window to capture.
+								</p>
+							</div>
 						</div>
 						<div className={`${styles.windowControls} ${styles.electronNoDrag}`}>
 							<button
@@ -262,27 +270,27 @@ export function SourceSelector() {
 				</div>
 				<Tabs
 					defaultValue={screenSources.length === 0 ? "windows" : "screens"}
-					className="flex-1 flex flex-col"
+					className="flex-1 min-h-0 flex flex-col"
 				>
 					<TabsList
-						className={`grid grid-cols-2 mb-3 rounded-[14px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] squircle ${styles.electronNoDrag}`}
+						className={`grid grid-cols-2 mb-2 h-9 shrink-0 rounded-[14px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] p-1 squircle ${styles.electronNoDrag}`}
 					>
 						<TabsTrigger
 							value="screens"
-							className="data-[state=active]:bg-[rgba(255,103,56,0.18)] data-[state=active]:text-white text-[#FDD2A3]/70 rounded-[12px] squircle text-xs py-1.5 transition-all"
+							className="data-[state=active]:bg-[rgba(255,103,56,0.18)] data-[state=active]:text-white text-[#FDD2A3]/70 rounded-[12px] squircle text-xs py-1 transition-all"
 						>
 							{t("sourceSelector.screens", { count: String(screenSources.length) })}
 						</TabsTrigger>
 						<TabsTrigger
 							value="windows"
-							className="data-[state=active]:bg-[rgba(255,103,56,0.18)] data-[state=active]:text-white text-[#FDD2A3]/70 rounded-[12px] squircle text-xs py-1.5 transition-all"
+							className="data-[state=active]:bg-[rgba(255,103,56,0.18)] data-[state=active]:text-white text-[#FDD2A3]/70 rounded-[12px] squircle text-xs py-1 transition-all"
 						>
 							{t("sourceSelector.windows", { count: String(windowSources.length) })}
 						</TabsTrigger>
 					</TabsList>
 					<div className="flex-1 min-h-0">
 						{hasNoSources ? (
-							<div className="h-[220px] rounded-[18px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] flex flex-col items-center justify-center px-5 text-center">
+							<div className="h-full min-h-0 rounded-[18px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] flex flex-col items-center justify-center px-5 text-center">
 								<div className="text-sm font-semibold text-[#FFF0E4]">{sourceIssueTitle}</div>
 								<p className="mt-1.5 max-w-[380px] text-xs leading-[1.35rem] text-[#FDD2A3]/70">
 									{sourceIssueMessage}
@@ -337,14 +345,14 @@ export function SourceSelector() {
 							<>
 								<TabsContent value="screens" className="h-full mt-0">
 									<div
-										className={`grid grid-cols-2 gap-3 h-[220px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
+										className={`grid h-full grid-cols-2 auto-rows-min gap-3 overflow-y-auto pt-1 pr-1.5 ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
 									>
 										{screenSources.map(renderSourceCard)}
 									</div>
 								</TabsContent>
 								<TabsContent value="windows" className="h-full mt-0">
 									<div
-										className={`grid grid-cols-2 gap-3 h-[220px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
+										className={`grid h-full grid-cols-2 auto-rows-min gap-3 overflow-y-auto pt-1 pr-1.5 ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
 									>
 										{windowSources.map(renderSourceCard)}
 									</div>
@@ -354,7 +362,7 @@ export function SourceSelector() {
 					</div>
 				</Tabs>
 			</div>
-			<div className={`p-3 justify-center flex gap-2 ${styles.electronNoDrag}`}>
+			<div className={`shrink-0 p-2.5 justify-center flex gap-2 ${styles.electronNoDrag}`}>
 				<Button
 					variant="ghost"
 					onClick={() => void handleClose()}
