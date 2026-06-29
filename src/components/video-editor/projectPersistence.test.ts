@@ -68,6 +68,14 @@ describe("projectPersistence media compatibility", () => {
 		).toBe("rectangle");
 	});
 
+	it("uses full-resolution recording defaults when editor fields are missing", () => {
+		expect(normalizeProjectEditor({})).toMatchObject({
+			padding: 0,
+			aspectRatio: "native",
+			exportQuality: "source",
+		});
+	});
+
 	it("normalizes blur region type and mosaic block size safely", () => {
 		const editor = normalizeProjectEditor({
 			annotationRegions: [

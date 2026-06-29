@@ -2,6 +2,7 @@ import type { ExportFormat, ExportQuality } from "@/lib/exporter";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
 
 const PREFS_KEY = "openscreen_user_preferences";
+const PREFS_DEFAULTS_VERSION = 2;
 
 const VALID_ASPECT_RATIOS: readonly string[] = [
 	"16:9",
@@ -26,9 +27,9 @@ export interface UserPreferences {
 }
 
 const DEFAULT_PREFS: UserPreferences = {
-	padding: 50,
-	aspectRatio: "16:9",
-	exportQuality: "good",
+	padding: 0,
+	aspectRatio: "native",
+	exportQuality: "source",
 	exportFormat: "mp4",
 };
 
@@ -39,6 +40,42 @@ function safeJsonParse(text: string | null): Record<string, unknown> | null {
 	} catch {
 		return null;
 	}
+}
+
+function normalizePadding(value: unknown): number {
+	return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100
+		? value
+		: DEFAULT_PREFS.padding;
+}
+
+function normalizeAspectRatio(value: unknown): AspectRatio {
+	return typeof value === "string" && VALID_ASPECT_RATIOS.includes(value)
+		? (value as AspectRatio)
+		: DEFAULT_PREFS.aspectRatio;
+}
+
+function normalizeExportQuality(value: unknown): ExportQuality {
+	return value === "medium" || value === "good" || value === "source"
+		? (value as ExportQuality)
+		: DEFAULT_PREFS.exportQuality;
+}
+
+function normalizeExportFormat(value: unknown): ExportFormat {
+	return value === "gif" || value === "mp4" ? (value as ExportFormat) : DEFAULT_PREFS.exportFormat;
+}
+
+function hasLegacyCompositionDefaults(raw: Record<string, unknown>): boolean {
+	const storedVersion =
+		typeof raw.defaultsVersion === "number" && Number.isFinite(raw.defaultsVersion)
+			? raw.defaultsVersion
+			: 1;
+	if (storedVersion >= PREFS_DEFAULTS_VERSION) return false;
+
+	const hasOldPadding = raw.padding === undefined || raw.padding === 50;
+	const hasOldAspectRatio = raw.aspectRatio === undefined || raw.aspectRatio === "16:9";
+	const hasOldExportQuality = raw.exportQuality === undefined || raw.exportQuality === "good";
+
+	return hasOldPadding && hasOldAspectRatio && hasOldExportQuality;
 }
 
 /**
@@ -54,28 +91,18 @@ export function loadUserPreferences(): UserPreferences {
 	}
 	if (!raw || typeof raw !== "object") return { ...DEFAULT_PREFS };
 
+	if (hasLegacyCompositionDefaults(raw)) {
+		return {
+			...DEFAULT_PREFS,
+			exportFormat: normalizeExportFormat(raw.exportFormat),
+		};
+	}
+
 	return {
-		padding:
-			typeof raw.padding === "number" &&
-			Number.isFinite(raw.padding) &&
-			raw.padding >= 0 &&
-			raw.padding <= 100
-				? raw.padding
-				: DEFAULT_PREFS.padding,
-		aspectRatio:
-			typeof raw.aspectRatio === "string" && VALID_ASPECT_RATIOS.includes(raw.aspectRatio)
-				? (raw.aspectRatio as AspectRatio)
-				: DEFAULT_PREFS.aspectRatio,
-		exportQuality:
-			raw.exportQuality === "medium" ||
-			raw.exportQuality === "good" ||
-			raw.exportQuality === "source"
-				? (raw.exportQuality as ExportQuality)
-				: DEFAULT_PREFS.exportQuality,
-		exportFormat:
-			raw.exportFormat === "gif" || raw.exportFormat === "mp4"
-				? (raw.exportFormat as ExportFormat)
-				: DEFAULT_PREFS.exportFormat,
+		padding: normalizePadding(raw.padding),
+		aspectRatio: normalizeAspectRatio(raw.aspectRatio),
+		exportQuality: normalizeExportQuality(raw.exportQuality),
+		exportFormat: normalizeExportFormat(raw.exportFormat),
 	};
 }
 
@@ -87,7 +114,10 @@ export function saveUserPreferences(partial: Partial<UserPreferences>): void {
 	const current = loadUserPreferences();
 	const merged = { ...current, ...partial };
 	try {
-		localStorage.setItem(PREFS_KEY, JSON.stringify(merged));
+		localStorage.setItem(
+			PREFS_KEY,
+			JSON.stringify({ ...merged, defaultsVersion: PREFS_DEFAULTS_VERSION }),
+		);
 	} catch {
 		// localStorage may be unavailable (e.g. private browsing quota exceeded)
 	}

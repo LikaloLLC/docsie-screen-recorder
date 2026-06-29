@@ -156,7 +156,7 @@ export default function VideoEditor() {
 	const [showDocsiePublishDialog, setShowDocsiePublishDialog] = useState(false);
 	const [showAISettingsDialog, setShowAISettingsDialog] = useState(false);
 	const [showNewRecordingDialog, setShowNewRecordingDialog] = useState(false);
-	const [exportQuality, setExportQuality] = useState<ExportQuality>("good");
+	const [exportQuality, setExportQuality] = useState<ExportQuality>("source");
 	const [exportFormat, setExportFormat] = useState<ExportFormat>("mp4");
 	const [gifFrameRate, setGifFrameRate] = useState<GifFrameRate>(15);
 	const [gifLoop, setGifLoop] = useState(true);

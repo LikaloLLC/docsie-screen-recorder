@@ -279,7 +279,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		editor.aspectRatio as AspectRatio,
 	)
 		? (editor.aspectRatio as AspectRatio)
-		: "16:9";
+		: "native";
 	const normalizedWebcamLayoutPreset = computeNormalizedWebcamLayoutPreset(
 		editor.webcamLayoutPreset,
 		normalizedAspectRatio,
@@ -502,7 +502,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 					: 0
 				: 0,
 		borderRadius: typeof editor.borderRadius === "number" ? editor.borderRadius : 0,
-		padding: isFiniteNumber(editor.padding) ? clamp(editor.padding, 0, 100) : 50,
+		padding: isFiniteNumber(editor.padding) ? clamp(editor.padding, 0, 100) : 0,
 		cropRegion: {
 			x: cropX,
 			y: cropY,
@@ -528,9 +528,11 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 				: DEFAULT_WEBCAM_SIZE_PRESET,
 		webcamPosition: normalizedWebcamPosition,
 		exportQuality:
-			editor.exportQuality === "medium" || editor.exportQuality === "source"
+			editor.exportQuality === "medium" ||
+			editor.exportQuality === "good" ||
+			editor.exportQuality === "source"
 				? editor.exportQuality
-				: "good",
+				: "source",
 		exportFormat: editor.exportFormat === "gif" ? "gif" : "mp4",
 		gifFrameRate:
 			editor.gifFrameRate === 15 ||
