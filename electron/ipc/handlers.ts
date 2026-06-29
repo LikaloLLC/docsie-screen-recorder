@@ -23,10 +23,16 @@ import type {
 	DocsieTranscribeAudioInput,
 } from "../../src/lib/docsieIntegration";
 import {
+	type AppendRecordingChunkInput,
+	type BeginRecordingSessionInput,
+	type DiscardRecordingSessionInput,
+	type FinishRecordingSessionInput,
 	normalizeProjectMedia,
 	normalizeRecordingSession,
 	type ProjectMedia,
+	type RecordingAssetKind,
 	type RecordingSession,
+	type ReplaceRecordingAssetInput,
 	type StoreRecordedSessionInput,
 } from "../../src/lib/recordingSession";
 import { mainT } from "../i18n";
@@ -223,6 +229,23 @@ type ScreenCaptureAccessState = {
 let selectedSource: SelectedSource | null = null;
 let currentProjectPath: string | null = null;
 let currentRecordingSession: RecordingSession | null = null;
+
+type StreamingRecordingAsset = {
+	filePath: string;
+	queue: Promise<void>;
+	bytesWritten: number;
+	chunkCount: number;
+};
+
+type StreamingRecordingSession = {
+	recordingId: number;
+	createdAt: number;
+	screen: StreamingRecordingAsset;
+	webcam?: StreamingRecordingAsset;
+	audio?: StreamingRecordingAsset;
+};
+
+const streamingRecordingSessions = new Map<number, StreamingRecordingSession>();
 
 function getScreenCaptureAccessState(): ScreenCaptureAccessState {
 	const baseState = {
@@ -450,6 +473,195 @@ async function storeRecordedSessionFiles(payload: StoreRecordedSessionInput) {
 		session,
 		message: "Recording session stored successfully",
 	};
+}
+
+function isFiniteRecordingId(value: unknown): value is number {
+	return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function createStreamingRecordingAsset(descriptor: { fileName: string }): StreamingRecordingAsset {
+	return {
+		filePath: resolveRecordingOutputPath(descriptor.fileName),
+		queue: Promise.resolve(),
+		bytesWritten: 0,
+		chunkCount: 0,
+	};
+}
+
+async function waitForStreamingRecordingWrites(session: StreamingRecordingSession) {
+	await Promise.all([
+		session.screen.queue,
+		session.webcam?.queue ?? Promise.resolve(),
+		session.audio?.queue ?? Promise.resolve(),
+	]);
+}
+
+function getStreamingRecordingAsset(
+	session: StreamingRecordingSession,
+	kind: RecordingAssetKind,
+): StreamingRecordingAsset | null {
+	if (kind === "screen") return session.screen;
+	if (kind === "webcam") return session.webcam ?? null;
+	if (kind === "audio") return session.audio ?? null;
+	return null;
+}
+
+async function beginStreamingRecordingSession(input: BeginRecordingSessionInput) {
+	if (!isFiniteRecordingId(input.recordingId)) {
+		throw new Error("Invalid recording id");
+	}
+
+	if (streamingRecordingSessions.has(input.recordingId)) {
+		await discardStreamingRecordingSession({ recordingId: input.recordingId });
+	}
+
+	const createdAt =
+		typeof input.createdAt === "number" && Number.isFinite(input.createdAt)
+			? input.createdAt
+			: input.recordingId;
+	const session: StreamingRecordingSession = {
+		recordingId: input.recordingId,
+		createdAt,
+		screen: createStreamingRecordingAsset(input.screen),
+		...(input.webcam ? { webcam: createStreamingRecordingAsset(input.webcam) } : {}),
+		...(input.audio ? { audio: createStreamingRecordingAsset(input.audio) } : {}),
+	};
+
+	await fs.writeFile(session.screen.filePath, "");
+	approveFilePath(session.screen.filePath);
+	if (session.webcam) {
+		await fs.writeFile(session.webcam.filePath, "");
+		approveFilePath(session.webcam.filePath);
+	}
+	if (session.audio) {
+		await fs.writeFile(session.audio.filePath, "");
+		approveFilePath(session.audio.filePath);
+	}
+
+	streamingRecordingSessions.set(input.recordingId, session);
+	currentProjectPath = null;
+
+	return {
+		success: true,
+		path: session.screen.filePath,
+		message: "Recording session initialized",
+	};
+}
+
+async function appendStreamingRecordingChunk(input: AppendRecordingChunkInput) {
+	const session = streamingRecordingSessions.get(input.recordingId);
+	if (!session) {
+		throw new Error("Recording session is not initialized");
+	}
+
+	const asset = getStreamingRecordingAsset(session, input.kind);
+	if (!asset) {
+		throw new Error(`Recording asset is not initialized: ${input.kind}`);
+	}
+
+	const chunk = Buffer.from(input.data);
+	if (chunk.byteLength === 0) {
+		return { success: true, path: asset.filePath, bytesWritten: asset.bytesWritten };
+	}
+
+	asset.bytesWritten += chunk.byteLength;
+	asset.chunkCount += 1;
+	asset.queue = asset.queue.then(() => fs.appendFile(asset.filePath, chunk));
+	await asset.queue;
+
+	return { success: true, path: asset.filePath, bytesWritten: asset.bytesWritten };
+}
+
+async function replaceStreamingRecordingAsset(input: ReplaceRecordingAssetInput) {
+	const session = streamingRecordingSessions.get(input.recordingId);
+	if (!session) {
+		throw new Error("Recording session is not initialized");
+	}
+
+	const asset = getStreamingRecordingAsset(session, input.kind);
+	if (!asset) {
+		throw new Error(`Recording asset is not initialized: ${input.kind}`);
+	}
+
+	const data = Buffer.from(input.data);
+	asset.queue = asset.queue.then(async () => {
+		await fs.writeFile(asset.filePath, data);
+		asset.bytesWritten = data.byteLength;
+		asset.chunkCount = Math.max(asset.chunkCount, 1);
+	});
+	await asset.queue;
+
+	return { success: true, path: asset.filePath, bytesWritten: asset.bytesWritten };
+}
+
+async function finishStreamingRecordingSession(input: FinishRecordingSessionInput) {
+	const sessionState = streamingRecordingSessions.get(input.recordingId);
+	if (!sessionState) {
+		throw new Error("Recording session is not initialized");
+	}
+
+	await waitForStreamingRecordingWrites(sessionState);
+	if (sessionState.screen.bytesWritten <= 0) {
+		throw new Error("Recording session has no screen data");
+	}
+
+	const session: RecordingSession = {
+		screenVideoPath: sessionState.screen.filePath,
+		...(sessionState.webcam && sessionState.webcam.bytesWritten > 0
+			? { webcamVideoPath: sessionState.webcam.filePath }
+			: {}),
+		...(sessionState.audio && sessionState.audio.bytesWritten > 0
+			? { audioPath: sessionState.audio.filePath }
+			: {}),
+		createdAt: sessionState.createdAt,
+	};
+
+	setCurrentRecordingSessionState(session);
+	currentProjectPath = null;
+
+	const telemetryPath = `${session.screenVideoPath}.cursor.json`;
+	if (pendingCursorSamples.length > 0) {
+		await fs.writeFile(
+			telemetryPath,
+			JSON.stringify({ version: CURSOR_TELEMETRY_VERSION, samples: pendingCursorSamples }, null, 2),
+			"utf-8",
+		);
+	}
+	pendingCursorSamples = [];
+
+	const sessionManifestPath = getSessionManifestPathForVideo(session.screenVideoPath);
+	await fs.writeFile(sessionManifestPath, JSON.stringify(session, null, 2), "utf-8");
+	streamingRecordingSessions.delete(input.recordingId);
+
+	return {
+		success: true,
+		path: session.screenVideoPath,
+		session,
+		message: "Recording session finalized",
+	};
+}
+
+async function discardStreamingRecordingSession(input: DiscardRecordingSessionInput) {
+	const session = streamingRecordingSessions.get(input.recordingId);
+	if (!session) {
+		return { success: true };
+	}
+
+	streamingRecordingSessions.delete(input.recordingId);
+	pendingCursorSamples = [];
+	await waitForStreamingRecordingWrites(session).catch(() => undefined);
+	await Promise.all(
+		[session.screen, session.webcam, session.audio].filter(Boolean).map(async (asset) => {
+			await fs
+				.rm((asset as StreamingRecordingAsset).filePath, { force: true })
+				.catch(() => undefined);
+		}),
+	);
+	await fs
+		.rm(getSessionManifestPathForVideo(session.screen.filePath), { force: true })
+		.catch(() => undefined);
+
+	return { success: true };
 }
 
 const CURSOR_TELEMETRY_VERSION = 1;
@@ -817,6 +1029,71 @@ export function registerIpcHandlers(
 			return {
 				success: false,
 				message: "Failed to store recording session",
+				error: String(error),
+			};
+		}
+	});
+
+	ipcMain.handle("begin-recording-session", async (_, input: BeginRecordingSessionInput) => {
+		try {
+			return await beginStreamingRecordingSession(input);
+		} catch (error) {
+			console.error("Failed to begin recording session:", error);
+			return {
+				success: false,
+				message: "Failed to begin recording session",
+				error: String(error),
+			};
+		}
+	});
+
+	ipcMain.handle("append-recording-chunk", async (_, input: AppendRecordingChunkInput) => {
+		try {
+			return await appendStreamingRecordingChunk(input);
+		} catch (error) {
+			console.error("Failed to append recording chunk:", error);
+			return {
+				success: false,
+				message: "Failed to append recording chunk",
+				error: String(error),
+			};
+		}
+	});
+
+	ipcMain.handle("replace-recording-asset", async (_, input: ReplaceRecordingAssetInput) => {
+		try {
+			return await replaceStreamingRecordingAsset(input);
+		} catch (error) {
+			console.error("Failed to replace recording asset:", error);
+			return {
+				success: false,
+				message: "Failed to replace recording asset",
+				error: String(error),
+			};
+		}
+	});
+
+	ipcMain.handle("finish-recording-session", async (_, input: FinishRecordingSessionInput) => {
+		try {
+			return await finishStreamingRecordingSession(input);
+		} catch (error) {
+			console.error("Failed to finish recording session:", error);
+			return {
+				success: false,
+				message: "Failed to finish recording session",
+				error: String(error),
+			};
+		}
+	});
+
+	ipcMain.handle("discard-recording-session", async (_, input: DiscardRecordingSessionInput) => {
+		try {
+			return await discardStreamingRecordingSession(input);
+		} catch (error) {
+			console.error("Failed to discard recording session:", error);
+			return {
+				success: false,
+				message: "Failed to discard recording session",
 				error: String(error),
 			};
 		}

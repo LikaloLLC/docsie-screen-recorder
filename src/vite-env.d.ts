@@ -71,6 +71,39 @@ interface Window {
 			message?: string;
 			error?: string;
 		}>;
+		beginRecordingSession: (
+			input: import("./lib/recordingSession").BeginRecordingSessionInput,
+		) => Promise<{ success: boolean; path?: string; message?: string; error?: string }>;
+		appendRecordingChunk: (
+			input: import("./lib/recordingSession").AppendRecordingChunkInput,
+		) => Promise<{
+			success: boolean;
+			path?: string;
+			bytesWritten?: number;
+			message?: string;
+			error?: string;
+		}>;
+		replaceRecordingAsset: (
+			input: import("./lib/recordingSession").ReplaceRecordingAssetInput,
+		) => Promise<{
+			success: boolean;
+			path?: string;
+			bytesWritten?: number;
+			message?: string;
+			error?: string;
+		}>;
+		finishRecordingSession: (
+			input: import("./lib/recordingSession").FinishRecordingSessionInput,
+		) => Promise<{
+			success: boolean;
+			path?: string;
+			session?: import("./lib/recordingSession").RecordingSession;
+			message?: string;
+			error?: string;
+		}>;
+		discardRecordingSession: (
+			input: import("./lib/recordingSession").DiscardRecordingSessionInput,
+		) => Promise<{ success: boolean; message?: string; error?: string }>;
 		getRecordedVideoPath: () => Promise<{
 			success: boolean;
 			path?: string;

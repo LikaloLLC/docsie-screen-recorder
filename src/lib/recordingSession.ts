@@ -25,6 +25,40 @@ export interface StoreRecordedSessionInput {
 	createdAt?: number;
 }
 
+export type RecordingAssetKind = "screen" | "webcam" | "audio";
+
+export interface RecordingAssetDescriptor {
+	fileName: string;
+}
+
+export interface BeginRecordingSessionInput {
+	recordingId: number;
+	screen: RecordingAssetDescriptor;
+	webcam?: RecordingAssetDescriptor;
+	audio?: RecordingAssetDescriptor;
+	createdAt?: number;
+}
+
+export interface AppendRecordingChunkInput {
+	recordingId: number;
+	kind: RecordingAssetKind;
+	data: ArrayBuffer;
+}
+
+export interface ReplaceRecordingAssetInput {
+	recordingId: number;
+	kind: RecordingAssetKind;
+	data: ArrayBuffer;
+}
+
+export interface FinishRecordingSessionInput {
+	recordingId: number;
+}
+
+export interface DiscardRecordingSessionInput {
+	recordingId: number;
+}
+
 function normalizePath(value: unknown): string | undefined {
 	if (typeof value !== "string") {
 		return undefined;

@@ -11,7 +11,15 @@ import type {
 	DocsieStartVideoToDocsInput,
 	DocsieTranscribeAudioInput,
 } from "../src/lib/docsieIntegration";
-import type { RecordingSession, StoreRecordedSessionInput } from "../src/lib/recordingSession";
+import type {
+	AppendRecordingChunkInput,
+	BeginRecordingSessionInput,
+	DiscardRecordingSessionInput,
+	FinishRecordingSessionInput,
+	RecordingSession,
+	ReplaceRecordingAssetInput,
+	StoreRecordedSessionInput,
+} from "../src/lib/recordingSession";
 
 contextBridge.exposeInMainWorld("electronAPI", {
 	hudOverlayHide: () => {
@@ -75,6 +83,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	storeRecordedSession: (payload: StoreRecordedSessionInput) => {
 		return ipcRenderer.invoke("store-recorded-session", payload);
+	},
+	beginRecordingSession: (input: BeginRecordingSessionInput) => {
+		return ipcRenderer.invoke("begin-recording-session", input);
+	},
+	appendRecordingChunk: (input: AppendRecordingChunkInput) => {
+		return ipcRenderer.invoke("append-recording-chunk", input);
+	},
+	replaceRecordingAsset: (input: ReplaceRecordingAssetInput) => {
+		return ipcRenderer.invoke("replace-recording-asset", input);
+	},
+	finishRecordingSession: (input: FinishRecordingSessionInput) => {
+		return ipcRenderer.invoke("finish-recording-session", input);
+	},
+	discardRecordingSession: (input: DiscardRecordingSessionInput) => {
+		return ipcRenderer.invoke("discard-recording-session", input);
 	},
 
 	getRecordedVideoPath: () => {
