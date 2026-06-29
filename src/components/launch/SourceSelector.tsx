@@ -25,6 +25,10 @@ export function SourceSelector() {
 	const [sources, setSources] = useState<DesktopSource[]>([]);
 	const [selectedSource, setSelectedSource] = useState<DesktopSource | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [screenCaptureAccess, setScreenCaptureAccess] = useState<ScreenCaptureAccessState | null>(
+		null,
+	);
+	const [sourceLoadError, setSourceLoadError] = useState<string | null>(null);
 	const {
 		loading: authLoading,
 		isConnected,
@@ -41,12 +45,25 @@ export function SourceSelector() {
 		}
 
 		setLoading(true);
+		setSourceLoadError(null);
 		try {
+			const initialAccess = await window.electronAPI.getScreenCaptureAccess();
+			setScreenCaptureAccess(initialAccess);
+			if (
+				initialAccess.platform === "darwin" &&
+				(initialAccess.status === "denied" || initialAccess.status === "restricted")
+			) {
+				setSources([]);
+				setSelectedSource(null);
+				return;
+			}
+
 			const rawSources = await window.electronAPI.getSources({
 				types: ["screen", "window"],
 				thumbnailSize: { width: 320, height: 180 },
 				fetchWindowIcons: true,
 			});
+			setScreenCaptureAccess(await window.electronAPI.getScreenCaptureAccess());
 			const nextSources = rawSources.map((source) => ({
 				id: source.id,
 				name:
@@ -69,6 +86,22 @@ export function SourceSelector() {
 			});
 		} catch (error) {
 			console.error("Error loading sources:", error);
+			const sourceError = error instanceof Error ? error.message : String(error);
+			try {
+				const access = await window.electronAPI.getScreenCaptureAccess();
+				setScreenCaptureAccess(access);
+				if (
+					access.platform !== "darwin" ||
+					(access.status !== "denied" && access.status !== "restricted")
+				) {
+					setSourceLoadError(sourceError);
+				}
+			} catch (accessError) {
+				console.warn("Unable to read screen capture access status:", accessError);
+				setSourceLoadError(sourceError);
+			}
+			setSources([]);
+			setSelectedSource(null);
 		} finally {
 			setLoading(false);
 		}
@@ -107,6 +140,34 @@ export function SourceSelector() {
 			toast.error(result.error ?? "Unable to close the source selector");
 		}
 	};
+	const handleRestartApp = async () => {
+		const result = await window.electronAPI.restartApp();
+		if (!result.success) {
+			toast.error(result.error ?? "Unable to restart the app");
+		}
+	};
+
+	const accessStatus = screenCaptureAccess?.status ?? "unknown";
+	const accessGranted = screenCaptureAccess?.granted ?? false;
+	const permissionLooksGrantedButEmpty = hasNoSources && accessGranted;
+	const permissionDenied = accessStatus === "denied";
+	const permissionRestricted = accessStatus === "restricted";
+	const sourceIssueTitle = permissionLooksGrantedButEmpty
+		? "macOS allows recording, but no sources were returned"
+		: permissionDenied
+			? "macOS denied screen recording permission"
+			: permissionRestricted
+				? "Screen recording is restricted by macOS"
+				: accessStatus === "not-determined"
+					? "Screen recording permission has not been granted yet"
+					: "Screen recording permission is still blocked";
+	const sourceIssueMessage = permissionLooksGrantedButEmpty
+		? "macOS is reporting that Docsie Screen Recorder is allowed, but this running app session still cannot enumerate screens. Restart the app, then try again. If it still happens, remove and re-add Docsie Screen Recorder in Screen & System Audio Recording."
+		: permissionDenied
+			? "Turn on Docsie Screen Recorder in macOS Screen & System Audio Recording, then restart the app. If it is already on, turn it off and back on."
+			: permissionRestricted
+				? "Screen capture is restricted by macOS or device policy. Remove the restriction before recording."
+				: "Open macOS Screen & System Audio Recording settings, enable Docsie Screen Recorder, then restart the app.";
 
 	if (authLoading || !isConnected) {
 		return (
@@ -230,20 +291,37 @@ export function SourceSelector() {
 							<div
 								className={`h-[280px] rounded-[22px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] flex flex-col items-center justify-center px-6 text-center`}
 							>
-								<div className="text-sm font-semibold text-[#FFF0E4]">
-									Screen recording permission is still blocked
-								</div>
+								<div className="text-sm font-semibold text-[#FFF0E4]">{sourceIssueTitle}</div>
 								<p className="mt-2 max-w-[360px] text-xs leading-5 text-[#FDD2A3]/70">
-									Open macOS Screen &amp; System Audio Recording settings, enable
-									<em> Docsie Screen Recorder</em>, then fully quit and reopen the app.
+									{sourceIssueMessage}
 								</p>
-								<div className="mt-4 flex gap-2">
+								<p className="mt-2 text-[10px] leading-4 text-[#FDD2A3]/45">
+									macOS status: {accessStatus}
+								</p>
+								{permissionLooksGrantedButEmpty && screenCaptureAccess?.executablePath && (
+									<p className="mt-1 max-h-8 max-w-[420px] overflow-hidden break-all text-[10px] leading-4 text-[#FDD2A3]/35">
+										Running: {screenCaptureAccess.executablePath}
+									</p>
+								)}
+								{sourceLoadError && (
+									<p className="mt-1 max-h-8 max-w-[420px] overflow-hidden break-all text-[10px] leading-4 text-[#FDD2A3]/35">
+										Source error: {sourceLoadError}
+									</p>
+								)}
+								<div className="mt-4 flex flex-wrap justify-center gap-2">
 									<Button
 										type="button"
 										onClick={handleOpenSettings}
 										className={`px-4 py-1 text-xs bg-[#FF6738] text-white hover:bg-[#E85A2F] rounded-full ${styles.electronNoDrag}`}
 									>
 										Open Settings
+									</Button>
+									<Button
+										type="button"
+										onClick={() => void handleRestartApp()}
+										className={`px-4 py-1 text-xs bg-[#FF6738] text-white hover:bg-[#E85A2F] rounded-full ${styles.electronNoDrag}`}
+									>
+										Restart App
 									</Button>
 									<Button
 										type="button"

@@ -204,13 +204,112 @@ async function getApprovedProjectSession(
 }
 
 type SelectedSource = {
+	id: string;
 	name: string;
-	[key: string]: unknown;
+	display_id: string;
+	thumbnail: string | null;
+	appIcon: string | null;
+};
+
+type ScreenCaptureAccessState = {
+	platform: NodeJS.Platform;
+	status: "not-determined" | "granted" | "denied" | "restricted" | "unknown";
+	granted: boolean;
+	appName: string;
+	executablePath: string;
+	error?: string;
 };
 
 let selectedSource: SelectedSource | null = null;
 let currentProjectPath: string | null = null;
 let currentRecordingSession: RecordingSession | null = null;
+
+function getScreenCaptureAccessState(): ScreenCaptureAccessState {
+	const baseState = {
+		platform: process.platform,
+		appName: app.getName(),
+		executablePath: process.execPath,
+	};
+
+	if (process.platform !== "darwin") {
+		return {
+			...baseState,
+			status: "granted",
+			granted: true,
+		};
+	}
+
+	try {
+		const status = systemPreferences.getMediaAccessStatus("screen");
+		return {
+			...baseState,
+			status,
+			granted: status === "granted",
+		};
+	} catch (error) {
+		return {
+			...baseState,
+			status: "unknown",
+			granted: false,
+			error: String(error),
+		};
+	}
+}
+
+function nativeImageToDataUrl(image: Electron.NativeImage | null | undefined): string | null {
+	if (!image || image.isEmpty()) {
+		return null;
+	}
+
+	return image.toDataURL();
+}
+
+function serializeDesktopSource(source: Electron.DesktopCapturerSource): SelectedSource {
+	return {
+		id: source.id,
+		name: source.name,
+		display_id: source.display_id,
+		thumbnail: nativeImageToDataUrl(source.thumbnail),
+		appIcon: nativeImageToDataUrl(source.appIcon),
+	};
+}
+
+function normalizeSelectedSource(source: unknown): SelectedSource | null {
+	if (!source || typeof source !== "object") {
+		return null;
+	}
+
+	const candidate = source as Partial<SelectedSource>;
+	if (typeof candidate.id !== "string" || typeof candidate.name !== "string") {
+		return null;
+	}
+
+	return {
+		id: candidate.id,
+		name: candidate.name,
+		display_id: typeof candidate.display_id === "string" ? candidate.display_id : "",
+		thumbnail: typeof candidate.thumbnail === "string" ? candidate.thumbnail : null,
+		appIcon: typeof candidate.appIcon === "string" ? candidate.appIcon : null,
+	};
+}
+
+async function getPrimaryScreenSource(): Promise<SelectedSource | null> {
+	const sources = await desktopCapturer.getSources({
+		types: ["screen"],
+		thumbnailSize: { width: 0, height: 0 },
+		fetchWindowIcons: false,
+	});
+	const screenSources = sources.filter((source) => source.id.startsWith("screen:"));
+	if (screenSources.length === 0) {
+		return null;
+	}
+
+	const primaryDisplayId = String(screen.getPrimaryDisplay().id);
+	const primarySource =
+		screenSources.find((source) => source.display_id === primaryDisplayId) ?? screenSources[0];
+
+	return primarySource ? serializeDesktopSource(primarySource) : null;
+}
 
 function normalizePath(filePath: string) {
 	return path.resolve(filePath);
@@ -578,21 +677,22 @@ export function registerIpcHandlers(
 
 	ipcMain.handle("get-sources", async (_, opts) => {
 		const sources = await desktopCapturer.getSources(opts);
-		return sources.map((source) => ({
-			id: source.id,
-			name: source.name,
-			display_id: source.display_id,
-			thumbnail: source.thumbnail ? source.thumbnail.toDataURL() : null,
-			appIcon: source.appIcon ? source.appIcon.toDataURL() : null,
-		}));
+		return sources.map(serializeDesktopSource);
 	});
 
-	ipcMain.handle("select-source", (_, source: SelectedSource) => {
-		selectedSource = source;
+	ipcMain.handle("get-screen-capture-access", () => getScreenCaptureAccessState());
+
+	ipcMain.handle("select-source", (_, source: unknown) => {
+		selectedSource = normalizeSelectedSource(source);
 		const sourceSelectorWin = getSourceSelectorWindow();
 		if (sourceSelectorWin) {
 			sourceSelectorWin.close();
 		}
+		return selectedSource;
+	});
+
+	ipcMain.handle("select-default-source", async () => {
+		selectedSource = await getPrimaryScreenSource();
 		return selectedSource;
 	});
 
@@ -677,6 +777,14 @@ export function registerIpcHandlers(
 		}
 
 		targetWindow.close();
+		return { success: true };
+	});
+
+	ipcMain.handle("restart-app", () => {
+		setImmediate(() => {
+			app.relaunch();
+			app.exit(0);
+		});
 		return { success: true };
 	});
 

@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getSources: async (opts: Electron.SourcesOptions) => {
 		return await ipcRenderer.invoke("get-sources", opts);
 	},
+	getScreenCaptureAccess: async () => {
+		return await ipcRenderer.invoke("get-screen-capture-access");
+	},
 	openScreenCaptureSettings: () => {
 		return ipcRenderer.invoke("open-screen-capture-settings");
 	},
@@ -47,6 +50,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	closeCurrentWindow: () => {
 		return ipcRenderer.invoke("close-current-window");
+	},
+	restartApp: () => {
+		return ipcRenderer.invoke("restart-app");
 	},
 	setCurrentWindowSize: (width: number, height: number) => {
 		return ipcRenderer.invoke("set-current-window-size", width, height);

@@ -120,13 +120,21 @@ That bumps the app version, commits it, pushes the branch, and pushes a fresh re
 
 ### macOS Permission Flow
 
-If the app opens but shows `Screens (0)` and `Windows (0)`, macOS screen capture permission is still blocked.
+If the app opens but shows `Screens (0)` and `Windows (0)`, check the source picker's
+`macOS status` line. If the status is not `granted`, macOS screen capture permission is
+still blocked:
 
 1. Launch the app once.
 2. In the source picker, click `Open Settings`.
 3. Enable `Docsie Screen Recorder` in `System Settings -> Privacy & Security -> Screen & System Audio Recording`.
-4. Fully quit the app.
+4. Click `Restart App`, or fully quit the app.
 5. Reopen it.
+
+If the status is `granted` but the picker still has no sources, macOS has stale capture
+state for the running process or permission was granted to a different app copy. Use the
+`Running:` path shown in the picker to confirm the executable, then restart the app. If
+it still fails, remove and re-add `Docsie Screen Recorder` in Screen & System Audio
+Recording.
 
 Official release DMGs are expected to be Developer ID signed and notarized. If Gatekeeper blocks an unsigned local test build, remove quarantine and retry:
 

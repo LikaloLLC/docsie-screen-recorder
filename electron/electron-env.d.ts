@@ -25,6 +25,7 @@ declare namespace NodeJS {
 interface Window {
 	electronAPI: {
 		getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>;
+		getScreenCaptureAccess: () => Promise<ScreenCaptureAccessState>;
 		openScreenCaptureSettings: () => Promise<{
 			success: boolean;
 			error?: string;
@@ -35,11 +36,13 @@ interface Window {
 		openSourceSelector: () => Promise<void>;
 		minimizeCurrentWindow: () => Promise<{ success: boolean; error?: string }>;
 		closeCurrentWindow: () => Promise<{ success: boolean; error?: string }>;
+		restartApp: () => Promise<{ success: boolean; error?: string }>;
 		setCurrentWindowSize: (
 			width: number,
 			height: number,
 		) => Promise<{ success: boolean; error?: string }>;
 		selectSource: (source: ProcessedDesktopSource) => Promise<ProcessedDesktopSource | null>;
+		selectDefaultSource: () => Promise<ProcessedDesktopSource | null>;
 		getSelectedSource: () => Promise<ProcessedDesktopSource | null>;
 		requestCameraAccess: () => Promise<{
 			success: boolean;

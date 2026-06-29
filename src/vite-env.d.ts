@@ -9,6 +9,15 @@ interface ProcessedDesktopSource {
 	appIcon: string | null;
 }
 
+interface ScreenCaptureAccessState {
+	platform: string;
+	status: "not-determined" | "granted" | "denied" | "restricted" | "unknown";
+	granted: boolean;
+	appName: string;
+	executablePath: string;
+	error?: string;
+}
+
 interface CursorTelemetryPoint {
 	timeMs: number;
 	cx: number;
@@ -18,6 +27,7 @@ interface CursorTelemetryPoint {
 interface Window {
 	electronAPI: {
 		getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>;
+		getScreenCaptureAccess: () => Promise<ScreenCaptureAccessState>;
 		openScreenCaptureSettings: () => Promise<{
 			success: boolean;
 			error?: string;
@@ -28,6 +38,7 @@ interface Window {
 		openSourceSelector: () => Promise<void>;
 		minimizeCurrentWindow: () => Promise<{ success: boolean; error?: string }>;
 		closeCurrentWindow: () => Promise<{ success: boolean; error?: string }>;
+		restartApp: () => Promise<{ success: boolean; error?: string }>;
 		setCurrentWindowSize: (
 			width: number,
 			height: number,
