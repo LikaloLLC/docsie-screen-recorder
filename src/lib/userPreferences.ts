@@ -73,9 +73,8 @@ function hasLegacyCompositionDefaults(raw: Record<string, unknown>): boolean {
 
 	const hasOldPadding = raw.padding === undefined || raw.padding === 50;
 	const hasOldAspectRatio = raw.aspectRatio === undefined || raw.aspectRatio === "16:9";
-	const hasOldExportQuality = raw.exportQuality === undefined || raw.exportQuality === "good";
 
-	return hasOldPadding && hasOldAspectRatio && hasOldExportQuality;
+	return hasOldPadding && hasOldAspectRatio;
 }
 
 /**
@@ -94,6 +93,10 @@ export function loadUserPreferences(): UserPreferences {
 	if (hasLegacyCompositionDefaults(raw)) {
 		return {
 			...DEFAULT_PREFS,
+			exportQuality:
+				raw.exportQuality === "medium" || raw.exportQuality === "source"
+					? raw.exportQuality
+					: DEFAULT_PREFS.exportQuality,
 			exportFormat: normalizeExportFormat(raw.exportFormat),
 		};
 	}

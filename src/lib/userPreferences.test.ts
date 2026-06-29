@@ -36,6 +36,25 @@ describe("userPreferences", () => {
 		});
 	});
 
+	it("upgrades the old composition defaults even when source quality was already selected", () => {
+		localStorage.setItem(
+			PREFS_KEY,
+			JSON.stringify({
+				padding: 50,
+				aspectRatio: "16:9",
+				exportQuality: "source",
+				exportFormat: "mp4",
+			}),
+		);
+
+		expect(loadUserPreferences()).toEqual({
+			padding: 0,
+			aspectRatio: "native",
+			exportQuality: "source",
+			exportFormat: "mp4",
+		});
+	});
+
 	it("preserves deliberate legacy composition choices", () => {
 		localStorage.setItem(
 			PREFS_KEY,
