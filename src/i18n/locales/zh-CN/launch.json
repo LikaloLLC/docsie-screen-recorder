@@ -28,6 +28,7 @@
 		"loading": "正在加载源...",
 		"screens": "屏幕 ({{count}})",
 		"windows": "窗口 ({{count}})",
+		"chooseSource": "选择来源",
 		"defaultSourceName": "屏幕"
 	},
 	"recording": {

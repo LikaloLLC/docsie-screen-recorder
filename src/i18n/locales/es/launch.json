@@ -28,6 +28,7 @@
 		"loading": "Cargando fuentes...",
 		"screens": "Pantallas ({{count}})",
 		"windows": "Ventanas ({{count}})",
+		"chooseSource": "Elegir fuente",
 		"defaultSourceName": "Pantalla"
 	},
 	"recording": {

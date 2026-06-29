@@ -263,6 +263,10 @@ export function LaunchWindow() {
 
 	const [selectedSource, setSelectedSource] = useState(t("sourceSelector.chooseSource"));
 	const [hasSelectedSource, setHasSelectedSource] = useState(false);
+	const sourcePlaceholder = t("sourceSelector.chooseSource");
+	const sourceDisplayName = selectedSource.startsWith("launch.")
+		? sourcePlaceholder
+		: selectedSource;
 
 	useEffect(() => {
 		const checkSelectedSource = async () => {
@@ -588,11 +592,11 @@ export function LaunchWindow() {
 						className={`${hudGroupClasses} p-2 ${styles.electronNoDrag}`}
 						onClick={openSourceSelector}
 						disabled={recording}
-						title={selectedSource}
+						title={sourceDisplayName}
 					>
 						{getIcon("monitor", "text-white/80")}
 						<span className="text-white/70 text-[11px] max-w-[72px] truncate">
-							{selectedSource}
+							{sourceDisplayName}
 						</span>
 					</button>
 

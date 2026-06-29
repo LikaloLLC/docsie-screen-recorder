@@ -39,6 +39,7 @@
 		"loading": "Kaynaklar yükleniyor...",
 		"screens": "Ekranlar ({{count}})",
 		"windows": "Pencereler ({{count}})",
+		"chooseSource": "Kaynak seç",
 		"defaultSourceName": "Ekran"
 	},
 	"recording": {

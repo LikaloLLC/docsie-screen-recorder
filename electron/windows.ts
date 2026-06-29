@@ -193,11 +193,11 @@ export function createSourceSelectorWindow(): BrowserWindow {
 
 	const win = new BrowserWindow({
 		width: 620,
-		height: 420,
-		minHeight: 350,
-		maxHeight: 500,
+		height: 360,
+		minHeight: 320,
+		maxHeight: 420,
 		x: Math.round((width - 620) / 2),
-		y: Math.round((height - 420) / 2),
+		y: Math.round((height - 360) / 2),
 		frame: false,
 		resizable: false,
 		alwaysOnTop: true,

@@ -28,6 +28,7 @@
 		"loading": "正在載入來源...",
 		"screens": "螢幕 ({{count}})",
 		"windows": "視窗 ({{count}})",
+		"chooseSource": "選擇來源",
 		"defaultSourceName": "螢幕"
 	},
 	"recording": {

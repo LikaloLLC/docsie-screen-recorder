@@ -49,14 +49,6 @@ export function SourceSelector() {
 		try {
 			const initialAccess = await window.electronAPI.getScreenCaptureAccess();
 			setScreenCaptureAccess(initialAccess);
-			if (
-				initialAccess.platform === "darwin" &&
-				(initialAccess.status === "denied" || initialAccess.status === "restricted")
-			) {
-				setSources([]);
-				setSelectedSource(null);
-				return;
-			}
 
 			const rawSources = await window.electronAPI.getSources({
 				types: ["screen", "window"],
@@ -126,7 +118,9 @@ export function SourceSelector() {
 		const result = await window.electronAPI.openScreenCaptureSettings();
 		if (!result.success) {
 			toast.error(result.error ?? "Unable to open macOS screen capture settings");
+			return;
 		}
+		await window.electronAPI.minimizeCurrentWindow();
 	};
 	const handleMinimize = async () => {
 		const result = await window.electronAPI.minimizeCurrentWindow();
@@ -288,14 +282,12 @@ export function SourceSelector() {
 					</TabsList>
 					<div className="flex-1 min-h-0">
 						{hasNoSources ? (
-							<div
-								className={`h-[280px] rounded-[22px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] flex flex-col items-center justify-center px-6 text-center`}
-							>
+							<div className="h-[220px] rounded-[18px] border border-[rgba(254,168,94,0.12)] bg-white/[0.04] flex flex-col items-center justify-center px-5 text-center">
 								<div className="text-sm font-semibold text-[#FFF0E4]">{sourceIssueTitle}</div>
-								<p className="mt-2 max-w-[360px] text-xs leading-5 text-[#FDD2A3]/70">
+								<p className="mt-1.5 max-w-[380px] text-xs leading-[1.35rem] text-[#FDD2A3]/70">
 									{sourceIssueMessage}
 								</p>
-								<p className="mt-2 text-[10px] leading-4 text-[#FDD2A3]/45">
+								<p className="mt-1.5 text-[10px] leading-4 text-[#FDD2A3]/45">
 									macOS status: {accessStatus}
 								</p>
 								{permissionLooksGrantedButEmpty && screenCaptureAccess?.executablePath && (
@@ -308,7 +300,7 @@ export function SourceSelector() {
 										Source error: {sourceLoadError}
 									</p>
 								)}
-								<div className="mt-4 flex flex-wrap justify-center gap-2">
+								<div className="mt-3 flex flex-wrap justify-center gap-2">
 									<Button
 										type="button"
 										onClick={handleOpenSettings}
@@ -345,14 +337,14 @@ export function SourceSelector() {
 							<>
 								<TabsContent value="screens" className="h-full mt-0">
 									<div
-										className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
+										className={`grid grid-cols-2 gap-3 h-[220px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
 									>
 										{screenSources.map(renderSourceCard)}
 									</div>
 								</TabsContent>
 								<TabsContent value="windows" className="h-full mt-0">
 									<div
-										className={`grid grid-cols-2 gap-3 h-[280px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
+										className={`grid grid-cols-2 gap-3 h-[220px] overflow-y-auto pt-1 pr-1.5 auto-rows-min ${styles.sourceGridScroll} ${styles.electronNoDrag}`}
 									>
 										{windowSources.map(renderSourceCard)}
 									</div>

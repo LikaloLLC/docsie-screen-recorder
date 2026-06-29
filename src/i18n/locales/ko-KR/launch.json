@@ -28,6 +28,7 @@
 		"loading": "소스 불러오는 중...",
 		"screens": "화면 ({{count}}개)",
 		"windows": "창 ({{count}}개)",
+		"chooseSource": "소스 선택",
 		"defaultSourceName": "화면"
 	},
 	"recording": {

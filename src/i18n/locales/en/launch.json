@@ -28,6 +28,7 @@
 		"loading": "Loading sources...",
 		"screens": "Screens ({{count}})",
 		"windows": "Windows ({{count}})",
+		"chooseSource": "Choose source",
 		"defaultSourceName": "Screen"
 	},
 	"recording": {
