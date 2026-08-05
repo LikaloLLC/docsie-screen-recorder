@@ -36,6 +36,7 @@ import type {
 	DocsiePptxOptions,
 	DocsieVideoToDocsDocStyle,
 	DocsieVideoToDocsHistoryEntry,
+	DocsieVideoToDocsIntent,
 	DocsieVideoToDocsJobResult,
 	DocsieVideoToDocsJobStatus,
 	DocsieVideoToDocsQuality,
@@ -435,6 +436,8 @@ export function DocsiePublishDialog({
 	const [pptxImageQuality, setPptxImageQuality] = useState<DocsiePptxImageQuality>("medium");
 	const [pptxIllustrationStyle, setPptxIllustrationStyle] = useState("corporate");
 	const [pptxEmbedImages, setPptxEmbedImages] = useState(true);
+	const [intent, setIntent] = useState<DocsieVideoToDocsIntent>("documentation");
+	const [autoPublishToKnowledgeBase, setAutoPublishToKnowledgeBase] = useState(true);
 	const [targetDocumentationId, setTargetDocumentationId] = useState("");
 	const [bookTitle, setBookTitle] = useState("Video Documentation");
 	const [workspaces, setWorkspaces] = useState<DocsieWorkspace[]>([]);
@@ -482,6 +485,8 @@ export function DocsiePublishDialog({
 		() => requestedOutputFormats.filter(isExportFormat),
 		[requestedOutputFormats],
 	);
+	const publishToKnowledgeBase = intent === "documentation" && autoPublishToKnowledgeBase;
+	const effectiveTargetDocumentationId = publishToKnowledgeBase ? targetDocumentationId.trim() : "";
 	const visibleExportFormats = useMemo(() => {
 		const formats = [...requestedExportFormats];
 		for (const format of EXPORT_FORMATS) {
@@ -601,6 +606,8 @@ export function DocsiePublishDialog({
 		setRewriteInstructions(state.defaultRewriteInstructions ?? "");
 		setGenerationTemplateId(state.defaultGenerationTemplateId ?? "");
 		setTemplateInstruction(state.defaultTemplateInstruction ?? "");
+		setIntent(state.defaultIntent ?? "documentation");
+		setAutoPublishToKnowledgeBase(state.autoPublishToKnowledgeBase);
 		setTargetDocumentationId(state.targetDocumentationId ?? "");
 		setAutoGenerate(state.autoGenerate);
 		setArtifactMode(getArtifactModeFromOutputFormats(state.defaultOutputFormats));
@@ -748,7 +755,9 @@ export function DocsiePublishDialog({
 				defaultRewriteInstructions: rewriteInstructions,
 				defaultGenerationTemplateId: generationTemplateId || undefined,
 				defaultTemplateInstruction: templateInstruction,
-				targetDocumentationId: targetDocumentationId.trim() || undefined,
+				defaultIntent: intent,
+				targetDocumentationId: effectiveTargetDocumentationId || undefined,
+				autoPublishToKnowledgeBase,
 				autoGenerate,
 				defaultOutputFormats: requestedOutputFormats,
 				defaultPptxOptions: pptxOptions,
@@ -773,9 +782,12 @@ export function DocsiePublishDialog({
 	}, [
 		apiBaseUrl,
 		authMode,
+		autoPublishToKnowledgeBase,
 		autoGenerate,
 		docStyle,
+		effectiveTargetDocumentationId,
 		generationTemplateId,
+		intent,
 		language,
 		organizationName,
 		pptxOptions,
@@ -802,7 +814,9 @@ export function DocsiePublishDialog({
 				generationTemplateId,
 				templateInstruction,
 				rewriteInstructions,
-				targetDocumentationId,
+				intent,
+				targetDocumentationId: effectiveTargetDocumentationId,
+				autoPublishToKnowledgeBase: publishToKnowledgeBase,
 				autoGenerate,
 				outputFormats: requestedOutputFormats,
 				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
@@ -821,13 +835,15 @@ export function DocsiePublishDialog({
 		artifactMode,
 		autoGenerate,
 		docStyle,
+		effectiveTargetDocumentationId,
 		generationTemplateId,
+		intent,
 		language,
 		pptxOptions,
+		publishToKnowledgeBase,
 		quality,
 		requestedOutputFormats,
 		rewriteInstructions,
-		targetDocumentationId,
 		templateInstruction,
 		webAppUrl,
 		workspaceId,
@@ -844,7 +860,9 @@ export function DocsiePublishDialog({
 				generationTemplateId,
 				templateInstruction,
 				rewriteInstructions,
-				targetDocumentationId,
+				intent,
+				targetDocumentationId: effectiveTargetDocumentationId,
+				autoPublishToKnowledgeBase: publishToKnowledgeBase,
 				autoGenerate,
 				outputFormats: requestedOutputFormats,
 				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
@@ -863,13 +881,15 @@ export function DocsiePublishDialog({
 		artifactMode,
 		autoGenerate,
 		docStyle,
+		effectiveTargetDocumentationId,
 		generationTemplateId,
+		intent,
 		language,
 		pptxOptions,
+		publishToKnowledgeBase,
 		quality,
 		requestedOutputFormats,
 		rewriteInstructions,
-		targetDocumentationId,
 		templateInstruction,
 		webAppUrl,
 		workspaceId,
@@ -928,7 +948,9 @@ export function DocsiePublishDialog({
 					artifactMode === "docs" ? generationTemplateId || undefined : undefined,
 				templateInstruction: artifactMode === "docs" ? templateInstruction : undefined,
 				targetLanguage: language,
-				targetDocumentationId: targetDocumentationId.trim() || undefined,
+				intent,
+				targetDocumentationId: effectiveTargetDocumentationId || undefined,
+				autoPublishToKnowledgeBase: publishToKnowledgeBase,
 				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
 				outputFormats: requestedOutputFormats,
 				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
@@ -952,13 +974,15 @@ export function DocsiePublishDialog({
 			artifactMode,
 			bookTitle,
 			docStyle,
+			effectiveTargetDocumentationId,
 			generationTemplateId,
+			intent,
 			language,
 			pptxDeckType,
 			pptxOptions,
+			publishToKnowledgeBase,
 			requestedOutputFormats,
 			rewriteInstructions,
-			targetDocumentationId,
 			templateInstruction,
 			videoPath,
 		],
@@ -1153,7 +1177,9 @@ export function DocsiePublishDialog({
 				language,
 				docStyle,
 				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
-				targetDocumentationId: targetDocumentationId.trim() || undefined,
+				intent,
+				targetDocumentationId: effectiveTargetDocumentationId || undefined,
+				autoPublishToKnowledgeBase: publishToKnowledgeBase,
 				generationTemplateId:
 					artifactMode === "docs" ? generationTemplateId || undefined : undefined,
 				generationTemplateName:
@@ -1191,9 +1217,11 @@ export function DocsiePublishDialog({
 		artifactMode,
 		bookTitle,
 		docStyle,
+		effectiveTargetDocumentationId,
 		generationTemplateId,
 		generationJobId,
 		historyEntries,
+		intent,
 		jobResult,
 		language,
 		phase,
@@ -1202,7 +1230,7 @@ export function DocsiePublishDialog({
 		requestedOutputFormats,
 		rewriteInstructions,
 		selectedGenerationTemplate?.name,
-		targetDocumentationId,
+		publishToKnowledgeBase,
 		templateInstruction,
 		videoPath,
 	]);
@@ -1214,6 +1242,7 @@ export function DocsiePublishDialog({
 			!hasStoredToken ||
 			phase !== "completed" ||
 			!jobResult?.success ||
+			!publishToKnowledgeBase ||
 			!generatedShelfId ||
 			targetDocumentationId.trim()
 		) {
@@ -1247,7 +1276,9 @@ export function DocsiePublishDialog({
 			defaultRewriteInstructions: rewriteInstructions,
 			defaultGenerationTemplateId: generationTemplateId || undefined,
 			defaultTemplateInstruction: templateInstruction,
+			defaultIntent: intent,
 			targetDocumentationId: generatedShelfId,
+			autoPublishToKnowledgeBase,
 			autoGenerate,
 			defaultOutputFormats: requestedOutputFormats,
 			defaultPptxOptions: pptxOptions,
@@ -1255,16 +1286,19 @@ export function DocsiePublishDialog({
 	}, [
 		apiBaseUrl,
 		authMode,
+		autoPublishToKnowledgeBase,
 		autoGenerate,
 		docStyle,
 		generationTemplateId,
 		hasStoredToken,
+		intent,
 		isOpen,
 		jobResult,
 		language,
 		organizationName,
 		phase,
 		pptxOptions,
+		publishToKnowledgeBase,
 		quality,
 		requestedOutputFormats,
 		rewriteInstructions,
@@ -1307,7 +1341,9 @@ export function DocsiePublishDialog({
 				generationTemplateId:
 					artifactMode === "docs" ? generationTemplateId || undefined : undefined,
 				templateInstruction: artifactMode === "docs" ? templateInstruction : undefined,
-				targetDocumentationId: targetDocumentationId.trim() || undefined,
+				intent,
+				targetDocumentationId: effectiveTargetDocumentationId || undefined,
+				autoPublishToKnowledgeBase: publishToKnowledgeBase,
 				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
 				autoGenerate: false,
 				outputFormats: requestedOutputFormats,
@@ -1340,16 +1376,18 @@ export function DocsiePublishDialog({
 		autoGenerate,
 		bookTitle,
 		docStyle,
+		effectiveTargetDocumentationId,
 		generationTemplateId,
 		hasConnectionCredentials,
+		intent,
 		language,
 		persistConfig,
 		pptxDeckType,
 		pptxOptions,
 		quality,
+		publishToKnowledgeBase,
 		requestedOutputFormats,
 		rewriteInstructions,
-		targetDocumentationId,
 		templateInstruction,
 		videoPath,
 		workspaceId,
@@ -1416,11 +1454,19 @@ export function DocsiePublishDialog({
 		setActiveJobId(null);
 		setBusyMessage("Loaded this completed Docsie result from local history.");
 		setPhase("completed");
-		if (entry.targetDocumentationId || entry.jobResult.documentationId) {
-			setTargetDocumentationId(
-				entry.targetDocumentationId ?? entry.jobResult.documentationId ?? "",
-			);
-		}
+		const restoredIntent =
+			entry.intent ??
+			(entry.targetDocumentationId || entry.jobResult.documentationId ? "documentation" : "export");
+		const restoredAutoPublish =
+			entry.autoPublishToKnowledgeBase ??
+			Boolean(entry.targetDocumentationId || entry.jobResult.documentationId);
+		setIntent(restoredIntent);
+		setAutoPublishToKnowledgeBase(restoredAutoPublish);
+		setTargetDocumentationId(
+			restoredIntent === "documentation" && restoredAutoPublish
+				? (entry.targetDocumentationId ?? entry.jobResult.documentationId ?? "")
+				: "",
+		);
 	}, []);
 
 	const handleOpenExport = useCallback(async (artifact: ExportArtifact) => {
@@ -2077,6 +2123,70 @@ export function DocsiePublishDialog({
 
 							<div className="mb-4">{artifactModeSelector}</div>
 
+							<div className="mb-4 rounded-xl border border-white/10 bg-[#17110f] p-3">
+								<div className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+									Intent
+								</div>
+								<div className="grid grid-cols-2 gap-2">
+									<button
+										type="button"
+										onClick={() => setIntent("documentation")}
+										className={cn(
+											"rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+											intent === "documentation"
+												? "border-[#FF6738] bg-[#FF6738]/15 text-[#fff0e4]"
+												: "border-white/10 bg-white/[0.03] text-[#c6b4a8] hover:bg-white/[0.06]",
+										)}
+									>
+										Documentation
+									</button>
+									<button
+										type="button"
+										onClick={() => {
+											setIntent("export");
+											setAutoPublishToKnowledgeBase(false);
+										}}
+										className={cn(
+											"rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+											intent === "export"
+												? "border-[#FF6738] bg-[#FF6738]/15 text-[#fff0e4]"
+												: "border-white/10 bg-white/[0.03] text-[#c6b4a8] hover:bg-white/[0.06]",
+										)}
+									>
+										Export only
+									</button>
+								</div>
+								<div
+									className={cn(
+										"mt-3 flex items-center justify-between gap-4 rounded-lg border border-white/10 px-3 py-2",
+										intent !== "documentation" && "opacity-60",
+									)}
+								>
+									<span className="text-sm font-medium text-[#fff0e4]">
+										Publish to knowledge base
+									</span>
+									<button
+										type="button"
+										onClick={() =>
+											intent === "documentation" &&
+											setAutoPublishToKnowledgeBase((current) => !current)
+										}
+										disabled={intent !== "documentation"}
+										className={cn(
+											"relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:cursor-not-allowed",
+											publishToKnowledgeBase ? "bg-[#FF6738]" : "bg-white/10",
+										)}
+									>
+										<span
+											className={cn(
+												"inline-block h-5 w-5 transform rounded-full bg-white transition-transform",
+												publishToKnowledgeBase ? "translate-x-5" : "translate-x-1",
+											)}
+										/>
+									</button>
+								</div>
+							</div>
+
 							<div className="grid gap-3 md:grid-cols-2">
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
@@ -2180,7 +2290,7 @@ export function DocsiePublishDialog({
 								)}
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Book Title
+										{publishToKnowledgeBase ? "Book Title" : "Export Title"}
 									</label>
 									<Input
 										value={bookTitle}
@@ -2189,44 +2299,46 @@ export function DocsiePublishDialog({
 										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
 									/>
 								</div>
-								<div className="space-y-1.5">
-									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Destination Shelf
-									</label>
-									<select
-										value={targetDocumentationId}
-										onChange={(event) => setTargetDocumentationId(event.target.value)}
-										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
-									>
-										<option value="">Create a new shelf from the book title</option>
-										{targetDocumentationId &&
-										!documentationShelves.some((shelf) => shelf.id === targetDocumentationId) ? (
-											<option value={targetDocumentationId}>
-												Saved shelf ({targetDocumentationId})
-											</option>
-										) : null}
-										{documentationShelves.map((shelf) => (
-											<option key={shelf.id} value={shelf.id}>
-												{shelf.name}
-											</option>
-										))}
-									</select>
-									<div className="flex items-center justify-between gap-3 text-xs text-[#8f7e73]">
-										<span>
-											{targetDocumentationId
-												? "Docsie will add the generated book to this shelf."
-												: "Docsie will create the shelf, then reuse it for future runs."}
-										</span>
-										<button
-											type="button"
-											onClick={() => void loadDocumentationShelves(workspaceId)}
-											disabled={loadingShelves || !workspaceId}
-											className="shrink-0 text-[#FEA85E] underline-offset-4 hover:underline disabled:text-[#8f7e73]"
+								{publishToKnowledgeBase ? (
+									<div className="space-y-1.5">
+										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
+											Destination Shelf
+										</label>
+										<select
+											value={targetDocumentationId}
+											onChange={(event) => setTargetDocumentationId(event.target.value)}
+											className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 										>
-											{loadingShelves ? "Loading" : "Refresh"}
-										</button>
+											<option value="">Create a new shelf from the book title</option>
+											{targetDocumentationId &&
+											!documentationShelves.some((shelf) => shelf.id === targetDocumentationId) ? (
+												<option value={targetDocumentationId}>
+													Saved shelf ({targetDocumentationId})
+												</option>
+											) : null}
+											{documentationShelves.map((shelf) => (
+												<option key={shelf.id} value={shelf.id}>
+													{shelf.name}
+												</option>
+											))}
+										</select>
+										<div className="flex items-center justify-between gap-3 text-xs text-[#8f7e73]">
+											<span>
+												{targetDocumentationId
+													? "Docsie will add the generated book to this shelf."
+													: "Docsie will create the shelf, then reuse it for future runs."}
+											</span>
+											<button
+												type="button"
+												onClick={() => void loadDocumentationShelves(workspaceId)}
+												disabled={loadingShelves || !workspaceId}
+												className="shrink-0 text-[#FEA85E] underline-offset-4 hover:underline disabled:text-[#8f7e73]"
+											>
+												{loadingShelves ? "Loading" : "Refresh"}
+											</button>
+										</div>
 									</div>
-								</div>
+								) : null}
 								{artifactMode === "presentation" ? (
 									<>
 										<div className="space-y-1.5">

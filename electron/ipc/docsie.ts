@@ -32,6 +32,7 @@ import type {
 	DocsieTranscriptionOptionsResult,
 	DocsieTranscriptionResult,
 	DocsieVideoToDocsHistoryEntry,
+	DocsieVideoToDocsIntent,
 	DocsieVideoToDocsJobResult,
 	DocsieVideoToDocsJobStatus,
 	DocsieVoiceDefaultOptions,
@@ -52,6 +53,7 @@ const DEFAULT_TRANSCRIPTION_AUDIO_PATH = "/transcription/audio/";
 const DEFAULT_LANGUAGE = "english";
 const DEFAULT_QUALITY = "standard";
 const DEFAULT_DOC_STYLE = "guide";
+const DEFAULT_INTENT: DocsieVideoToDocsIntent = "documentation";
 const DEFAULT_OUTPUT_FORMATS: DocsieOutputFormat[] = ["md", "docx", "pdf"];
 const ALLOWED_OUTPUT_FORMATS = new Set<DocsieOutputFormat>(["md", "docx", "pdf", "pptx"]);
 const OUTPUT_FORMAT_ALIASES: Record<string, DocsieOutputFormat> = {
@@ -81,7 +83,9 @@ interface StoredDocsieConfig {
 	defaultRewriteInstructions?: string;
 	defaultGenerationTemplateId?: string;
 	defaultTemplateInstruction?: string;
+	defaultIntent?: DocsieVideoToDocsIntent;
 	targetDocumentationId?: string;
+	autoPublishToKnowledgeBase?: boolean;
 	autoGenerate?: boolean;
 	defaultOutputFormats?: DocsieOutputFormat[];
 	defaultPptxOptions?: DocsiePptxOptions;
@@ -109,7 +113,9 @@ interface ResolvedDocsieConfig {
 	defaultRewriteInstructions?: string;
 	defaultGenerationTemplateId?: string;
 	defaultTemplateInstruction?: string;
+	defaultIntent: DocsieVideoToDocsIntent;
 	targetDocumentationId?: string;
+	autoPublishToKnowledgeBase: boolean;
 	autoGenerate: boolean;
 	defaultOutputFormats: DocsieOutputFormat[];
 	defaultPptxOptions: DocsiePptxOptions;
@@ -177,6 +183,24 @@ function asBoolean(value: unknown): boolean | undefined {
 		if (["0", "false", "no", "off"].includes(normalized)) {
 			return false;
 		}
+	}
+	return undefined;
+}
+
+function normalizeDocsieIntent(value: unknown): DocsieVideoToDocsIntent | undefined {
+	const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+	const normalized = raw.replace(/_/g, "-");
+	if (
+		[
+			"documentation",
+			"export",
+			"chatbot",
+			"comparative-report",
+			"compliance-report",
+			"api",
+		].includes(normalized)
+	) {
+		return normalized as DocsieVideoToDocsIntent;
 	}
 	return undefined;
 }
@@ -442,7 +466,12 @@ async function readStoredDocsieConfig(): Promise<StoredDocsieConfig | null> {
 			defaultRewriteInstructions: asString(parsed.defaultRewriteInstructions),
 			defaultGenerationTemplateId: asString(parsed.defaultGenerationTemplateId),
 			defaultTemplateInstruction: asString(parsed.defaultTemplateInstruction),
+			defaultIntent: normalizeDocsieIntent(parsed.defaultIntent),
 			targetDocumentationId: asString(parsed.targetDocumentationId),
+			autoPublishToKnowledgeBase:
+				typeof parsed.autoPublishToKnowledgeBase === "boolean"
+					? parsed.autoPublishToKnowledgeBase
+					: undefined,
 			autoGenerate: typeof parsed.autoGenerate === "boolean" ? parsed.autoGenerate : undefined,
 			defaultOutputFormats: normalizeDocsieOutputFormats(
 				parsed.defaultOutputFormats,
@@ -530,7 +559,9 @@ function toDocsieState(stored: StoredDocsieConfig | null): DocsieIntegrationStat
 		defaultRewriteInstructions: stored?.defaultRewriteInstructions ?? "",
 		defaultGenerationTemplateId: stored?.defaultGenerationTemplateId ?? "",
 		defaultTemplateInstruction: stored?.defaultTemplateInstruction ?? "",
+		defaultIntent: stored?.defaultIntent ?? DEFAULT_INTENT,
 		targetDocumentationId: stored?.targetDocumentationId,
+		autoPublishToKnowledgeBase: stored?.autoPublishToKnowledgeBase ?? true,
 		autoGenerate: stored?.autoGenerate ?? true,
 		defaultOutputFormats: normalizeDocsieOutputFormats(
 			stored?.defaultOutputFormats,
@@ -574,7 +605,9 @@ async function resolveDocsieConfig(): Promise<ResolvedDocsieConfig> {
 		defaultRewriteInstructions: stored.defaultRewriteInstructions ?? "",
 		defaultGenerationTemplateId: stored.defaultGenerationTemplateId ?? "",
 		defaultTemplateInstruction: stored.defaultTemplateInstruction ?? "",
+		defaultIntent: stored.defaultIntent ?? DEFAULT_INTENT,
 		targetDocumentationId: stored.targetDocumentationId,
+		autoPublishToKnowledgeBase: stored.autoPublishToKnowledgeBase ?? true,
 		autoGenerate: stored.autoGenerate ?? true,
 		defaultOutputFormats: normalizeDocsieOutputFormats(
 			stored.defaultOutputFormats,
@@ -1153,7 +1186,9 @@ export async function saveDocsieIntegrationConfig(
 	const explicitToken = asString(input.token);
 	const storedToken = stored ? decryptToken(stored) : undefined;
 	const hasGenerationTemplateInput = "defaultGenerationTemplateId" in input;
+	const hasDefaultIntentInput = "defaultIntent" in input;
 	const hasTargetDocumentationInput = "targetDocumentationId" in input;
+	const hasAutoPublishInput = "autoPublishToKnowledgeBase" in input;
 	const hasOutputFormatsInput = "defaultOutputFormats" in input;
 	const hasPptxOptionsInput = "defaultPptxOptions" in input;
 	if (!explicitToken && storedToken && stored?.apiBaseUrl) {
@@ -1187,9 +1222,15 @@ export async function saveDocsieIntegrationConfig(
 			: (stored?.defaultGenerationTemplateId ?? ""),
 		defaultTemplateInstruction:
 			asString(input.defaultTemplateInstruction) ?? stored?.defaultTemplateInstruction ?? "",
+		defaultIntent: hasDefaultIntentInput
+			? (normalizeDocsieIntent(input.defaultIntent) ?? DEFAULT_INTENT)
+			: (stored?.defaultIntent ?? DEFAULT_INTENT),
 		targetDocumentationId: hasTargetDocumentationInput
 			? (asString(input.targetDocumentationId) ?? undefined)
 			: stored?.targetDocumentationId,
+		autoPublishToKnowledgeBase: hasAutoPublishInput
+			? (input.autoPublishToKnowledgeBase ?? true)
+			: (stored?.autoPublishToKnowledgeBase ?? true),
 		autoGenerate: input.autoGenerate ?? stored?.autoGenerate ?? true,
 		defaultOutputFormats: hasOutputFormatsInput
 			? normalizeDocsieOutputFormats(input.defaultOutputFormats, DEFAULT_OUTPUT_FORMATS)
@@ -1485,7 +1526,9 @@ export async function connectDocsieDesktopHandoff(
 			defaultRewriteInstructions: asString(payload.default_rewrite_instructions) ?? "",
 			defaultGenerationTemplateId: asString(payload.default_generation_template_id) ?? "",
 			defaultTemplateInstruction: asString(payload.default_template_instruction) ?? "",
+			defaultIntent: normalizeDocsieIntent(payload.intent) ?? DEFAULT_INTENT,
 			targetDocumentationId: asString(payload.target_documentation_id),
+			autoPublishToKnowledgeBase: asBoolean(payload.auto_publish_to_knowledge_base) ?? true,
 			autoGenerate: typeof payload.auto_generate === "boolean" ? payload.auto_generate : true,
 			defaultOutputFormats: normalizeDocsieOutputFormats(
 				payload.default_output_formats,
@@ -1621,6 +1664,13 @@ export async function startDocsieVideoToDocs(
 			config.defaultOutputFormats,
 		);
 		const pptxOptions = normalizeDocsiePptxOptions(input.pptxOptions ?? config.defaultPptxOptions);
+		const intent = normalizeDocsieIntent(input.intent) ?? config.defaultIntent ?? DEFAULT_INTENT;
+		const autoPublishToKnowledgeBase =
+			input.autoPublishToKnowledgeBase ?? config.autoPublishToKnowledgeBase;
+		const publishToKnowledgeBase = intent === "documentation" && autoPublishToKnowledgeBase;
+		const targetDocumentationId = publishToKnowledgeBase
+			? (asString(input.targetDocumentationId) ?? config.targetDocumentationId ?? "")
+			: "";
 
 		const tempUploadPayload = await docsieJsonRequest(config, "/files/generate_temp_url/", {
 			method: "POST",
@@ -1683,8 +1733,9 @@ export async function startDocsieVideoToDocs(
 					asString(input.rewriteInstructions) ?? config.defaultRewriteInstructions ?? "",
 				generation_template_id: generationTemplateId,
 				template_instruction: templateInstruction,
-				target_documentation_id:
-					asString(input.targetDocumentationId) ?? config.targetDocumentationId ?? "",
+				intent,
+				target_documentation_id: targetDocumentationId,
+				auto_publish_to_knowledge_base: publishToKnowledgeBase,
 				book_title: asString(input.bookTitle) ?? defaultBookTitle,
 				auto_generate: input.autoGenerate ?? config.autoGenerate,
 				output_formats: outputFormats,
@@ -1736,6 +1787,13 @@ export async function generateDocsieVideoToDocs(
 			config.defaultOutputFormats,
 		);
 		const pptxOptions = normalizeDocsiePptxOptions(input.pptxOptions ?? config.defaultPptxOptions);
+		const intent = normalizeDocsieIntent(input.intent) ?? config.defaultIntent ?? DEFAULT_INTENT;
+		const autoPublishToKnowledgeBase =
+			input.autoPublishToKnowledgeBase ?? config.autoPublishToKnowledgeBase;
+		const publishToKnowledgeBase = intent === "documentation" && autoPublishToKnowledgeBase;
+		const targetDocumentationId = publishToKnowledgeBase
+			? (asString(input.targetDocumentationId) ?? config.targetDocumentationId ?? "")
+			: "";
 
 		const payload = await docsieJsonRequest(config, `/video-to-docs/${jobId}/generate/`, {
 			method: "POST",
@@ -1749,8 +1807,9 @@ export async function generateDocsieVideoToDocs(
 				generation_template_id: generationTemplateId,
 				template_instruction: templateInstruction,
 				target_language: asString(input.targetLanguage) ?? config.defaultLanguage,
-				target_documentation_id:
-					asString(input.targetDocumentationId) ?? config.targetDocumentationId ?? "",
+				intent,
+				target_documentation_id: targetDocumentationId,
+				auto_publish_to_knowledge_base: publishToKnowledgeBase,
 				book_title: asString(input.bookTitle) ?? "Video Documentation",
 				output_formats: outputFormats,
 				...(hasPptxOutput(outputFormats) && Object.keys(pptxOptions).length
@@ -1814,6 +1873,9 @@ export async function saveDocsieVideoToDocsHistory(
 	const history = await readDocsieVideoToDocsHistory();
 	const normalizedVideoPath = normalizeVideoHistoryPath(input.videoPath);
 	const createdAt = new Date().toISOString();
+	const intent = normalizeDocsieIntent(input.intent) ?? config.defaultIntent ?? DEFAULT_INTENT;
+	const autoPublishToKnowledgeBase =
+		input.autoPublishToKnowledgeBase ?? config.autoPublishToKnowledgeBase;
 
 	const nextEntry: DocsieVideoToDocsHistoryEntry = {
 		id: `docsie-v2d-${Date.now()}`,
@@ -1827,7 +1889,9 @@ export async function saveDocsieVideoToDocsHistory(
 		language: asString(input.language) ?? config.defaultLanguage,
 		docStyle: input.docStyle,
 		bookTitle: asString(input.bookTitle),
+		intent,
 		targetDocumentationId: asString(input.targetDocumentationId),
+		autoPublishToKnowledgeBase,
 		generationTemplateId: asString(input.generationTemplateId),
 		generationTemplateName: asString(input.generationTemplateName),
 		templateInstruction: asString(input.templateInstruction),

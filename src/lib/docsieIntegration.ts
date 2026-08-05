@@ -1,5 +1,12 @@
 export type DocsieAuthMode = "apiKey" | "bearer";
 export type DocsieVideoToDocsQuality = "draft" | "standard" | "detailed" | "ultra";
+export type DocsieVideoToDocsIntent =
+	| "documentation"
+	| "export"
+	| "chatbot"
+	| "comparative-report"
+	| "compliance-report"
+	| "api";
 export type DocsieOutputFormat = "md" | "docx" | "pdf" | "pptx";
 export type DocsiePptxImageQuality = "low" | "medium" | "high";
 export type DocsieVideoToDocsDocStyle =
@@ -174,7 +181,9 @@ export interface DocsieDesktopConnectParams {
 	generationTemplateId?: string;
 	templateInstruction?: string;
 	rewriteInstructions?: string;
+	intent?: DocsieVideoToDocsIntent;
 	targetDocumentationId?: string;
+	autoPublishToKnowledgeBase?: boolean;
 	autoGenerate?: boolean;
 	outputFormats?: DocsieOutputFormat[];
 	pptxOptions?: DocsiePptxOptions;
@@ -228,8 +237,17 @@ export function buildDocsieDesktopConnectUrl(
 	if (params?.rewriteInstructions?.trim()) {
 		connectUrl.searchParams.set("rewrite_instructions", params.rewriteInstructions.trim());
 	}
+	if (params?.intent?.trim()) {
+		connectUrl.searchParams.set("intent", params.intent.trim());
+	}
 	if (params?.targetDocumentationId?.trim()) {
 		connectUrl.searchParams.set("target_documentation_id", params.targetDocumentationId.trim());
+	}
+	if (typeof params?.autoPublishToKnowledgeBase === "boolean") {
+		connectUrl.searchParams.set(
+			"auto_publish_to_knowledge_base",
+			params.autoPublishToKnowledgeBase ? "true" : "false",
+		);
 	}
 	if (typeof params?.autoGenerate === "boolean") {
 		connectUrl.searchParams.set("auto_generate", params.autoGenerate ? "true" : "false");
@@ -306,7 +324,9 @@ export interface DocsieIntegrationConfigInput {
 	defaultRewriteInstructions?: string;
 	defaultGenerationTemplateId?: string;
 	defaultTemplateInstruction?: string;
+	defaultIntent?: DocsieVideoToDocsIntent;
 	targetDocumentationId?: string;
+	autoPublishToKnowledgeBase?: boolean;
 	autoGenerate?: boolean;
 	defaultOutputFormats?: DocsieOutputFormat[];
 	defaultPptxOptions?: DocsiePptxOptions;
@@ -334,7 +354,9 @@ export interface DocsieIntegrationState {
 	defaultRewriteInstructions?: string;
 	defaultGenerationTemplateId?: string;
 	defaultTemplateInstruction?: string;
+	defaultIntent: DocsieVideoToDocsIntent;
 	targetDocumentationId?: string;
+	autoPublishToKnowledgeBase: boolean;
 	autoGenerate: boolean;
 	defaultOutputFormats: DocsieOutputFormat[];
 	defaultPptxOptions: DocsiePptxOptions;
@@ -429,7 +451,9 @@ export interface DocsieStartVideoToDocsInput {
 	rewriteInstructions?: string;
 	generationTemplateId?: string;
 	templateInstruction?: string;
+	intent?: DocsieVideoToDocsIntent;
 	targetDocumentationId?: string;
+	autoPublishToKnowledgeBase?: boolean;
 	bookTitle?: string;
 	autoGenerate?: boolean;
 	outputFormats?: DocsieOutputFormat[];
@@ -455,7 +479,9 @@ export interface DocsieGenerateVideoToDocsInput {
 	generationTemplateId?: string;
 	templateInstruction?: string;
 	targetLanguage?: string;
+	intent?: DocsieVideoToDocsIntent;
 	targetDocumentationId?: string;
+	autoPublishToKnowledgeBase?: boolean;
 	bookTitle?: string;
 	outputFormats?: DocsieOutputFormat[];
 	pptxOptions?: DocsiePptxOptions;
@@ -547,7 +573,9 @@ export interface DocsieVideoToDocsHistoryEntry {
 	language?: string;
 	docStyle?: DocsieVideoToDocsDocStyle;
 	bookTitle?: string;
+	intent?: DocsieVideoToDocsIntent;
 	targetDocumentationId?: string;
+	autoPublishToKnowledgeBase?: boolean;
 	generationTemplateId?: string;
 	generationTemplateName?: string;
 	templateInstruction?: string;
@@ -566,7 +594,9 @@ export interface DocsieSaveVideoToDocsHistoryInput {
 	language?: string;
 	docStyle?: DocsieVideoToDocsDocStyle;
 	bookTitle?: string;
+	intent?: DocsieVideoToDocsIntent;
 	targetDocumentationId?: string;
+	autoPublishToKnowledgeBase?: boolean;
 	generationTemplateId?: string;
 	generationTemplateName?: string;
 	templateInstruction?: string;
