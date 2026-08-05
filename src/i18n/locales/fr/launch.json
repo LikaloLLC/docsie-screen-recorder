@@ -34,5 +34,11 @@
 	"recording": {
 		"selectSource": "Veuillez sélectionner une source à enregistrer"
 	},
-	"language": "Langue"
+	"language": "Langue",
+	"systemLanguagePrompt": {
+		"title": "Utiliser la langue de votre système ?",
+		"description": "Nous avons détecté {{language}} comme langue de votre système. Voulez-vous passer Docsie Screen Recorder en {{language}} ?",
+		"switch": "Passer en {{language}}",
+		"keepDefault": "Conserver la langue actuelle"
+	}
 }

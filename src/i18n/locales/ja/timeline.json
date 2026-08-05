@@ -1,0 +1,53 @@
+{
+	"buttons": {
+		"addZoom": "ズームを追加 (Z)",
+		"suggestZooms": "カーソルからズームを提案",
+		"addTrim": "トリミングを追加 (T)",
+		"addAnnotation": "注釈を追加 (A)",
+		"addBlur": "ぼかしを追加 (B)",
+		"addSpeed": "速度を追加 (S)"
+	},
+	"hints": {
+		"pressZoom": "Z キーでズームを追加",
+		"pressTrim": "T キーでトリミングを追加",
+		"pressAnnotation": "A キーで注釈を追加",
+		"pressBlur": "B キーでぼかし領域を追加",
+		"pressSpeed": "S キーで速度を追加"
+	},
+	"labels": {
+		"pan": "パン",
+		"zoom": "ズーム",
+		"zoomItem": "ズーム {{index}}",
+		"trimItem": "トリミング {{index}}",
+		"speedItem": "速度 {{index}}",
+		"annotationItem": "注釈",
+		"blurItem": "ぼかし {{index}}",
+		"imageItem": "画像",
+		"emptyText": "テキストなし"
+	},
+	"emptyState": {
+		"noVideo": "動画が読み込まれていません",
+		"dragAndDrop": "動画をドラッグ＆ドロップして編集を開始してください"
+	},
+	"errors": {
+		"cannotPlaceZoom": "ここにズームを配置できません",
+		"zoomExistsAtLocation": "この位置には既にズームが存在するか、十分なスペースがありません。",
+		"zoomSuggestionUnavailable": "ズーム提案ハンドラーを利用できません",
+		"noCursorTelemetry": "カーソルテレメトリーがありません",
+		"noCursorTelemetryDescription": "カーソルベースの提案を生成するには、まず画面を録画してください。",
+		"noUsableTelemetry": "利用可能なカーソルテレメトリーがありません",
+		"noUsableTelemetryDescription": "この録画には十分なカーソル移動データが含まれていません。",
+		"noDwellMoments": "明確なカーソルの停留ポイントが見つかりません",
+		"noDwellMomentsDescription": "重要な操作でカーソルをゆっくり止める録画をお試しください。",
+		"noAutoZoomSlots": "自動ズームを配置できる場所がありません",
+		"noAutoZoomSlotsDescription": "検出された停留ポイントが既存のズーム領域と重なっています。",
+		"cannotPlaceTrim": "ここにトリミングを配置できません",
+		"trimExistsAtLocation": "この位置には既にトリミングが存在するか、十分なスペースがありません。",
+		"cannotPlaceSpeed": "ここに速度を配置できません",
+		"speedExistsAtLocation": "この位置には既に速度領域が存在するか、十分なスペースがありません。"
+	},
+	"success": {
+		"addedZoomSuggestions": "カーソルベースのズーム提案を {{count}} 件追加しました",
+		"addedZoomSuggestionsPlural": "カーソルベースのズーム提案を {{count}} 件追加しました"
+	}
+}

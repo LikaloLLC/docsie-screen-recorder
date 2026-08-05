@@ -34,5 +34,11 @@
 	"recording": {
 		"selectSource": "請選擇要錄製的來源"
 	},
-	"language": "語言"
+	"language": "語言",
+	"systemLanguagePrompt": {
+		"title": "要使用系統語言嗎？",
+		"description": "我們偵測到你的系統語言是{{language}}。是否將 Docsie Screen Recorder 切換為{{language}}？",
+		"switch": "切換至{{language}}",
+		"keepDefault": "保持目前語言"
+	}
 }

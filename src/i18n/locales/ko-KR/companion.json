@@ -1,0 +1,90 @@
+{
+	"shell": {
+		"title": "Docsie 캡처 컴패니언",
+		"minimize": "최소화",
+		"close": "닫기"
+	},
+	"setup": {
+		"title": "캡처 컴패니언 설정",
+		"subtitle": "한 번만 설정하면 됩니다. 이후에는 앱이 바로 녹화 버튼 화면으로 열립니다.",
+		"accountStep": "1 · Docsie 계정",
+		"connected": "연결됨",
+		"notConnected": "연결되지 않음",
+		"organizationFallback": "조직",
+		"connect": "Docsie에 연결",
+		"defaultsStep": "2 · 캡처 기본 설정",
+		"returnFormatLabel": "생성 후 받을 형식",
+		"returnKb": "지식 베이스 링크",
+		"returnPdf": "PDF",
+		"quality": "품질",
+		"qualityDraft": "초안 (가장 빠름, 크레딧 최소)",
+		"qualityStandard": "표준",
+		"qualityDetailed": "상세",
+		"qualityUltra": "울트라",
+		"language": "문서 언어",
+		"languageHint": "기본적으로 시스템 언어({{language}})가 사용됩니다.",
+		"template": "생성 템플릿",
+		"templateNone": "템플릿 없음 (기본 구조)",
+		"templateHint": "템플릿을 불러오려면 Docsie에 연결하세요.",
+		"microphone": "마이크 내레이션 녹음",
+		"startCapturing": "캡처 시작",
+		"connectToContinue": "계속하려면 Docsie에 연결하세요"
+	},
+	"source": {
+		"matchLabel": "제목에 다음이 포함된 창에 연결",
+		"matchPlaceholder": "예: Viewer",
+		"attached": "현재 일치: {{name}}",
+		"noMatch": "아직 일치하는 창이 없습니다. 대상 애플리케이션을 열어 확인하세요.",
+		"manualLabel": "또는 소스를 직접 선택",
+		"selectPlaceholder": "화면 또는 창 선택…"
+	},
+	"main": {
+		"noSource": "소스 없음",
+		"rescan": "다시 검색",
+		"rescanTitle": "대상 창 다시 검색",
+		"setup": "설정",
+		"setupTitle": "설정 열기",
+		"connectFirst": "녹화하기 전에 Docsie에 연결하세요.",
+		"pickSource": "캡처할 애플리케이션을 열거나 소스를 직접 선택하세요."
+	},
+	"session": {
+		"label": "세션 이름 (문서 제목이 됩니다)",
+		"defaultTitle": "교육 세션 {{date}} {{time}}"
+	},
+	"record": {
+		"record": "녹화",
+		"stop": "중지",
+		"cancel": "취소",
+		"stopWithTime": "녹화 중지 · {{time}}"
+	},
+	"progress": {
+		"upload": "업로드",
+		"analyze": "분석",
+		"generate": "생성",
+		"pdfExport": "PDF 내보내기",
+		"uploading": "녹화를 Docsie에 업로드하는 중…",
+		"analyzing": "Docsie가 녹화를 분석하는 중…",
+		"generating": "Docsie가 문서를 작성하는 중…",
+		"preparingPdf": "PDF 내보내기를 준비하는 중…",
+		"done": "문서가 준비되었습니다."
+	},
+	"toast": {
+		"docsReady": "문서가 준비되었습니다"
+	},
+	"result": {
+		"openKb": "지식 베이스에서 열기",
+		"downloadPdf": "PDF 다운로드",
+		"recordAnother": "다른 세션 녹화",
+		"dismiss": "닫기"
+	},
+	"errors": {
+		"pollStatusFailed": "Docsie 작업 상태를 확인하지 못했습니다",
+		"jobEnded": "Docsie 작업: {{status}}",
+		"fetchResultFailed": "Docsie 작업 결과를 가져오지 못했습니다",
+		"pdfExportEnded": "PDF 내보내기: {{status}}",
+		"pdfExportTimeout": "PDF 내보내기 대기 시간이 초과되었습니다",
+		"startJobFailed": "Docsie 작업을 시작하지 못했습니다",
+		"startGenerationFailed": "Docsie 생성을 시작하지 못했습니다",
+		"noVideoProduced": "녹화가 끝났지만 비디오 파일이 생성되지 않았습니다."
+	}
+}

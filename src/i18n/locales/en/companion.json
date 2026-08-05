@@ -1,0 +1,90 @@
+{
+	"shell": {
+		"title": "Docsie Capture Companion",
+		"minimize": "Minimize",
+		"close": "Close"
+	},
+	"setup": {
+		"title": "Capture Companion setup",
+		"subtitle": "Configure once. After this, the app opens straight to the record button.",
+		"accountStep": "1 · Docsie account",
+		"connected": "Connected",
+		"notConnected": "Not connected",
+		"organizationFallback": "Organization",
+		"connect": "Connect to Docsie",
+		"defaultsStep": "2 · Capture defaults",
+		"returnFormatLabel": "After generation, return",
+		"returnKb": "Knowledge base link",
+		"returnPdf": "PDF",
+		"quality": "Quality",
+		"qualityDraft": "Draft (fastest, fewest credits)",
+		"qualityStandard": "Standard",
+		"qualityDetailed": "Detailed",
+		"qualityUltra": "Ultra",
+		"language": "Documentation language",
+		"languageHint": "Defaults to your system language ({{language}}).",
+		"template": "Generation template",
+		"templateNone": "No template (default structure)",
+		"templateHint": "Connect to Docsie to load your templates.",
+		"microphone": "Record microphone narration",
+		"startCapturing": "Start capturing",
+		"connectToContinue": "Connect to Docsie to continue"
+	},
+	"source": {
+		"matchLabel": "Attach to windows whose title contains",
+		"matchPlaceholder": "e.g. Viewer",
+		"attached": "Currently matching: {{name}}",
+		"noMatch": "No open window matches yet — open the target application to verify.",
+		"manualLabel": "Or choose a source manually",
+		"selectPlaceholder": "Select a screen or window…"
+	},
+	"main": {
+		"noSource": "no source",
+		"rescan": "Rescan",
+		"rescanTitle": "Rescan for the target window",
+		"setup": "Setup",
+		"setupTitle": "Open setup",
+		"connectFirst": "Connect to Docsie before recording.",
+		"pickSource": "Open the application you want to capture, or pick a source manually."
+	},
+	"session": {
+		"label": "Session name (becomes the doc title)",
+		"defaultTitle": "Training session {{date}} {{time}}"
+	},
+	"record": {
+		"record": "Record",
+		"stop": "Stop",
+		"cancel": "Cancel",
+		"stopWithTime": "Stop recording · {{time}}"
+	},
+	"progress": {
+		"upload": "Upload",
+		"analyze": "Analyze",
+		"generate": "Generate",
+		"pdfExport": "PDF export",
+		"uploading": "Uploading the recording to Docsie…",
+		"analyzing": "Docsie is analyzing the recording…",
+		"generating": "Docsie is writing the documentation…",
+		"preparingPdf": "Preparing the PDF export…",
+		"done": "Documentation is ready."
+	},
+	"toast": {
+		"docsReady": "Documentation is ready"
+	},
+	"result": {
+		"openKb": "Open in knowledge base",
+		"downloadPdf": "Download PDF",
+		"recordAnother": "Record another session",
+		"dismiss": "Dismiss"
+	},
+	"errors": {
+		"pollStatusFailed": "Failed to poll Docsie job status",
+		"jobEnded": "Docsie job {{status}}",
+		"fetchResultFailed": "Failed to fetch Docsie job result",
+		"pdfExportEnded": "PDF export {{status}}",
+		"pdfExportTimeout": "Timed out waiting for the PDF export",
+		"startJobFailed": "Failed to start the Docsie job",
+		"startGenerationFailed": "Failed to start Docsie generation",
+		"noVideoProduced": "The recording finished but no video file was produced."
+	}
+}

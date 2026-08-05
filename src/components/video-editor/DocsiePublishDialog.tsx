@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DocsieTemplatePicker } from "@/components/video-editor/DocsieTemplatePicker";
+import { useScopedT } from "@/contexts/I18nContext";
 import type {
 	DocsieAuthMode,
 	DocsieCreditBalance,
@@ -49,16 +50,9 @@ import {
 } from "@/lib/docsieIntegration";
 import { cn } from "@/lib/utils";
 
-const QUALITY_OPTIONS: Array<{
-	value: DocsieVideoToDocsQuality;
-	label: string;
-	description: string;
-}> = [
-	{ value: "draft", label: "Draft", description: "250 credits/min" },
-	{ value: "standard", label: "Standard", description: "500 credits/min" },
-	{ value: "detailed", label: "Detailed", description: "1,000 credits/min" },
-	{ value: "ultra", label: "Ultra", description: "2,000 credits/min" },
-];
+type DocsieTranslate = ReturnType<typeof useScopedT>;
+
+const QUALITY_OPTIONS: DocsieVideoToDocsQuality[] = ["draft", "standard", "detailed", "ultra"];
 
 const DOC_STYLE_OPTIONS: DocsieVideoToDocsDocStyle[] = [
 	"guide",
@@ -110,20 +104,20 @@ function asString(value: unknown): string | null {
 	return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function formatJobPhase(phase: PublishPhase) {
+function formatJobPhase(t: DocsieTranslate, phase: PublishPhase) {
 	switch (phase) {
 		case "starting":
-			return "Starting conversion";
+			return t("publish.phase.starting");
 		case "analysis":
-			return "Analyzing video";
+			return t("publish.phase.analysis");
 		case "generation":
-			return "Generating docs";
+			return t("publish.phase.generation");
 		case "completed":
-			return "Completed";
+			return t("publish.phase.completed");
 		case "failed":
-			return "Failed";
+			return t("publish.phase.failed");
 		default:
-			return "Ready";
+			return t("publish.phase.ready");
 	}
 }
 
@@ -148,26 +142,31 @@ function formatStatusMessage(value: string) {
 		: htmlStripped;
 }
 
-function formatDuration(value?: number) {
+function formatDuration(t: DocsieTranslate, value?: number) {
 	if (typeof value !== "number" || Number.isNaN(value) || value <= 0) {
-		return "Unknown";
+		return t("publish.duration.unknown");
 	}
 
 	if (value < 60) {
-		return `${value.toFixed(1)}s`;
+		return t("publish.duration.seconds", { seconds: value.toFixed(1) });
 	}
 
 	const minutes = Math.floor(value / 60);
 	const seconds = Math.round(value % 60);
-	return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+	return t("publish.duration.minutesSeconds", {
+		minutes,
+		seconds: seconds.toString().padStart(2, "0"),
+	});
 }
 
-function formatSecondsPerFrame(value?: number | null) {
+function formatSecondsPerFrame(t: DocsieTranslate, value?: number | null) {
 	if (typeof value !== "number" || Number.isNaN(value) || value <= 0) {
 		return null;
 	}
 
-	return value >= 1 ? `Every ${value.toFixed(value >= 10 ? 0 : 1)}s` : `Every ${value.toFixed(2)}s`;
+	return t("publish.sampling.everySeconds", {
+		seconds: value >= 1 ? value.toFixed(value >= 10 ? 0 : 1) : value.toFixed(2),
+	});
 }
 
 function estimateFrameCount(durationSeconds?: number, secondsPerFrame?: number | null) {
@@ -183,7 +182,7 @@ function estimateFrameCount(durationSeconds?: number, secondsPerFrame?: number |
 	return Math.max(1, Math.round(durationSeconds / secondsPerFrame));
 }
 
-function getEstimateText(estimate: DocsieEstimateResult | null) {
+function getEstimateText(t: DocsieTranslate, estimate: DocsieEstimateResult | null) {
 	if (!estimate?.success) {
 		return null;
 	}
@@ -191,41 +190,44 @@ function getEstimateText(estimate: DocsieEstimateResult | null) {
 	const credits = isRecord(estimate.estimate)
 		? (estimate.estimate.total_credits ?? estimate.estimate.credits ?? null)
 		: null;
-	return typeof credits === "number" ? `${credits.toLocaleString()} credits` : null;
+	return typeof credits === "number"
+		? t("publish.credits.estimate", { credits: credits.toLocaleString() })
+		: null;
 }
 
-function getCreditBalanceText(balance: DocsieCreditBalance | null) {
+function getCreditBalanceText(t: DocsieTranslate, balance: DocsieCreditBalance | null) {
 	if (typeof balance?.totalAvailable !== "number") {
 		return null;
 	}
 
-	return `${balance.totalAvailable.toLocaleString()} credits available`;
+	return t("publish.credits.available", { credits: balance.totalAvailable.toLocaleString() });
 }
 
-function getCreditBalanceDetail(balance: DocsieCreditBalance | null) {
+function getCreditBalanceDetail(t: DocsieTranslate, balance: DocsieCreditBalance | null) {
 	if (!balance) {
 		return null;
 	}
 
 	const parts = [
 		typeof balance.monthlyRemaining === "number"
-			? `${balance.monthlyRemaining.toLocaleString()} monthly`
+			? t("publish.credits.monthly", { credits: balance.monthlyRemaining.toLocaleString() })
 			: null,
 		typeof balance.purchasedBalance === "number"
-			? `${balance.purchasedBalance.toLocaleString()} purchased`
+			? t("publish.credits.purchased", { credits: balance.purchasedBalance.toLocaleString() })
 			: null,
 	];
 
 	return parts.filter(Boolean).join(" • ") || null;
 }
 
-function buildDefaultBookTitle(videoPath: string | null) {
+function buildDefaultBookTitle(t: DocsieTranslate, videoPath: string | null) {
+	const fallback = t("publish.defaults.bookTitle");
 	if (!videoPath) {
-		return "Video Documentation";
+		return fallback;
 	}
 
-	const basename = videoPath.split("/").pop() ?? "Video Documentation";
-	return basename.replace(/\.[^.]+$/, "") || "Video Documentation";
+	const basename = videoPath.split("/").pop() ?? fallback;
+	return basename.replace(/\.[^.]+$/, "") || fallback;
 }
 
 function buildApiBaseUrl(webAppUrl: string, currentApiBaseUrl: string) {
@@ -247,8 +249,8 @@ function getPrimaryResultUrl(jobResult: DocsieVideoToDocsJobResult | null) {
 	return jobResult?.url ?? jobResult?.resultUrl ?? null;
 }
 
-function getResultTitle(jobResult: DocsieVideoToDocsJobResult | null) {
-	return jobResult?.bookName ?? jobResult?.title ?? "Docsie result";
+function getResultTitle(t: DocsieTranslate, jobResult: DocsieVideoToDocsJobResult | null) {
+	return jobResult?.bookName ?? jobResult?.title ?? t("publish.defaults.resultTitle");
 }
 
 function normalizeMarkdownFileName(title: string) {
@@ -411,6 +413,7 @@ export function DocsiePublishDialog({
 	videoDurationSeconds,
 	onCreditsChanged,
 }: DocsiePublishDialogProps) {
+	const t = useScopedT("docsie");
 	const [apiBaseUrl, setApiBaseUrl] = useState("");
 	const [webAppUrl, setWebAppUrl] = useState(getDocsieWebAppUrl(""));
 	const [authMode, setAuthMode] = useState<DocsieAuthMode>("bearer");
@@ -439,7 +442,7 @@ export function DocsiePublishDialog({
 	const [intent, setIntent] = useState<DocsieVideoToDocsIntent>("documentation");
 	const [autoPublishToKnowledgeBase, setAutoPublishToKnowledgeBase] = useState(true);
 	const [targetDocumentationId, setTargetDocumentationId] = useState("");
-	const [bookTitle, setBookTitle] = useState("Video Documentation");
+	const [bookTitle, setBookTitle] = useState(() => t("publish.defaults.bookTitle"));
 	const [workspaces, setWorkspaces] = useState<DocsieWorkspace[]>([]);
 	const [documentationShelves, setDocumentationShelves] = useState<DocsieDocumentationShelf[]>([]);
 	const [generationTemplates, setGenerationTemplates] = useState<DocsieGenerationTemplate[]>([]);
@@ -522,11 +525,11 @@ export function DocsiePublishDialog({
 	);
 	const displayedWorkspaceName = selectedWorkspace?.name ?? storedWorkspaceName;
 	const hasConnectionCredentials = hasStoredToken || Boolean(tokenInput.trim());
-	const estimateText = getEstimateText(estimate);
-	const creditBalanceText = getCreditBalanceText(creditBalance);
-	const creditBalanceDetail = getCreditBalanceDetail(creditBalance);
+	const estimateText = getEstimateText(t, estimate);
+	const creditBalanceText = getCreditBalanceText(t, creditBalance);
+	const creditBalanceDetail = getCreditBalanceDetail(t, creditBalance);
 	const estimateFrames = estimateFrameCount(videoDurationSeconds, estimate?.secondsPerFrame);
-	const samplingText = formatSecondsPerFrame(estimate?.secondsPerFrame);
+	const samplingText = formatSecondsPerFrame(t, estimate?.secondsPerFrame);
 	const markdownReady = Boolean(jobResult?.markdown);
 	const canManuallyGenerate =
 		phase === "completed" && !autoGenerate && Boolean(analysisJobId) && !generationJobId;
@@ -645,8 +648,8 @@ export function DocsiePublishDialog({
 		}
 
 		void loadState();
-		setBookTitle(buildDefaultBookTitle(videoPath));
-	}, [isOpen, loadState, videoPath]);
+		setBookTitle(buildDefaultBookTitle(t, videoPath));
+	}, [isOpen, loadState, t, videoPath]);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -764,7 +767,7 @@ export function DocsiePublishDialog({
 			});
 
 			if (!result.success || !result.state) {
-				throw new Error(result.error ?? "Failed to save Docsie settings");
+				throw new Error(result.error ?? t("publish.errors.saveSettings"));
 			}
 
 			setApiBaseUrl(result.state.apiBaseUrl);
@@ -796,6 +799,7 @@ export function DocsiePublishDialog({
 		rewriteInstructions,
 		selectedWorkspace?.name,
 		storedWorkspaceName,
+		t,
 		targetDocumentationId,
 		templateInstruction,
 		tokenInput,
@@ -825,11 +829,11 @@ export function DocsiePublishDialog({
 
 		const result = await window.electronAPI.openExternalUrl(launchUrl);
 		if (!result.success) {
-			toast.error(result.error ?? "Failed to open Docsie sign-in");
+			toast.error(result.error ?? t("publish.errors.openSignIn"));
 			return;
 		}
 
-		toast.success("Opened Docsie sign-in in your browser");
+		toast.success(t("publish.toasts.openedSignIn"));
 	}, [
 		apiBaseUrl,
 		artifactMode,
@@ -844,6 +848,7 @@ export function DocsiePublishDialog({
 		quality,
 		requestedOutputFormats,
 		rewriteInstructions,
+		t,
 		templateInstruction,
 		webAppUrl,
 		workspaceId,
@@ -871,11 +876,11 @@ export function DocsiePublishDialog({
 
 		const result = await window.electronAPI.openExternalUrl(launchUrl);
 		if (!result.success) {
-			toast.error(result.error ?? "Failed to open Docsie sign-up");
+			toast.error(result.error ?? t("publish.errors.openSignUp"));
 			return;
 		}
 
-		toast.success("Opened Docsie sign-up in your browser");
+		toast.success(t("publish.toasts.openedSignUp"));
 	}, [
 		apiBaseUrl,
 		artifactMode,
@@ -890,6 +895,7 @@ export function DocsiePublishDialog({
 		quality,
 		requestedOutputFormats,
 		rewriteInstructions,
+		t,
 		templateInstruction,
 		webAppUrl,
 		workspaceId,
@@ -897,7 +903,7 @@ export function DocsiePublishDialog({
 
 	const handleRefreshWorkspaces = useCallback(async () => {
 		if (!hasConnectionCredentials) {
-			toast.error("Connect this recorder to Docsie first");
+			toast.error(t("publish.errors.connectFirst"));
 			return;
 		}
 
@@ -906,7 +912,7 @@ export function DocsiePublishDialog({
 			await persistConfig();
 			const result = await window.electronAPI.docsieListWorkspaces();
 			if (!result.success) {
-				throw new Error(result.error ?? "Failed to load Docsie workspaces");
+				throw new Error(result.error ?? t("publish.errors.loadWorkspaces"));
 			}
 
 			setWorkspaces(result.workspaces);
@@ -929,6 +935,7 @@ export function DocsiePublishDialog({
 		loadDocumentationShelves,
 		loadGenerationTemplates,
 		persistConfig,
+		t,
 		workspaceId,
 	]);
 
@@ -936,8 +943,8 @@ export function DocsiePublishDialog({
 		async (sourceJobId: string) => {
 			setBusyMessage(
 				artifactMode === "presentation"
-					? "Docsie is generating markdown and a PowerPoint deck."
-					: "Docsie is generating markdown, PDF, and DOCX output.",
+					? t("publish.busy.generatingPresentationOutput")
+					: t("publish.busy.generatingDocsOutput"),
 			);
 
 			const result = await window.electronAPI.docsieGenerateVideoToDocs({
@@ -951,13 +958,13 @@ export function DocsiePublishDialog({
 				intent,
 				targetDocumentationId: effectiveTargetDocumentationId || undefined,
 				autoPublishToKnowledgeBase: publishToKnowledgeBase,
-				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
+				bookTitle: bookTitle.trim() || buildDefaultBookTitle(t, videoPath),
 				outputFormats: requestedOutputFormats,
 				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
 			});
 
 			if (!result.success || !result.generateJobId) {
-				throw new Error(result.error ?? "Failed to start Docsie generation");
+				throw new Error(result.error ?? t("publish.errors.startGeneration"));
 			}
 
 			setGenerationJobId(result.generateJobId);
@@ -965,10 +972,10 @@ export function DocsiePublishDialog({
 			setPhase("generation");
 			setBusyMessage(
 				artifactMode === "presentation"
-					? "Docsie is building the presentation and export file."
-					: "Docsie is building the finished documentation and export files.",
+					? t("publish.busy.buildingPresentation")
+					: t("publish.busy.buildingDocs"),
 			);
-			toast.success("Docsie generation started");
+			toast.success(t("publish.toasts.generationStarted"));
 		},
 		[
 			artifactMode,
@@ -983,6 +990,7 @@ export function DocsiePublishDialog({
 			publishToKnowledgeBase,
 			requestedOutputFormats,
 			rewriteInstructions,
+			t,
 			templateInstruction,
 			videoPath,
 		],
@@ -1004,7 +1012,7 @@ export function DocsiePublishDialog({
 			setJobStatus(status);
 			if (!status.success) {
 				setPhase("failed");
-				setBusyMessage(status.error ?? "Failed to poll Docsie job status");
+				setBusyMessage(status.error ?? t("publish.errors.pollStatus"));
 				return;
 			}
 
@@ -1026,7 +1034,7 @@ export function DocsiePublishDialog({
 
 			if (!result.success || normalizedStatus === "failed" || normalizedStatus === "canceled") {
 				setPhase("failed");
-				setBusyMessage(result.error ?? status.error ?? "Docsie job failed");
+				setBusyMessage(result.error ?? status.error ?? t("publish.errors.jobFailed"));
 				return;
 			}
 
@@ -1036,7 +1044,7 @@ export function DocsiePublishDialog({
 				} catch (error) {
 					setPhase("failed");
 					setBusyMessage(error instanceof Error ? error.message : String(error));
-					toast.error(error instanceof Error ? error.message : "Failed to generate docs");
+					toast.error(error instanceof Error ? error.message : t("publish.errors.generateDocs"));
 				}
 				return;
 			}
@@ -1044,10 +1052,10 @@ export function DocsiePublishDialog({
 			setPhase("completed");
 			setBusyMessage(
 				phase === "analysis"
-					? "Docsie finished the analysis. You can generate the final docs when ready."
+					? t("publish.busy.analysisFinished")
 					: artifactMode === "presentation"
-						? "Docsie finished converting this recording into a presentation."
-						: "Docsie finished converting this recording into documentation.",
+						? t("publish.busy.finishedPresentation")
+						: t("publish.busy.finishedDocs"),
 			);
 		};
 
@@ -1060,7 +1068,7 @@ export function DocsiePublishDialog({
 			cancelled = true;
 			window.clearInterval(intervalId);
 		};
-	}, [activeJobId, artifactMode, autoGenerate, isOpen, phase, runGeneration]);
+	}, [activeJobId, artifactMode, autoGenerate, isOpen, phase, runGeneration, t]);
 
 	useEffect(() => {
 		const baseArtifacts = normalizeExportArtifacts(jobResult?.exports);
@@ -1121,7 +1129,7 @@ export function DocsiePublishDialog({
 					updatedArtifacts[format] = {
 						...artifact,
 						status: "failed",
-						error: error ?? `Export ${normalizedStatus}`,
+						error: error ?? t("publish.errors.exportStatus", { status: normalizedStatus }),
 					};
 					continue;
 				}
@@ -1151,7 +1159,7 @@ export function DocsiePublishDialog({
 				window.clearTimeout(timeoutId);
 			}
 		};
-	}, [jobResult?.exports]);
+	}, [jobResult?.exports, t]);
 
 	useEffect(() => {
 		if (!videoPath || phase !== "completed" || !jobResult?.success || !jobResult.jobId) {
@@ -1172,11 +1180,11 @@ export function DocsiePublishDialog({
 		void window.electronAPI
 			.docsieSaveVideoToDocsHistory({
 				videoPath,
-				videoName: videoPath.split("/").pop() ?? "Video Documentation",
+				videoName: videoPath.split("/").pop() ?? t("publish.defaults.bookTitle"),
 				quality,
 				language,
 				docStyle,
-				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
+				bookTitle: bookTitle.trim() || buildDefaultBookTitle(t, videoPath),
 				intent,
 				targetDocumentationId: effectiveTargetDocumentationId || undefined,
 				autoPublishToKnowledgeBase: publishToKnowledgeBase,
@@ -1231,6 +1239,7 @@ export function DocsiePublishDialog({
 		rewriteInstructions,
 		selectedGenerationTemplate?.name,
 		publishToKnowledgeBase,
+		t,
 		templateInstruction,
 		videoPath,
 	]);
@@ -1257,7 +1266,10 @@ export function DocsiePublishDialog({
 			return [
 				{
 					id: generatedShelfId,
-					name: jobResult.documentationName ?? jobResult.bookName ?? "Generated shelf",
+					name:
+						jobResult.documentationName ??
+						jobResult.bookName ??
+						t("publish.defaults.generatedShelf"),
 					workspaceId: jobResult.workspaceId ?? workspaceId,
 				},
 				...current,
@@ -1304,6 +1316,7 @@ export function DocsiePublishDialog({
 		rewriteInstructions,
 		selectedWorkspace?.name,
 		storedWorkspaceName,
+		t,
 		targetDocumentationId,
 		templateInstruction,
 		webAppUrl,
@@ -1312,15 +1325,15 @@ export function DocsiePublishDialog({
 
 	const handleStart = useCallback(async () => {
 		if (!videoPath) {
-			toast.error("No video available to send to Docsie");
+			toast.error(t("publish.errors.noVideo"));
 			return;
 		}
 		if (!hasConnectionCredentials) {
-			toast.error("Connect to Docsie before converting this recording");
+			toast.error(t("publish.errors.connectBeforeConvert"));
 			return;
 		}
 
-		setBusyMessage("Uploading the current recording to Docsie.");
+		setBusyMessage(t("publish.busy.uploading"));
 		setJobStatus(null);
 		setJobResult(null);
 		setExportArtifacts({});
@@ -1344,14 +1357,14 @@ export function DocsiePublishDialog({
 				intent,
 				targetDocumentationId: effectiveTargetDocumentationId || undefined,
 				autoPublishToKnowledgeBase: publishToKnowledgeBase,
-				bookTitle: bookTitle.trim() || buildDefaultBookTitle(videoPath),
+				bookTitle: bookTitle.trim() || buildDefaultBookTitle(t, videoPath),
 				autoGenerate: false,
 				outputFormats: requestedOutputFormats,
 				pptxOptions: artifactMode === "presentation" ? pptxOptions : undefined,
 			});
 
 			if (!result.success || !result.jobId) {
-				throw new Error(result.error ?? "Failed to start Docsie job");
+				throw new Error(result.error ?? t("publish.errors.startJob"));
 			}
 
 			setAnalysisJobId(result.jobId);
@@ -1360,11 +1373,11 @@ export function DocsiePublishDialog({
 			setBusyMessage(
 				autoGenerate
 					? artifactMode === "presentation"
-						? "Docsie accepted the recording. Analysis is running before presentation generation."
-						: "Docsie accepted the recording. Analysis is running before docs generation."
-					: "Docsie accepted the recording. Analysis is running.",
+						? t("publish.busy.analysisBeforePresentation")
+						: t("publish.busy.analysisBeforeDocs")
+					: t("publish.busy.analysisRunning"),
 			);
-			toast.success("Recording sent to Docsie");
+			toast.success(t("publish.toasts.recordingSent"));
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			setPhase("failed");
@@ -1388,6 +1401,7 @@ export function DocsiePublishDialog({
 		publishToKnowledgeBase,
 		requestedOutputFormats,
 		rewriteInstructions,
+		t,
 		templateInstruction,
 		videoPath,
 		workspaceId,
@@ -1395,11 +1409,11 @@ export function DocsiePublishDialog({
 
 	const handleGenerate = useCallback(async () => {
 		if (!analysisJobId) {
-			toast.error("Run the analysis step first");
+			toast.error(t("publish.errors.runAnalysisFirst"));
 			return;
 		}
 		if (!hasConnectionCredentials) {
-			toast.error("Connect to Docsie before generating documentation");
+			toast.error(t("publish.errors.connectBeforeGenerate"));
 			return;
 		}
 
@@ -1412,7 +1426,7 @@ export function DocsiePublishDialog({
 			setBusyMessage(message);
 			toast.error(message);
 		}
-	}, [analysisJobId, hasConnectionCredentials, persistConfig, runGeneration]);
+	}, [analysisJobId, hasConnectionCredentials, persistConfig, runGeneration, t]);
 
 	const handleOpenResult = useCallback(async () => {
 		const url = getPrimaryResultUrl(jobResult);
@@ -1422,63 +1436,74 @@ export function DocsiePublishDialog({
 
 		const result = await window.electronAPI.openExternalUrl(url);
 		if (!result.success) {
-			toast.error(result.error ?? "Failed to open Docsie result");
+			toast.error(result.error ?? t("publish.errors.openResult"));
 		}
-	}, [jobResult]);
+	}, [jobResult, t]);
 
-	const handleOpenHistoryEntry = useCallback((entry: DocsieVideoToDocsHistoryEntry) => {
-		setJobStatus(null);
-		setJobResult(entry.jobResult);
-		setExportArtifacts(normalizeExportArtifacts(entry.jobResult.exports));
-		setArtifactMode(
-			getArtifactModeFromOutputFormats(
-				entry.outputFormats ??
-					(entry.jobResult.exports && "pptx" in entry.jobResult.exports
-						? PRESENTATION_OUTPUT_FORMATS
-						: DOCS_OUTPUT_FORMATS),
-			),
-		);
-		if (entry.pptxOptions) {
-			setPptxDeckType(entry.pptxOptions.deckType ?? "training");
-			setPptxSourceName(entry.pptxOptions.sourceName ?? "Screen Recorder");
-			setPptxEnhance(entry.pptxOptions.enhance ?? "required");
-			setPptxAudience(entry.pptxOptions.audience ?? "");
-			setPptxMaxSlides(String(normalizePptxMaxSlides(entry.pptxOptions.maxSlides)));
-			setPptxGenerateCoverImage(entry.pptxOptions.generateCoverImage ?? true);
-			setPptxImageQuality(entry.pptxOptions.imageQuality ?? "medium");
-			setPptxIllustrationStyle(entry.pptxOptions.illustrationStyle ?? "corporate");
-			setPptxEmbedImages(entry.pptxOptions.embedImages ?? true);
-		}
-		setAnalysisJobId(entry.analysisJobId ?? null);
-		setGenerationJobId(entry.generationJobId ?? entry.jobResult.jobId ?? null);
-		setActiveJobId(null);
-		setBusyMessage("Loaded this completed Docsie result from local history.");
-		setPhase("completed");
-		const restoredIntent =
-			entry.intent ??
-			(entry.targetDocumentationId || entry.jobResult.documentationId ? "documentation" : "export");
-		const restoredAutoPublish =
-			entry.autoPublishToKnowledgeBase ??
-			Boolean(entry.targetDocumentationId || entry.jobResult.documentationId);
-		setIntent(restoredIntent);
-		setAutoPublishToKnowledgeBase(restoredAutoPublish);
-		setTargetDocumentationId(
-			restoredIntent === "documentation" && restoredAutoPublish
-				? (entry.targetDocumentationId ?? entry.jobResult.documentationId ?? "")
-				: "",
-		);
-	}, []);
+	const handleOpenHistoryEntry = useCallback(
+		(entry: DocsieVideoToDocsHistoryEntry) => {
+			setJobStatus(null);
+			setJobResult(entry.jobResult);
+			setExportArtifacts(normalizeExportArtifacts(entry.jobResult.exports));
+			setArtifactMode(
+				getArtifactModeFromOutputFormats(
+					entry.outputFormats ??
+						(entry.jobResult.exports && "pptx" in entry.jobResult.exports
+							? PRESENTATION_OUTPUT_FORMATS
+							: DOCS_OUTPUT_FORMATS),
+				),
+			);
+			if (entry.pptxOptions) {
+				setPptxDeckType(entry.pptxOptions.deckType ?? "training");
+				setPptxSourceName(entry.pptxOptions.sourceName ?? "Screen Recorder");
+				setPptxEnhance(entry.pptxOptions.enhance ?? "required");
+				setPptxAudience(entry.pptxOptions.audience ?? "");
+				setPptxMaxSlides(String(normalizePptxMaxSlides(entry.pptxOptions.maxSlides)));
+				setPptxGenerateCoverImage(entry.pptxOptions.generateCoverImage ?? true);
+				setPptxImageQuality(entry.pptxOptions.imageQuality ?? "medium");
+				setPptxIllustrationStyle(entry.pptxOptions.illustrationStyle ?? "corporate");
+				setPptxEmbedImages(entry.pptxOptions.embedImages ?? true);
+			}
+			setAnalysisJobId(entry.analysisJobId ?? null);
+			setGenerationJobId(entry.generationJobId ?? entry.jobResult.jobId ?? null);
+			setActiveJobId(null);
+			setBusyMessage(t("publish.busy.loadedFromHistory"));
+			setPhase("completed");
+			const restoredIntent =
+				entry.intent ??
+				(entry.targetDocumentationId || entry.jobResult.documentationId
+					? "documentation"
+					: "export");
+			const restoredAutoPublish =
+				entry.autoPublishToKnowledgeBase ??
+				Boolean(entry.targetDocumentationId || entry.jobResult.documentationId);
+			setIntent(restoredIntent);
+			setAutoPublishToKnowledgeBase(restoredAutoPublish);
+			setTargetDocumentationId(
+				restoredIntent === "documentation" && restoredAutoPublish
+					? (entry.targetDocumentationId ?? entry.jobResult.documentationId ?? "")
+					: "",
+			);
+		},
+		[t],
+	);
 
-	const handleOpenExport = useCallback(async (artifact: ExportArtifact) => {
-		if (!artifact.url) {
-			return;
-		}
+	const handleOpenExport = useCallback(
+		async (artifact: ExportArtifact) => {
+			if (!artifact.url) {
+				return;
+			}
 
-		const result = await window.electronAPI.openExternalUrl(artifact.url);
-		if (!result.success) {
-			toast.error(result.error ?? `Failed to open ${getExportLabel(artifact.format)} export`);
-		}
-	}, []);
+			const result = await window.electronAPI.openExternalUrl(artifact.url);
+			if (!result.success) {
+				toast.error(
+					result.error ??
+						t("publish.errors.openExport", { format: getExportLabel(artifact.format) }),
+				);
+			}
+		},
+		[t],
+	);
 
 	const handleDownloadMarkdown = useCallback(() => {
 		if (!jobResult?.markdown) {
@@ -1486,20 +1511,20 @@ export function DocsiePublishDialog({
 		}
 
 		void window.electronAPI
-			.saveTextFile(jobResult.markdown, normalizeMarkdownFileName(getResultTitle(jobResult)), [
-				{ name: "Markdown", extensions: ["md", "markdown"] },
+			.saveTextFile(jobResult.markdown, normalizeMarkdownFileName(getResultTitle(t, jobResult)), [
+				{ name: t("publish.files.markdown"), extensions: ["md", "markdown"] },
 			])
 			.then((result) => {
 				if (!result.success) {
 					if (!result.canceled) {
-						toast.error(result.message ?? "Failed to save markdown");
+						toast.error(result.message ?? t("publish.errors.saveMarkdown"));
 					}
 					return;
 				}
 
-				toast.success("Markdown saved");
+				toast.success(t("publish.toasts.markdownSaved"));
 			});
-	}, [jobResult]);
+	}, [jobResult, t]);
 
 	const handleCopyMarkdown = useCallback(async () => {
 		if (!jobResult?.markdown) {
@@ -1508,49 +1533,54 @@ export function DocsiePublishDialog({
 
 		try {
 			await navigator.clipboard.writeText(jobResult.markdown);
-			toast.success("Markdown copied");
+			toast.success(t("publish.toasts.markdownCopied"));
 		} catch {
-			toast.error("Failed to copy markdown");
+			toast.error(t("publish.errors.copyMarkdown"));
 		}
-	}, [jobResult]);
+	}, [jobResult, t]);
 
 	const connectionSummary = hasStoredToken
 		? organizationName
-			? `Connected to ${organizationName}`
-			: "Connected to Docsie"
-		: "Docsie login required";
+			? t("publish.connection.connectedTo", { organization: organizationName })
+			: t("publish.connection.connected")
+		: t("publish.connection.loginRequired");
 	const showAnalysisScreen = phase !== "idle" || Boolean(jobResult) || Boolean(activeJobId);
 	const showAdvancedOutputs = isWorking || phase === "completed";
-	const recordingSummary = videoPath ? videoPath.split("/").pop() : "No loaded recording";
-	const artifactLabel = artifactMode === "presentation" ? "Presentation" : "Docs";
+	const recordingSummary = videoPath
+		? videoPath.split("/").pop()
+		: t("publish.connection.noRecording");
+	const artifactLabel =
+		artifactMode === "presentation"
+			? t("publish.artifact.presentation")
+			: t("publish.artifact.docs");
 	const artifactActionLabel =
-		artifactMode === "presentation" ? "Create Presentation" : "Convert Video To Docs";
+		artifactMode === "presentation"
+			? t("publish.actions.createPresentation")
+			: t("publish.actions.convertVideoToDocs");
 	const docsiePersistenceLabel = getDocsiePersistenceLabel(jobResult);
-	const statusMessage = formatStatusMessage(
-		busyMessage ?? "Docsie is preparing the current recording.",
-	);
+	const statusMessage = formatStatusMessage(busyMessage ?? t("publish.status.preparing"));
 	const qualitySummary = [
 		samplingText,
-		estimateFrames ? `~${estimateFrames} frames` : null,
+		estimateFrames ? t("publish.status.frames", { count: estimateFrames }) : null,
 		estimateText,
 	]
 		.filter(Boolean)
 		.join(" • ");
 	const primaryActionLabel = !hasStoredToken
-		? "Log In To Docsie"
+		? t("publish.actions.logInToDocsie")
 		: phase === "completed" && getPrimaryResultUrl(jobResult)
-			? "Open In Docsie"
+			? t("publish.actions.openInDocsie")
 			: phase === "failed"
-				? "Run Analysis Again"
+				? t("publish.actions.runAnalysisAgain")
 				: artifactActionLabel;
 	const compactSummary = [
 		hasStoredToken
-			? displayedWorkspaceName || organizationName || "Docsie connected"
-			: "Sign in required",
+			? displayedWorkspaceName || organizationName || t("publish.connection.docsieConnected")
+			: t("publish.connection.signInRequired"),
 		artifactLabel,
 		recordingSummary,
 		typeof videoDurationSeconds === "number" && videoDurationSeconds > 0
-			? formatDuration(videoDurationSeconds)
+			? formatDuration(t, videoDurationSeconds)
 			: null,
 		estimateText,
 		creditBalanceText,
@@ -1578,14 +1608,14 @@ export function DocsiePublishDialog({
 			{[
 				{
 					mode: "docs" as const,
-					label: "Docs",
-					description: "Markdown, DOCX, and PDF",
+					label: t("publish.artifact.docs"),
+					description: t("publish.artifact.docsDescription"),
 					icon: FileText,
 				},
 				{
 					mode: "presentation" as const,
-					label: "Presentation",
-					description: "Markdown and PowerPoint",
+					label: t("publish.artifact.presentation"),
+					description: t("publish.artifact.presentationDescription"),
 					icon: Presentation,
 				},
 			].map((option) => {
@@ -1650,8 +1680,8 @@ export function DocsiePublishDialog({
 				<div>
 					<div className="text-lg font-semibold text-[#fff0e4]">
 						{phase === "generation" && artifactMode === "presentation"
-							? "Building presentation"
-							: formatJobPhase(phase)}
+							? t("publish.status.buildingPresentation")
+							: formatJobPhase(t, phase)}
 					</div>
 					<div className="max-h-28 overflow-y-auto break-words text-sm text-[#c6b4a8]">
 						{statusMessage}
@@ -1662,20 +1692,21 @@ export function DocsiePublishDialog({
 			<div className="mt-4 text-sm text-[#c6b4a8]">
 				{recordingSummary}
 				{typeof videoDurationSeconds === "number" && videoDurationSeconds > 0
-					? ` • ${formatDuration(videoDurationSeconds)}`
+					? ` • ${formatDuration(t, videoDurationSeconds)}`
 					: ""}
 				{estimateText ? ` • ${estimateText}` : ""}
 			</div>
 			{jobStatus?.status ? (
 				<div className="mt-2 text-xs uppercase tracking-[0.16em] text-[#8f7e73]">
-					Status: {jobStatus.status}
+					{t("publish.status.statusLabel", { status: jobStatus.status })}
 				</div>
 			) : null}
 
 			<div className="mt-5 grid gap-2 sm:grid-cols-3">
 				{[
 					{
-						label: "Analyze",
+						id: "analyze",
+						label: t("publish.status.steps.analyze"),
 						active:
 							phase === "starting" ||
 							phase === "analysis" ||
@@ -1684,18 +1715,23 @@ export function DocsiePublishDialog({
 						done: phase === "analysis" || phase === "generation" || phase === "completed",
 					},
 					{
-						label: artifactMode === "presentation" ? "Build Deck" : "Generate",
+						id: "generate",
+						label:
+							artifactMode === "presentation"
+								? t("publish.status.steps.buildDeck")
+								: t("publish.status.steps.generate"),
 						active: phase === "generation" || phase === "completed",
 						done: phase === "completed" || Boolean(generationJobId),
 					},
 					{
-						label: "Exports",
+						id: "exports",
+						label: t("publish.status.steps.exports"),
 						active: phase === "completed",
 						done: Object.values(exportArtifacts).some((artifact) => artifact?.status === "ready"),
 					},
 				].map((step) => (
 					<div
-						key={step.label}
+						key={step.id}
 						className={cn(
 							"min-w-0 rounded-full border px-3 py-2 text-center text-xs font-medium uppercase tracking-[0.14em]",
 							step.done
@@ -1719,7 +1755,7 @@ export function DocsiePublishDialog({
 						className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
 					>
 						<RefreshCcw className="mr-2 h-4 w-4" />
-						Run Analysis Again
+						{t("publish.actions.runAnalysisAgain")}
 					</Button>
 					<Button
 						type="button"
@@ -1727,7 +1763,7 @@ export function DocsiePublishDialog({
 						onClick={() => setShowSettingsDialog(true)}
 						className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 					>
-						Additional settings
+						{t("publish.actions.additionalSettings")}
 					</Button>
 				</div>
 			) : null}
@@ -1738,10 +1774,8 @@ export function DocsiePublishDialog({
 		<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
 			<div className="mb-3 flex items-start justify-between gap-3">
 				<div>
-					<div className="text-sm font-semibold text-[#fff0e4]">Files</div>
-					<div className="text-xs text-[#8f7e73]">
-						Open the Docsie result or download the generated files.
-					</div>
+					<div className="text-sm font-semibold text-[#fff0e4]">{t("publish.files.title")}</div>
+					<div className="text-xs text-[#8f7e73]">{t("publish.files.subtitle")}</div>
 				</div>
 				<div className="flex flex-wrap gap-2">
 					{phase === "completed" && getPrimaryResultUrl(jobResult) ? (
@@ -1751,7 +1785,7 @@ export function DocsiePublishDialog({
 							className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
 						>
 							<ExternalLink className="mr-2 h-4 w-4" />
-							Open In Docsie
+							{t("publish.actions.openInDocsie")}
 						</Button>
 					) : null}
 					{phase !== "completed" ? (
@@ -1761,7 +1795,7 @@ export function DocsiePublishDialog({
 							onClick={() => setShowSettingsDialog(true)}
 							className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 						>
-							Additional settings
+							{t("publish.actions.additionalSettings")}
 						</Button>
 					) : null}
 				</div>
@@ -1776,8 +1810,12 @@ export function DocsiePublishDialog({
 				<div className="rounded-xl border border-white/10 bg-[#17110f] p-3">
 					<div className="flex items-start justify-between gap-3">
 						<div className="min-w-0">
-							<div className="text-sm font-medium text-[#fff0e4]">Markdown</div>
-							<div className="text-xs text-[#8f7e73]">{markdownReady ? "Ready" : "Pending"}</div>
+							<div className="text-sm font-medium text-[#fff0e4]">
+								{t("publish.files.markdown")}
+							</div>
+							<div className="text-xs text-[#8f7e73]">
+								{markdownReady ? t("publish.files.ready") : t("publish.files.pending")}
+							</div>
 						</div>
 						{markdownReady ? (
 							<div className="flex shrink-0 gap-1">
@@ -1786,8 +1824,8 @@ export function DocsiePublishDialog({
 									size="icon"
 									variant="secondary"
 									onClick={() => void handleCopyMarkdown()}
-									title="Copy markdown"
-									aria-label="Copy markdown"
+									title={t("publish.files.copyMarkdown")}
+									aria-label={t("publish.files.copyMarkdown")}
 									className="h-8 w-8 bg-white/10 text-[#fff0e4] hover:bg-white/15"
 								>
 									<Copy className="h-4 w-4" />
@@ -1797,8 +1835,8 @@ export function DocsiePublishDialog({
 									size="icon"
 									variant="secondary"
 									onClick={() => void handleDownloadMarkdown()}
-									title="Download markdown"
-									aria-label="Download markdown"
+									title={t("publish.files.downloadMarkdown")}
+									aria-label={t("publish.files.downloadMarkdown")}
 									className="h-8 w-8 bg-white/10 text-[#fff0e4] hover:bg-white/15"
 								>
 									<Download className="h-4 w-4" />
@@ -1808,8 +1846,8 @@ export function DocsiePublishDialog({
 					</div>
 					<div className="mt-3 text-xs leading-5 text-[#8f7e73]">
 						{markdownReady
-							? "Markdown is ready to copy or save locally."
-							: "Markdown will appear here when Docsie finishes generation."}
+							? t("publish.files.markdownReadyHint")
+							: t("publish.files.markdownPendingHint")}
 					</div>
 				</div>
 
@@ -1822,14 +1860,14 @@ export function DocsiePublishDialog({
 									<div className="text-sm font-medium text-[#fff0e4]">{getExportLabel(format)}</div>
 									<div className="mt-1 text-xs text-[#8f7e73]">
 										{artifact?.status === "ready"
-											? "Ready"
+											? t("publish.files.ready")
 											: artifact?.status === "failed"
-												? (artifact.error ?? "Failed")
+												? (artifact.error ?? t("publish.files.failed"))
 												: artifact?.status === "processing"
-													? "Processing"
+													? t("publish.files.processing")
 													: artifact?.status === "queued"
-														? "Queued"
-														: "Pending"}
+														? t("publish.files.queued")
+														: t("publish.files.pending")}
 									</div>
 								</div>
 								{artifact?.status === "ready" && artifact.url ? (
@@ -1838,8 +1876,10 @@ export function DocsiePublishDialog({
 										size="icon"
 										variant="secondary"
 										onClick={() => void handleOpenExport(artifact)}
-										title={`Download ${getExportLabel(format)}`}
-										aria-label={`Download ${getExportLabel(format)}`}
+										title={t("publish.files.downloadFormat", { format: getExportLabel(format) })}
+										aria-label={t("publish.files.downloadFormat", {
+											format: getExportLabel(format),
+										})}
 										className="h-8 w-8 shrink-0 bg-white/10 text-[#fff0e4] hover:bg-white/15"
 									>
 										<Download className="h-4 w-4" />
@@ -1855,14 +1895,18 @@ export function DocsiePublishDialog({
 
 			{phase === "completed" ? (
 				<div className="mt-3 rounded-xl border border-[rgba(254,168,94,0.14)] bg-[rgba(255,255,255,0.03)] p-3">
-					<div className="text-sm font-medium text-[#fff0e4]">Saved in Docsie</div>
+					<div className="text-sm font-medium text-[#fff0e4]">
+						{t("publish.files.savedInDocsie")}
+					</div>
 					<div className="mt-1 text-xs leading-5 text-[#8f7e73]">
-						{docsiePersistenceLabel || "This generated result is stored in Docsie."}
+						{docsiePersistenceLabel || t("publish.files.storedInDocsie")}
 						{selectedDocumentationShelf?.name && jobResult?.documentationId
-							? ` • Shelf: ${selectedDocumentationShelf.name}`
+							? ` • ${t("publish.files.shelf", { name: selectedDocumentationShelf.name })}`
 							: ""}
 						{typeof jobResult?.creditsCharged === "number"
-							? ` • ${jobResult.creditsCharged.toLocaleString()} credits charged`
+							? ` • ${t("publish.credits.charged", {
+									credits: jobResult.creditsCharged.toLocaleString(),
+								})}`
 							: ""}
 					</div>
 				</div>
@@ -1878,13 +1922,11 @@ export function DocsiePublishDialog({
 			<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
 				<div className="mb-3 flex items-center justify-between gap-3">
 					<div>
-						<div className="text-sm font-semibold text-[#fff0e4]">Analysis History</div>
-						<div className="text-xs text-[#8f7e73]">
-							Completed Docsie runs for this recording are saved locally.
-						</div>
+						<div className="text-sm font-semibold text-[#fff0e4]">{t("publish.history.title")}</div>
+						<div className="text-xs text-[#8f7e73]">{t("publish.history.subtitle")}</div>
 					</div>
 					<div className="text-xs uppercase tracking-[0.16em] text-[#c6b4a8]">
-						{visibleHistoryEntries.length} saved
+						{t("publish.history.savedCount", { count: visibleHistoryEntries.length })}
 					</div>
 				</div>
 				{visibleHistoryEntries.length > 0 ? (
@@ -1901,7 +1943,9 @@ export function DocsiePublishDialog({
 											</div>
 											<div className="mt-1 text-xs text-[#8f7e73]">
 												{formatHistoryDate(entry.createdAt)}
-												{entry.quality ? ` • ${entry.quality}` : ""}
+												{entry.quality
+													? ` • ${t(`publish.quality.options.${entry.quality}.label`)}`
+													: ""}
 												{entry.generationTemplateName ? ` • ${entry.generationTemplateName}` : ""}
 											</div>
 										</div>
@@ -1912,7 +1956,7 @@ export function DocsiePublishDialog({
 											onClick={() => handleOpenHistoryEntry(entry)}
 											className="shrink-0 bg-white/10 text-[#fff0e4] hover:bg-white/15"
 										>
-											View
+											{t("publish.actions.view")}
 										</Button>
 									</div>
 								</div>
@@ -1921,7 +1965,7 @@ export function DocsiePublishDialog({
 					</div>
 				) : (
 					<div className="rounded-xl border border-dashed border-white/10 bg-[#17110f] p-4 text-sm text-[#8f7e73]">
-						This completed result is being saved to local history.
+						{t("publish.history.savingToHistory")}
 					</div>
 				)}
 			</div>
@@ -1937,9 +1981,9 @@ export function DocsiePublishDialog({
 					)}
 				>
 					<DialogHeader className="space-y-1 pr-8">
-						<DialogTitle className="text-[#fff0e4]">Video To Docs</DialogTitle>
+						<DialogTitle className="text-[#fff0e4]">{t("publish.dialog.title")}</DialogTitle>
 						<DialogDescription className="text-[#8f7e73]">
-							{showAnalysisScreen ? "Analysis" : "Launch"}
+							{showAnalysisScreen ? t("publish.dialog.analysis") : t("publish.dialog.launch")}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="min-h-0 flex-1 overflow-y-auto pr-1">
@@ -1971,12 +2015,12 @@ export function DocsiePublishDialog({
 										{hasStoredToken ? (
 											<div className="mt-5 border-t border-white/10 pt-4">
 												<div className="text-xs font-medium uppercase tracking-[0.16em] text-[#8f7e73]">
-													AI credits
+													{t("publish.dialog.aiCredits")}
 												</div>
 												<div className="mt-1 text-base font-semibold text-[#fff0e4]">
 													{loadingCreditBalance
-														? "Loading balance"
-														: (creditBalanceText ?? "Balance unavailable")}
+														? t("publish.dialog.loadingBalance")
+														: (creditBalanceText ?? t("publish.dialog.balanceUnavailable"))}
 												</div>
 												{creditBalanceDetail ? (
 													<div className="mt-1 text-xs text-[#8f7e73]">{creditBalanceDetail}</div>
@@ -2002,7 +2046,7 @@ export function DocsiePublishDialog({
 												onClick={() => setShowSettingsDialog(true)}
 												className="text-[#c6b4a8] underline-offset-4 hover:text-[#fff0e4] hover:underline"
 											>
-												Additional settings
+												{t("publish.actions.additionalSettings")}
 											</button>
 											{!hasStoredToken ? (
 												<button
@@ -2010,7 +2054,7 @@ export function DocsiePublishDialog({
 													onClick={() => void handleCreateAccount()}
 													className="text-[#FEA85E] underline-offset-4 hover:underline"
 												>
-													Create account
+													{t("publish.actions.createAccount")}
 												</button>
 											) : null}
 										</div>
@@ -2030,7 +2074,7 @@ export function DocsiePublishDialog({
 								className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
 							>
 								<RefreshCcw className="mr-2 h-4 w-4" />
-								Run Analysis Again
+								{t("publish.actions.runAnalysisAgain")}
 							</Button>
 						) : null}
 						<Button
@@ -2039,7 +2083,7 @@ export function DocsiePublishDialog({
 							onClick={() => onOpenChange(false)}
 							className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 						>
-							Close
+							{t("publish.actions.close")}
 						</Button>
 						{canManuallyGenerate ? (
 							<Button
@@ -2049,7 +2093,9 @@ export function DocsiePublishDialog({
 								className="bg-[#FF6738] text-white hover:bg-[#FF6738]/90"
 							>
 								<Sparkles className="mr-2 h-4 w-4" />
-								{artifactMode === "presentation" ? "Generate Presentation" : "Generate Docs"}
+								{artifactMode === "presentation"
+									? t("publish.actions.generatePresentation")
+									: t("publish.actions.generateDocs")}
 							</Button>
 						) : null}
 					</DialogFooter>
@@ -2059,16 +2105,18 @@ export function DocsiePublishDialog({
 			<Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
 				<DialogContent className="max-h-[90vh] overflow-hidden border border-[rgba(254,168,94,0.18)] bg-[#17110f] text-[#fff0e4] sm:max-w-[860px]">
 					<DialogHeader>
-						<DialogTitle className="text-[#fff0e4]">Additional Settings</DialogTitle>
+						<DialogTitle className="text-[#fff0e4]">{t("publish.settings.title")}</DialogTitle>
 						<DialogDescription className="text-[#8f7e73]">
-							Overrides, connection fallback, and job details.
+							{t("publish.settings.subtitle")}
 						</DialogDescription>
 					</DialogHeader>
 
 					<div className="grid max-h-[calc(90vh-10rem)] gap-4 overflow-y-auto pr-1">
 						<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
 							<div className="mb-3 flex items-center justify-between">
-								<div className="text-sm font-semibold text-[#fff0e4]">Workspace and output</div>
+								<div className="text-sm font-semibold text-[#fff0e4]">
+									{t("publish.settings.workspaceAndOutput")}
+								</div>
 								<div className="flex gap-2">
 									<Button
 										type="button"
@@ -2082,7 +2130,7 @@ export function DocsiePublishDialog({
 										) : (
 											<RefreshCcw className="mr-2 h-4 w-4" />
 										)}
-										Credits
+										{t("publish.actions.credits")}
 									</Button>
 									<Button
 										type="button"
@@ -2096,19 +2144,19 @@ export function DocsiePublishDialog({
 										) : (
 											<RefreshCcw className="mr-2 h-4 w-4" />
 										)}
-										Load Workspaces
+										{t("publish.actions.loadWorkspaces")}
 									</Button>
 									<Button
 										type="button"
 										variant="secondary"
 										onClick={() => {
 											void persistConfig()
-												.then(() => toast.success("Docsie defaults saved"))
+												.then(() => toast.success(t("publish.toasts.defaultsSaved")))
 												.catch((error) => {
 													toast.error(
 														error instanceof Error
 															? error.message
-															: "Failed to save Docsie defaults",
+															: t("publish.errors.saveDefaults"),
 													);
 												});
 										}}
@@ -2116,7 +2164,7 @@ export function DocsiePublishDialog({
 										className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 									>
 										{savingConfig ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-										Save Defaults
+										{t("publish.actions.saveDefaults")}
 									</Button>
 								</div>
 							</div>
@@ -2125,7 +2173,7 @@ export function DocsiePublishDialog({
 
 							<div className="mb-4 rounded-xl border border-white/10 bg-[#17110f] p-3">
 								<div className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-									Intent
+									{t("publish.settings.intent")}
 								</div>
 								<div className="grid grid-cols-2 gap-2">
 									<button
@@ -2138,7 +2186,7 @@ export function DocsiePublishDialog({
 												: "border-white/10 bg-white/[0.03] text-[#c6b4a8] hover:bg-white/[0.06]",
 										)}
 									>
-										Documentation
+										{t("publish.settings.intentDocumentation")}
 									</button>
 									<button
 										type="button"
@@ -2153,7 +2201,7 @@ export function DocsiePublishDialog({
 												: "border-white/10 bg-white/[0.03] text-[#c6b4a8] hover:bg-white/[0.06]",
 										)}
 									>
-										Export only
+										{t("publish.settings.intentExport")}
 									</button>
 								</div>
 								<div
@@ -2163,7 +2211,7 @@ export function DocsiePublishDialog({
 									)}
 								>
 									<span className="text-sm font-medium text-[#fff0e4]">
-										Publish to knowledge base
+										{t("publish.settings.publishToKnowledgeBase")}
 									</span>
 									<button
 										type="button"
@@ -2190,7 +2238,7 @@ export function DocsiePublishDialog({
 							<div className="grid gap-3 md:grid-cols-2">
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Workspace
+										{t("publish.settings.workspace")}
 									</label>
 									<select
 										value={workspaceId}
@@ -2206,7 +2254,7 @@ export function DocsiePublishDialog({
 										}}
 										className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 									>
-										<option value="">Select a workspace</option>
+										<option value="">{t("publish.settings.selectWorkspace")}</option>
 										{workspaces.map((workspace) => (
 											<option key={workspace.id} value={workspace.id}>
 												{workspace.name}
@@ -2216,7 +2264,7 @@ export function DocsiePublishDialog({
 								</div>
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Quality
+										{t("publish.settings.quality")}
 									</label>
 									<div className="space-y-1.5">
 										<select
@@ -2227,32 +2275,32 @@ export function DocsiePublishDialog({
 											className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 										>
 											{QUALITY_OPTIONS.map((option) => (
-												<option key={option.value} value={option.value}>
-													{option.label} · {option.description}
+												<option key={option} value={option}>
+													{t(`publish.quality.options.${option}.label`)} ·{" "}
+													{t(`publish.quality.options.${option}.description`)}
 												</option>
 											))}
 										</select>
 										<div className="text-xs text-[#8f7e73]">
-											{qualitySummary ||
-												"Estimate loads after the recorder can read the video length."}
+											{qualitySummary || t("publish.status.estimateHint")}
 										</div>
 									</div>
 								</div>
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Language
+										{t("publish.settings.language")}
 									</label>
 									<Input
 										value={language}
 										onChange={(event) => setLanguage(event.target.value)}
-										placeholder="english"
+										placeholder={t("publish.settings.languagePlaceholder")}
 										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
 									/>
 								</div>
 								{artifactMode === "docs" ? (
 									<div className="space-y-1.5">
 										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Doc Style
+											{t("publish.settings.docStyle")}
 										</label>
 										<select
 											value={docStyle}
@@ -2263,7 +2311,7 @@ export function DocsiePublishDialog({
 										>
 											{DOC_STYLE_OPTIONS.map((option) => (
 												<option key={option} value={option}>
-													{option}
+													{t(`publish.docStyleOptions.${option}`)}
 												</option>
 											))}
 										</select>
@@ -2271,7 +2319,7 @@ export function DocsiePublishDialog({
 								) : (
 									<div className="space-y-1.5">
 										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Deck Type
+											{t("publish.settings.deckType")}
 										</label>
 										<select
 											value={pptxDeckType}
@@ -2281,7 +2329,7 @@ export function DocsiePublishDialog({
 											{["training", "tutorial", "sales", "executive", "support", "onboarding"].map(
 												(option) => (
 													<option key={option} value={option}>
-														{option}
+														{t(`publish.deckTypeOptions.${option}`)}
 													</option>
 												),
 											)}
@@ -2290,30 +2338,32 @@ export function DocsiePublishDialog({
 								)}
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										{publishToKnowledgeBase ? "Book Title" : "Export Title"}
+										{publishToKnowledgeBase
+											? t("publish.settings.bookTitle")
+											: t("publish.settings.exportTitle")}
 									</label>
 									<Input
 										value={bookTitle}
 										onChange={(event) => setBookTitle(event.target.value)}
-										placeholder="Video Documentation"
+										placeholder={t("publish.defaults.bookTitle")}
 										className="border-white/10 bg-[#17110f] text-[#fff0e4]"
 									/>
 								</div>
 								{publishToKnowledgeBase ? (
 									<div className="space-y-1.5">
 										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Destination Shelf
+											{t("publish.settings.destinationShelf")}
 										</label>
 										<select
 											value={targetDocumentationId}
 											onChange={(event) => setTargetDocumentationId(event.target.value)}
 											className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 										>
-											<option value="">Create a new shelf from the book title</option>
+											<option value="">{t("publish.settings.createNewShelf")}</option>
 											{targetDocumentationId &&
 											!documentationShelves.some((shelf) => shelf.id === targetDocumentationId) ? (
 												<option value={targetDocumentationId}>
-													Saved shelf ({targetDocumentationId})
+													{t("publish.settings.savedShelf", { id: targetDocumentationId })}
 												</option>
 											) : null}
 											{documentationShelves.map((shelf) => (
@@ -2325,8 +2375,8 @@ export function DocsiePublishDialog({
 										<div className="flex items-center justify-between gap-3 text-xs text-[#8f7e73]">
 											<span>
 												{targetDocumentationId
-													? "Docsie will add the generated book to this shelf."
-													: "Docsie will create the shelf, then reuse it for future runs."}
+													? t("publish.settings.shelfSelectedHint")
+													: t("publish.settings.shelfCreateHint")}
 											</span>
 											<button
 												type="button"
@@ -2334,7 +2384,9 @@ export function DocsiePublishDialog({
 												disabled={loadingShelves || !workspaceId}
 												className="shrink-0 text-[#FEA85E] underline-offset-4 hover:underline disabled:text-[#8f7e73]"
 											>
-												{loadingShelves ? "Loading" : "Refresh"}
+												{loadingShelves
+													? t("publish.actions.loading")
+													: t("publish.actions.refresh")}
 											</button>
 										</div>
 									</div>
@@ -2343,18 +2395,18 @@ export function DocsiePublishDialog({
 									<>
 										<div className="space-y-1.5">
 											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Audience
+												{t("publish.settings.audience")}
 											</label>
 											<Input
 												value={pptxAudience}
 												onChange={(event) => setPptxAudience(event.target.value)}
-												placeholder="support team"
+												placeholder={t("publish.settings.audiencePlaceholder")}
 												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
 											/>
 										</div>
 										<div className="space-y-1.5">
 											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Max Slides
+												{t("publish.settings.maxSlides")}
 											</label>
 											<Input
 												type="number"
@@ -2370,7 +2422,7 @@ export function DocsiePublishDialog({
 										</div>
 										<div className="space-y-1.5">
 											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Image Quality
+												{t("publish.settings.imageQuality")}
 											</label>
 											<select
 												value={pptxImageQuality}
@@ -2379,19 +2431,19 @@ export function DocsiePublishDialog({
 												}
 												className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 											>
-												<option value="low">low</option>
-												<option value="medium">medium</option>
-												<option value="high">high</option>
+												<option value="low">{t("publish.imageQualityOptions.low")}</option>
+												<option value="medium">{t("publish.imageQualityOptions.medium")}</option>
+												<option value="high">{t("publish.imageQualityOptions.high")}</option>
 											</select>
 										</div>
 										<div className="space-y-1.5">
 											<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-												Illustration Style
+												{t("publish.settings.illustrationStyle")}
 											</label>
 											<Input
 												value={pptxIllustrationStyle}
 												onChange={(event) => setPptxIllustrationStyle(event.target.value)}
-												placeholder="corporate"
+												placeholder={t("publish.settings.illustrationStylePlaceholder")}
 												className="border-white/10 bg-[#17110f] text-[#fff0e4]"
 											/>
 										</div>
@@ -2403,8 +2455,8 @@ export function DocsiePublishDialog({
 								<label className="flex items-center justify-between gap-4">
 									<div className="text-sm font-medium text-[#fff0e4]">
 										{artifactMode === "presentation"
-											? "Auto-generate presentation"
-											: "Auto-generate docs"}
+											? t("publish.settings.autoGeneratePresentation")
+											: t("publish.settings.autoGenerateDocs")}
 									</div>
 									<button
 										type="button"
@@ -2428,31 +2480,33 @@ export function DocsiePublishDialog({
 								<div className="mt-3 grid gap-3 md:grid-cols-2">
 									<div className="space-y-1.5">
 										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Source Name
+											{t("publish.settings.sourceName")}
 										</label>
 										<Input
 											value={pptxSourceName}
 											onChange={(event) => setPptxSourceName(event.target.value)}
-											placeholder="Screen Recorder"
+											placeholder={t("publish.settings.sourceNamePlaceholder")}
 											className="border-white/10 bg-[#17110f] text-[#fff0e4]"
 										/>
 									</div>
 									<div className="space-y-1.5">
 										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Enhancement
+											{t("publish.settings.enhancement")}
 										</label>
 										<select
 											value={pptxEnhance}
 											onChange={(event) => setPptxEnhance(event.target.value)}
 											className="flex h-10 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 										>
-											<option value="required">required</option>
-											<option value="enhanced">enhanced</option>
-											<option value="standard">standard</option>
+											<option value="required">{t("publish.enhanceOptions.required")}</option>
+											<option value="enhanced">{t("publish.enhanceOptions.enhanced")}</option>
+											<option value="standard">{t("publish.enhanceOptions.standard")}</option>
 										</select>
 									</div>
 									<label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-[#17110f] p-3">
-										<div className="text-sm font-medium text-[#fff0e4]">Generate cover image</div>
+										<div className="text-sm font-medium text-[#fff0e4]">
+											{t("publish.settings.generateCoverImage")}
+										</div>
 										<button
 											type="button"
 											onClick={() => setPptxGenerateCoverImage((current) => !current)}
@@ -2470,7 +2524,9 @@ export function DocsiePublishDialog({
 										</button>
 									</label>
 									<label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-[#17110f] p-3">
-										<div className="text-sm font-medium text-[#fff0e4]">Embed images</div>
+										<div className="text-sm font-medium text-[#fff0e4]">
+											{t("publish.settings.embedImages")}
+										</div>
 										<button
 											type="button"
 											onClick={() => setPptxEmbedImages((current) => !current)}
@@ -2493,7 +2549,7 @@ export function DocsiePublishDialog({
 							<div className="mt-3 grid gap-3">
 								<div className="space-y-1.5">
 									<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-										Rewrite Instructions
+										{t("publish.settings.rewriteInstructions")}
 									</label>
 									<textarea
 										value={rewriteInstructions}
@@ -2504,7 +2560,7 @@ export function DocsiePublishDialog({
 								{artifactMode === "docs" ? (
 									<div className="space-y-1.5">
 										<label className="text-xs font-medium uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Output Template
+											{t("publish.settings.outputTemplate")}
 										</label>
 										<DocsieTemplatePicker
 											templates={generationTemplates}
@@ -2512,14 +2568,14 @@ export function DocsiePublishDialog({
 											selectedTemplateId={generationTemplateId}
 											onOpen={async () => {
 												if (!hasConnectionCredentials) {
-													toast.error("Connect this recorder to Docsie first");
+													toast.error(t("publish.errors.connectFirst"));
 													return false;
 												}
 												try {
 													if (!hasStoredToken) {
 														const state = await persistConfig();
 														if (!state.hasToken) {
-															toast.error("Save a Docsie API token before browsing templates");
+															toast.error(t("publish.errors.saveTokenFirst"));
 															return false;
 														}
 													}
@@ -2531,22 +2587,24 @@ export function DocsiePublishDialog({
 											}}
 											onSelect={(template) => {
 												setGenerationTemplateId(template.id);
-												toast.success(`Template selected: ${template.name}`);
+												toast.success(
+													t("publish.toasts.templateSelected", { name: template.name }),
+												);
 											}}
 											onClear={() => {
 												setGenerationTemplateId("");
-												toast.info("Template selection cleared");
+												toast.info(t("publish.toasts.templateCleared"));
 											}}
 										/>
 										<div className="text-xs text-[#8f7e73]">
 											{generationTemplateId
-												? "The selected library template id is sent to Docsie. Custom text below is kept as a fallback only."
-												: "Pick a library template or enter a custom structure below."}
+												? t("publish.settings.templateSelectedHint")
+												: t("publish.settings.templatePickHint")}
 										</div>
 										<textarea
 											value={templateInstruction}
 											onChange={(event) => setTemplateInstruction(event.target.value)}
-											placeholder="Optional custom structure when no library template is selected."
+											placeholder={t("publish.settings.templateInstructionPlaceholder")}
 											className="min-h-24 w-full rounded-md border border-white/10 bg-[#17110f] px-3 py-2 text-sm text-[#fff0e4] outline-none"
 										/>
 									</div>
@@ -2556,22 +2614,27 @@ export function DocsiePublishDialog({
 
 						{showAdvancedOutputs ? (
 							<div className="rounded-2xl border border-white/10 bg-[#120d0c] p-4">
-								<div className="mb-3 text-sm font-semibold text-[#fff0e4]">Job details</div>
+								<div className="mb-3 text-sm font-semibold text-[#fff0e4]">
+									{t("publish.settings.jobDetails")}
+								</div>
 								<div className="grid gap-3 sm:grid-cols-2">
 									<div className="rounded-xl border border-white/10 bg-[#17110f] p-3">
 										<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Analysis Job
+											{t("publish.settings.analysisJob")}
 										</div>
 										<div className="mt-1 break-all text-xs text-[#fff0e4]">
-											{analysisJobId ?? "Not started"}
+											{analysisJobId ?? t("publish.settings.notStarted")}
 										</div>
 									</div>
 									<div className="rounded-xl border border-white/10 bg-[#17110f] p-3">
 										<div className="text-[11px] uppercase tracking-[0.16em] text-[#c6b4a8]">
-											Generation Job
+											{t("publish.settings.generationJob")}
 										</div>
 										<div className="mt-1 break-all text-xs text-[#fff0e4]">
-											{generationJobId ?? (autoGenerate ? "Waiting for analysis" : "Disabled")}
+											{generationJobId ??
+												(autoGenerate
+													? t("publish.settings.waitingForAnalysis")
+													: t("publish.settings.disabled"))}
 										</div>
 									</div>
 								</div>
@@ -2586,7 +2649,7 @@ export function DocsiePublishDialog({
 							onClick={() => setShowSettingsDialog(false)}
 							className="bg-white/10 text-[#fff0e4] hover:bg-white/15"
 						>
-							Close
+							{t("publish.actions.close")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

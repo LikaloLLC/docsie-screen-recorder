@@ -1,0 +1,90 @@
+{
+	"shell": {
+		"title": "Docsie Capture Companion",
+		"minimize": "Minimizar",
+		"close": "Cerrar"
+	},
+	"setup": {
+		"title": "Configuración de Capture Companion",
+		"subtitle": "Configúralo una sola vez. Después, la aplicación se abrirá directamente en el botón de grabación.",
+		"accountStep": "1 · Cuenta de Docsie",
+		"connected": "Conectado",
+		"notConnected": "No conectado",
+		"organizationFallback": "Organización",
+		"connect": "Conectar con Docsie",
+		"defaultsStep": "2 · Valores predeterminados de captura",
+		"returnFormatLabel": "Al terminar la generación, devolver",
+		"returnKb": "Enlace a la base de conocimientos",
+		"returnPdf": "PDF",
+		"quality": "Calidad",
+		"qualityDraft": "Borrador (el más rápido, menos créditos)",
+		"qualityStandard": "Estándar",
+		"qualityDetailed": "Detallada",
+		"qualityUltra": "Ultra",
+		"language": "Idioma de la documentación",
+		"languageHint": "De forma predeterminada se usa el idioma de tu sistema ({{language}}).",
+		"template": "Plantilla de generación",
+		"templateNone": "Sin plantilla (estructura predeterminada)",
+		"templateHint": "Conéctate a Docsie para cargar tus plantillas.",
+		"microphone": "Grabar narración del micrófono",
+		"startCapturing": "Empezar a capturar",
+		"connectToContinue": "Conéctate a Docsie para continuar"
+	},
+	"source": {
+		"matchLabel": "Adjuntar a ventanas cuyo título contenga",
+		"matchPlaceholder": "p. ej. Viewer",
+		"attached": "Coincidencia actual: {{name}}",
+		"noMatch": "Ninguna ventana abierta coincide todavía; abre la aplicación de destino para verificarlo.",
+		"manualLabel": "O elige una fuente manualmente",
+		"selectPlaceholder": "Selecciona una pantalla o ventana…"
+	},
+	"main": {
+		"noSource": "sin fuente",
+		"rescan": "Reescanear",
+		"rescanTitle": "Volver a buscar la ventana de destino",
+		"setup": "Configuración",
+		"setupTitle": "Abrir configuración",
+		"connectFirst": "Conéctate a Docsie antes de grabar.",
+		"pickSource": "Abre la aplicación que quieres capturar o elige una fuente manualmente."
+	},
+	"session": {
+		"label": "Nombre de la sesión (será el título del documento)",
+		"defaultTitle": "Sesión de formación {{date}} {{time}}"
+	},
+	"record": {
+		"record": "Grabar",
+		"stop": "Detener",
+		"cancel": "Cancelar",
+		"stopWithTime": "Detener grabación · {{time}}"
+	},
+	"progress": {
+		"upload": "Subida",
+		"analyze": "Análisis",
+		"generate": "Generación",
+		"pdfExport": "Exportar PDF",
+		"uploading": "Subiendo la grabación a Docsie…",
+		"analyzing": "Docsie está analizando la grabación…",
+		"generating": "Docsie está redactando la documentación…",
+		"preparingPdf": "Preparando la exportación a PDF…",
+		"done": "La documentación está lista."
+	},
+	"toast": {
+		"docsReady": "La documentación está lista"
+	},
+	"result": {
+		"openKb": "Abrir en la base de conocimientos",
+		"downloadPdf": "Descargar PDF",
+		"recordAnother": "Grabar otra sesión",
+		"dismiss": "Descartar"
+	},
+	"errors": {
+		"pollStatusFailed": "No se pudo consultar el estado del trabajo de Docsie",
+		"jobEnded": "Trabajo de Docsie: {{status}}",
+		"fetchResultFailed": "No se pudo obtener el resultado del trabajo de Docsie",
+		"pdfExportEnded": "Exportación a PDF: {{status}}",
+		"pdfExportTimeout": "Se agotó el tiempo de espera de la exportación a PDF",
+		"startJobFailed": "No se pudo iniciar el trabajo de Docsie",
+		"startGenerationFailed": "No se pudo iniciar la generación de Docsie",
+		"noVideoProduced": "La grabación terminó, pero no se generó ningún archivo de vídeo."
+	}
+}

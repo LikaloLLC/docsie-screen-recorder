@@ -1,6 +1,7 @@
 import { Loader2, LogIn, RefreshCcw, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useScopedT } from "@/contexts/I18nContext";
 import { getBundledAssetUrl } from "@/lib/assets";
 import type { DocsieDesktopConnectParams } from "@/lib/docsieIntegration";
 import {
@@ -34,18 +35,19 @@ export function DocsieAuthGate({
 	loading = false,
 	onRefresh,
 	onClose,
-	closeLabel = "Close",
+	closeLabel,
 	interactiveClassName,
 }: DocsieAuthGateProps) {
+	const t = useScopedT("docsie");
 	const resolvedWebAppUrl = getDocsieWebAppUrl(webAppUrl);
 	const signInUrl = buildDocsieDesktopLoginUrl(resolvedWebAppUrl, connectParams);
 	const signupUrl = buildDocsieDesktopSignupUrl(resolvedWebAppUrl, connectParams);
 	const docsieMarkUrl = getBundledAssetUrl("docsie_mark.svg");
 
-	const openUrl = async (url: string, label: string) => {
+	const openUrl = async (url: string, errorMessage: string) => {
 		const result = await window.electronAPI.openExternalUrl(url);
 		if (!result.success) {
-			toast.error(result.error ?? `Unable to open ${label}`);
+			toast.error(result.error ?? errorMessage);
 		}
 	};
 
@@ -74,7 +76,7 @@ export function DocsieAuthGate({
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#FEA85E]">
-						Docsie account required
+						{t("auth.accountRequired")}
 					</div>
 					<h1 className={cn("mt-1 font-semibold text-[#FFF0E4]", compact ? "text-sm" : "text-2xl")}>
 						{title}
@@ -94,7 +96,7 @@ export function DocsieAuthGate({
 				<Button
 					type="button"
 					size={compact ? "sm" : "default"}
-					onClick={() => void openUrl(signInUrl, "Docsie sign in")}
+					onClick={() => void openUrl(signInUrl, t("auth.errors.openSignIn"))}
 					disabled={loading}
 					className={cn(
 						"rounded-full bg-[#FF6738] text-white hover:bg-[#E85A2F]",
@@ -103,13 +105,13 @@ export function DocsieAuthGate({
 					)}
 				>
 					<LogIn className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
-					Sign In
+					{t("auth.signIn")}
 				</Button>
 				<Button
 					type="button"
 					size={compact ? "sm" : "default"}
 					variant="outline"
-					onClick={() => void openUrl(signupUrl, "Docsie sign up")}
+					onClick={() => void openUrl(signupUrl, t("auth.errors.openSignUp"))}
 					disabled={loading}
 					className={cn(
 						"rounded-full border-[rgba(254,168,94,0.18)] bg-transparent text-[#FFF0E4] hover:bg-white/5 hover:text-white",
@@ -118,7 +120,7 @@ export function DocsieAuthGate({
 					)}
 				>
 					<UserPlus className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
-					Create Account
+					{t("auth.createAccount")}
 				</Button>
 				{onRefresh ? (
 					<Button
@@ -138,7 +140,7 @@ export function DocsieAuthGate({
 						) : (
 							<RefreshCcw className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
 						)}
-						{loading ? "Checking" : "I Connected Docsie"}
+						{loading ? t("auth.checking") : t("auth.connectedConfirm")}
 					</Button>
 				) : null}
 				{onClose ? (
@@ -153,13 +155,13 @@ export function DocsieAuthGate({
 							interactiveClassName,
 						)}
 					>
-						{closeLabel}
+						{closeLabel ?? t("auth.close")}
 					</Button>
 				) : null}
 			</div>
 
 			<p className={cn("mt-3 text-[#FDD2A3]/55", compact ? "text-[10px]" : "text-xs")}>
-				After sign-in, the recorder unlocks and saves into your Docsie workspace context.
+				{t("auth.footer")}
 			</p>
 		</div>
 	);

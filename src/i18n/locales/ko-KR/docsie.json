@@ -1,0 +1,352 @@
+{
+	"publish": {
+		"dialog": {
+			"title": "동영상을 문서로",
+			"analysis": "분석",
+			"launch": "시작",
+			"aiCredits": "AI 크레딧",
+			"loadingBalance": "잔액 불러오는 중",
+			"balanceUnavailable": "잔액을 확인할 수 없음"
+		},
+		"phase": {
+			"starting": "변환 시작 중",
+			"analysis": "동영상 분석 중",
+			"generation": "문서 생성 중",
+			"completed": "완료됨",
+			"failed": "실패",
+			"ready": "준비됨"
+		},
+		"duration": {
+			"unknown": "알 수 없음",
+			"seconds": "{{seconds}}초",
+			"minutesSeconds": "{{minutes}}분 {{seconds}}초"
+		},
+		"sampling": {
+			"everySeconds": "{{seconds}}초마다"
+		},
+		"credits": {
+			"estimate": "{{credits}} 크레딧",
+			"available": "{{credits}} 크레딧 사용 가능",
+			"monthly": "월간 {{credits}}",
+			"purchased": "구매 {{credits}}",
+			"charged": "{{credits}} 크레딧 차감됨"
+		},
+		"defaults": {
+			"bookTitle": "동영상 문서",
+			"resultTitle": "Docsie 결과",
+			"generatedShelf": "생성된 선반"
+		},
+		"connection": {
+			"connectedTo": "{{organization}}에 연결됨",
+			"connected": "Docsie에 연결됨",
+			"loginRequired": "Docsie 로그인이 필요합니다",
+			"docsieConnected": "Docsie 연결됨",
+			"signInRequired": "로그인이 필요합니다",
+			"noRecording": "불러온 녹화가 없습니다"
+		},
+		"artifact": {
+			"docs": "문서",
+			"presentation": "프레젠테이션",
+			"docsDescription": "Markdown, DOCX, PDF",
+			"presentationDescription": "Markdown 및 PowerPoint"
+		},
+		"actions": {
+			"convertVideoToDocs": "동영상을 문서로 변환",
+			"createPresentation": "프레젠테이션 만들기",
+			"logInToDocsie": "Docsie에 로그인",
+			"openInDocsie": "Docsie에서 열기",
+			"runAnalysisAgain": "분석 다시 실행",
+			"additionalSettings": "추가 설정",
+			"createAccount": "계정 만들기",
+			"close": "닫기",
+			"generateDocs": "문서 생성",
+			"generatePresentation": "프레젠테이션 생성",
+			"view": "보기",
+			"credits": "크레딧",
+			"loadWorkspaces": "워크스페이스 불러오기",
+			"saveDefaults": "기본값 저장",
+			"refresh": "새로 고침",
+			"loading": "불러오는 중"
+		},
+		"status": {
+			"preparing": "Docsie가 현재 녹화를 준비하고 있습니다.",
+			"buildingPresentation": "프레젠테이션 생성 중",
+			"statusLabel": "상태: {{status}}",
+			"frames": "약 {{count}}프레임",
+			"estimateHint": "레코더가 동영상 길이를 읽으면 예상 비용이 표시됩니다.",
+			"steps": {
+				"analyze": "분석",
+				"generate": "생성",
+				"buildDeck": "덱 생성",
+				"exports": "내보내기"
+			}
+		},
+		"busy": {
+			"uploading": "현재 녹화를 Docsie에 업로드하고 있습니다.",
+			"generatingDocsOutput": "Docsie가 Markdown, PDF, DOCX 출력을 생성하고 있습니다.",
+			"generatingPresentationOutput": "Docsie가 Markdown과 PowerPoint 덱을 생성하고 있습니다.",
+			"buildingDocs": "Docsie가 최종 문서와 내보내기 파일을 생성하고 있습니다.",
+			"buildingPresentation": "Docsie가 프레젠테이션과 내보내기 파일을 생성하고 있습니다.",
+			"analysisRunning": "Docsie가 녹화를 접수했습니다. 분석이 진행 중입니다.",
+			"analysisBeforeDocs": "Docsie가 녹화를 접수했습니다. 문서 생성 전에 분석이 진행 중입니다.",
+			"analysisBeforePresentation": "Docsie가 녹화를 접수했습니다. 프레젠테이션 생성 전에 분석이 진행 중입니다.",
+			"analysisFinished": "Docsie가 분석을 완료했습니다. 준비되면 최종 문서를 생성할 수 있습니다.",
+			"finishedDocs": "Docsie가 이 녹화를 문서로 변환했습니다.",
+			"finishedPresentation": "Docsie가 이 녹화를 프레젠테이션으로 변환했습니다.",
+			"loadedFromHistory": "로컬 기록에서 완료된 Docsie 결과를 불러왔습니다."
+		},
+		"toasts": {
+			"openedSignIn": "브라우저에서 Docsie 로그인 페이지를 열었습니다",
+			"openedSignUp": "브라우저에서 Docsie 가입 페이지를 열었습니다",
+			"generationStarted": "Docsie 생성이 시작되었습니다",
+			"recordingSent": "녹화를 Docsie로 전송했습니다",
+			"markdownSaved": "Markdown이 저장되었습니다",
+			"markdownCopied": "Markdown이 복사되었습니다",
+			"defaultsSaved": "Docsie 기본값이 저장되었습니다",
+			"templateSelected": "템플릿 선택됨: {{name}}",
+			"templateCleared": "템플릿 선택이 해제되었습니다"
+		},
+		"errors": {
+			"openSignIn": "Docsie 로그인 페이지를 열 수 없습니다",
+			"openSignUp": "Docsie 가입 페이지를 열 수 없습니다",
+			"connectFirst": "먼저 이 레코더를 Docsie에 연결하세요",
+			"loadWorkspaces": "Docsie 워크스페이스를 불러올 수 없습니다",
+			"saveSettings": "Docsie 설정을 저장할 수 없습니다",
+			"startGeneration": "Docsie 생성을 시작할 수 없습니다",
+			"pollStatus": "Docsie 작업 상태를 조회할 수 없습니다",
+			"jobFailed": "Docsie 작업이 실패했습니다",
+			"generateDocs": "문서를 생성할 수 없습니다",
+			"noVideo": "Docsie로 보낼 동영상이 없습니다",
+			"connectBeforeConvert": "이 녹화를 변환하기 전에 Docsie에 연결하세요",
+			"startJob": "Docsie 작업을 시작할 수 없습니다",
+			"runAnalysisFirst": "먼저 분석 단계를 실행하세요",
+			"connectBeforeGenerate": "문서를 생성하기 전에 Docsie에 연결하세요",
+			"openResult": "Docsie 결과를 열 수 없습니다",
+			"openExport": "{{format}} 내보내기를 열 수 없습니다",
+			"saveMarkdown": "Markdown을 저장할 수 없습니다",
+			"copyMarkdown": "Markdown을 복사할 수 없습니다",
+			"saveDefaults": "Docsie 기본값을 저장할 수 없습니다",
+			"saveTokenFirst": "템플릿을 살펴보기 전에 Docsie API 토큰을 저장하세요",
+			"exportStatus": "내보내기 {{status}}"
+		},
+		"files": {
+			"title": "파일",
+			"subtitle": "Docsie 결과를 열거나 생성된 파일을 다운로드하세요.",
+			"markdown": "Markdown",
+			"ready": "준비됨",
+			"pending": "대기 중",
+			"processing": "처리 중",
+			"queued": "대기열",
+			"failed": "실패",
+			"copyMarkdown": "Markdown 복사",
+			"downloadMarkdown": "Markdown 다운로드",
+			"downloadFormat": "{{format}} 다운로드",
+			"markdownReadyHint": "Markdown을 복사하거나 로컬에 저장할 수 있습니다.",
+			"markdownPendingHint": "Docsie가 생성을 완료하면 Markdown이 여기에 표시됩니다.",
+			"savedInDocsie": "Docsie에 저장됨",
+			"storedInDocsie": "생성된 이 결과는 Docsie에 저장되어 있습니다.",
+			"shelf": "선반: {{name}}"
+		},
+		"history": {
+			"title": "분석 기록",
+			"subtitle": "이 녹화에 대해 완료된 Docsie 실행은 로컬에 저장됩니다.",
+			"savedCount": "{{count}}개 저장됨",
+			"savingToHistory": "완료된 이 결과를 로컬 기록에 저장하고 있습니다."
+		},
+		"settings": {
+			"title": "추가 설정",
+			"subtitle": "재정의, 연결 대체 및 작업 세부 정보입니다.",
+			"workspaceAndOutput": "워크스페이스 및 출력",
+			"intent": "용도",
+			"intentDocumentation": "문서",
+			"intentExport": "내보내기만",
+			"publishToKnowledgeBase": "지식 베이스에 게시",
+			"workspace": "워크스페이스",
+			"selectWorkspace": "워크스페이스 선택",
+			"quality": "품질",
+			"language": "언어",
+			"languagePlaceholder": "english",
+			"docStyle": "문서 스타일",
+			"deckType": "덱 유형",
+			"bookTitle": "북 제목",
+			"exportTitle": "내보내기 제목",
+			"destinationShelf": "대상 선반",
+			"createNewShelf": "북 제목으로 새 선반 만들기",
+			"savedShelf": "저장된 선반 ({{id}})",
+			"shelfSelectedHint": "Docsie가 생성된 북을 이 선반에 추가합니다.",
+			"shelfCreateHint": "Docsie가 선반을 만들고 이후 실행에서도 재사용합니다.",
+			"audience": "대상",
+			"audiencePlaceholder": "지원 팀",
+			"maxSlides": "최대 슬라이드 수",
+			"imageQuality": "이미지 품질",
+			"illustrationStyle": "일러스트 스타일",
+			"illustrationStylePlaceholder": "corporate",
+			"autoGenerateDocs": "문서 자동 생성",
+			"autoGeneratePresentation": "프레젠테이션 자동 생성",
+			"sourceName": "소스 이름",
+			"sourceNamePlaceholder": "Screen Recorder",
+			"enhancement": "향상",
+			"generateCoverImage": "표지 이미지 생성",
+			"embedImages": "이미지 포함",
+			"rewriteInstructions": "다시 쓰기 지침",
+			"outputTemplate": "출력 템플릿",
+			"templateSelectedHint": "선택한 라이브러리 템플릿 ID가 Docsie로 전송됩니다. 아래의 사용자 지정 텍스트는 대체용으로만 유지됩니다.",
+			"templatePickHint": "라이브러리 템플릿을 선택하거나 아래에 사용자 지정 구조를 입력하세요.",
+			"templateInstructionPlaceholder": "라이브러리 템플릿을 선택하지 않은 경우 사용할 선택적 사용자 지정 구조입니다.",
+			"jobDetails": "작업 세부 정보",
+			"analysisJob": "분석 작업",
+			"generationJob": "생성 작업",
+			"notStarted": "시작되지 않음",
+			"waitingForAnalysis": "분석 대기 중",
+			"disabled": "사용 안 함"
+		},
+		"quality": {
+			"options": {
+				"draft": {
+					"label": "초안",
+					"description": "분당 250 크레딧"
+				},
+				"standard": {
+					"label": "표준",
+					"description": "분당 500 크레딧"
+				},
+				"detailed": {
+					"label": "상세",
+					"description": "분당 1,000 크레딧"
+				},
+				"ultra": {
+					"label": "울트라",
+					"description": "분당 2,000 크레딧"
+				}
+			}
+		},
+		"docStyleOptions": {
+			"guide": "가이드",
+			"sop": "SOP",
+			"tutorial": "튜토리얼",
+			"how-to": "하우투",
+			"blog": "블로그",
+			"training": "교육",
+			"knowledge-base": "지식 베이스",
+			"release-notes": "릴리스 노트",
+			"reference": "참조",
+			"product": "제품",
+			"policy": "정책"
+		},
+		"deckTypeOptions": {
+			"training": "교육",
+			"tutorial": "튜토리얼",
+			"sales": "영업",
+			"executive": "임원용",
+			"support": "지원",
+			"onboarding": "온보딩"
+		},
+		"imageQualityOptions": {
+			"low": "낮음",
+			"medium": "중간",
+			"high": "높음"
+		},
+		"enhanceOptions": {
+			"required": "필요 시",
+			"enhanced": "강화",
+			"standard": "표준"
+		}
+	},
+	"templates": {
+		"megaCategories": {
+			"core": "핵심 문서",
+			"business": "비즈니스 운영",
+			"technology": "기술 및 데이터",
+			"health": "보건 및 생명과학",
+			"industry": "제조 및 현장",
+			"commerce": "상업 및 서비스",
+			"transport": "운송 및 물류",
+			"public": "공공 및 교육",
+			"other": "기타"
+		},
+		"categories": {
+			"technical": "기술",
+			"process": "프로세스 및 운영",
+			"product": "제품",
+			"compliance": "컴플라이언스",
+			"engineering": "엔지니어링",
+			"training": "교육",
+			"planning": "계획",
+			"manufacturing": "제조",
+			"healthcare": "의료",
+			"consulting": "IT/ERP 컨설팅",
+			"legal": "법무",
+			"education": "교육 기관",
+			"finance": "금융",
+			"government": "정부",
+			"construction": "건설",
+			"retail_ecommerce": "소매 및 이커머스",
+			"logistics_supply_chain": "물류 및 공급망",
+			"energy_utilities": "에너지 및 유틸리티",
+			"telecom": "통신",
+			"insurance": "보험",
+			"hr_people_ops": "인사 및 조직 운영",
+			"customer_success": "고객 성공",
+			"cybersecurity_privacy": "사이버 보안 및 개인정보 보호",
+			"data_ai_analytics": "데이터, AI 및 분석",
+			"hospitality_food_facilities": "환대, 식음료 및 시설",
+			"pharma_biotech": "제약 및 바이오테크",
+			"medical_devices": "의료 기기",
+			"life_sciences_labs": "생명과학 연구소",
+			"chemicals": "화학",
+			"environmental_services": "환경 서비스",
+			"automotive": "자동차",
+			"aerospace_defense": "항공우주 및 방위",
+			"semiconductor_electronics": "반도체 및 전자",
+			"mining_metals": "광업 및 금속",
+			"industrial_equipment": "산업 장비",
+			"banking_lending": "은행 및 대출",
+			"real_estate_property": "부동산",
+			"accounting_audit": "회계 및 감사",
+			"nonprofit_ngos": "비영리 단체 및 NGO",
+			"public_safety_emergency": "공공 안전 및 비상 대응",
+			"agriculture_food_production": "농업 및 식품 생산",
+			"restaurants_food_service": "레스토랑 및 외식업",
+			"consumer_packaged_goods": "소비재",
+			"fashion_apparel": "패션 및 의류",
+			"beauty_wellness": "뷰티 및 웰니스",
+			"oil_gas": "석유 및 가스",
+			"transportation_transit": "교통 및 운송",
+			"maritime_shipping": "해운",
+			"media_entertainment": "미디어 및 엔터테인먼트",
+			"travel_tourism": "여행 및 관광"
+		},
+		"noTemplate": "템플릿 없음",
+		"triggerDescription": "템플릿 라이브러리 구조를 강제하지 않고 선택한 스타일로 생성합니다.",
+		"browse": "찾아보기",
+		"libraryTitle": "템플릿 라이브러리",
+		"libraryDescription": "문서 템플릿을 선택하고 생성 전에 샘플 출력을 미리 볼 수 있습니다.",
+		"searchPlaceholder": "템플릿 검색...",
+		"groupsAriaLabel": "템플릿 그룹",
+		"allTemplates": "모든 템플릿",
+		"fallbackTitle": "템플릿",
+		"templatesCount": "템플릿 {{count}}개",
+		"allInGroup": "그룹 내 전체",
+		"noTemplateCardDescription": "템플릿 라이브러리 구조를 강제하지 않고 선택한 스타일로 생성합니다.",
+		"sections": "섹션",
+		"loading": "템플릿 불러오는 중...",
+		"noMatches": "검색과 일치하는 템플릿이 없습니다.",
+		"previewNote": "생성 전에 템플릿 출력을 미리 보세요.",
+		"back": "뒤로",
+		"close": "닫기",
+		"useTemplate": "이 템플릿 사용"
+	},
+	"auth": {
+		"accountRequired": "Docsie 계정이 필요합니다",
+		"signIn": "로그인",
+		"createAccount": "계정 만들기",
+		"checking": "확인 중",
+		"connectedConfirm": "Docsie를 연결했습니다",
+		"close": "닫기",
+		"footer": "로그인하면 레코더 잠금이 해제되고 Docsie 워크스페이스에 저장됩니다.",
+		"errors": {
+			"openSignIn": "Docsie 로그인 페이지를 열 수 없습니다",
+			"openSignUp": "Docsie 가입 페이지를 열 수 없습니다"
+		}
+	}
+}

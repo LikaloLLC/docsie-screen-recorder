@@ -8,12 +8,21 @@
 			"manual": "Manuel",
 			"auto": "Otomatik",
 			"autoDescription": "Kamera kaydedilen imleç konumunu takip eder"
+		},
+		"speed": {
+			"title": "Yakınlaştırma Hızı",
+			"instant": "Anında",
+			"fast": "Hızlı",
+			"smooth": "Akıcı",
+			"lazy": "Yavaş"
 		}
 	},
 	"speed": {
 		"playbackSpeed": "Oynatma Hızı",
 		"selectRegion": "Ayarlamak için bir hız bölgesi seçin",
-		"deleteRegion": "Hız Bölgesini Sil"
+		"deleteRegion": "Hız Bölgesini Sil",
+		"customPlaybackSpeed": "Özel Oynatma Hızı",
+		"maxSpeedError": "Hız 16× değerini aşamaz"
 	},
 	"trim": {
 		"deleteRegion": "Kırpma Bölgesini Sil"
@@ -24,7 +33,9 @@
 		"selectPreset": "Ön ayar seçin",
 		"pictureInPicture": "Resim İçinde Resim",
 		"verticalStack": "Dikey Yığın",
-		"webcamShape": "Kamera Şekli"
+		"dualFrame": "Çift Çerçeve",
+		"webcamShape": "Kamera Şekli",
+		"webcamSize": "Kamera Boyutu"
 	},
 	"effects": {
 		"title": "Video Efektleri",
@@ -115,8 +126,15 @@
 		"arrowDirection": "Ok Yönü",
 		"strokeWidth": "Çizgi Kalınlığı: {{width}}px",
 		"arrowColor": "Ok Rengi",
+		"blurType": "Bulanıklık Türü",
+		"blurTypeBlur": "Bulanık",
+		"blurTypeMosaic": "Mozaik Bulanıklık",
+		"blurColor": "Bulanıklık Rengi",
+		"blurColorWhite": "Beyaz",
+		"blurColorBlack": "Siyah",
 		"blurShape": "Bulanık Şekli",
 		"blurIntensity": "Bulanıklık Yoğunluğu",
+		"mosaicBlockSize": "Mozaik Blok Boyutu",
 		"blurShapeRectangle": "Dikdörtgen",
 		"blurShapeOval": "Oval",
 		"blurShapeFreehand": "Serbest",
@@ -161,16 +179,5 @@
 	},
 	"language": {
 		"title": "Dil"
-	},
-	"audio": {
-		"title": "Ses",
-		"noiseReduction": "Gürültü Azaltma",
-		"level": "Seviye",
-		"nrLevel": {
-			"light": "Hafif",
-			"moderate": "Orta",
-			"aggressive": "Güçlü"
-		},
-		"nrDescription": "Yapay zeka destekli gürültü azaltma arka plan gürültüsünü temizler. Daha yüksek seviyeler daha agresiftir ancak ses kalitesini etkileyebilir."
 	}
 }

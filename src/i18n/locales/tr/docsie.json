@@ -1,0 +1,352 @@
+{
+	"publish": {
+		"dialog": {
+			"title": "Videodan Dokümana",
+			"analysis": "Analiz",
+			"launch": "Başlat",
+			"aiCredits": "Yapay zeka kredileri",
+			"loadingBalance": "Bakiye yükleniyor",
+			"balanceUnavailable": "Bakiye alınamıyor"
+		},
+		"phase": {
+			"starting": "Dönüştürme başlatılıyor",
+			"analysis": "Video analiz ediliyor",
+			"generation": "Dokümanlar oluşturuluyor",
+			"completed": "Tamamlandı",
+			"failed": "Başarısız",
+			"ready": "Hazır"
+		},
+		"duration": {
+			"unknown": "Bilinmiyor",
+			"seconds": "{{seconds}}sn",
+			"minutesSeconds": "{{minutes}}dk {{seconds}}sn"
+		},
+		"sampling": {
+			"everySeconds": "Her {{seconds}} saniyede"
+		},
+		"credits": {
+			"estimate": "{{credits}} kredi",
+			"available": "{{credits}} kredi kullanılabilir",
+			"monthly": "aylık {{credits}}",
+			"purchased": "satın alınan {{credits}}",
+			"charged": "{{credits}} kredi harcandı"
+		},
+		"defaults": {
+			"bookTitle": "Video Dokümantasyonu",
+			"resultTitle": "Docsie sonucu",
+			"generatedShelf": "Oluşturulan raf"
+		},
+		"connection": {
+			"connectedTo": "{{organization}} hesabına bağlı",
+			"connected": "Docsie'ye bağlı",
+			"loginRequired": "Docsie girişi gerekli",
+			"docsieConnected": "Docsie bağlı",
+			"signInRequired": "Oturum açmanız gerekiyor",
+			"noRecording": "Yüklü kayıt yok"
+		},
+		"artifact": {
+			"docs": "Dokümanlar",
+			"presentation": "Sunum",
+			"docsDescription": "Markdown, DOCX ve PDF",
+			"presentationDescription": "Markdown ve PowerPoint"
+		},
+		"actions": {
+			"convertVideoToDocs": "Videoyu Dokümana Dönüştür",
+			"createPresentation": "Sunum Oluştur",
+			"logInToDocsie": "Docsie'de Oturum Aç",
+			"openInDocsie": "Docsie'de Aç",
+			"runAnalysisAgain": "Analizi Yeniden Çalıştır",
+			"additionalSettings": "Ek ayarlar",
+			"createAccount": "Hesap oluştur",
+			"close": "Kapat",
+			"generateDocs": "Doküman Oluştur",
+			"generatePresentation": "Sunum Oluştur",
+			"view": "Görüntüle",
+			"credits": "Krediler",
+			"loadWorkspaces": "Çalışma Alanlarını Yükle",
+			"saveDefaults": "Varsayılanları Kaydet",
+			"refresh": "Yenile",
+			"loading": "Yükleniyor"
+		},
+		"status": {
+			"preparing": "Docsie mevcut kaydı hazırlıyor.",
+			"buildingPresentation": "Sunum oluşturuluyor",
+			"statusLabel": "Durum: {{status}}",
+			"frames": "~{{count}} kare",
+			"estimateHint": "Kaydedici video süresini okuduğunda tahmin yüklenir.",
+			"steps": {
+				"analyze": "Analiz Et",
+				"generate": "Oluştur",
+				"buildDeck": "Sunum Hazırla",
+				"exports": "Dışa Aktarımlar"
+			}
+		},
+		"busy": {
+			"uploading": "Mevcut kayıt Docsie'ye yükleniyor.",
+			"generatingDocsOutput": "Docsie, Markdown, PDF ve DOCX çıktılarını oluşturuyor.",
+			"generatingPresentationOutput": "Docsie, Markdown ve bir PowerPoint sunumu oluşturuyor.",
+			"buildingDocs": "Docsie, nihai dokümantasyonu ve dışa aktarma dosyalarını hazırlıyor.",
+			"buildingPresentation": "Docsie, sunumu ve dışa aktarma dosyasını hazırlıyor.",
+			"analysisRunning": "Docsie kaydı kabul etti. Analiz devam ediyor.",
+			"analysisBeforeDocs": "Docsie kaydı kabul etti. Doküman oluşturma öncesinde analiz devam ediyor.",
+			"analysisBeforePresentation": "Docsie kaydı kabul etti. Sunum oluşturma öncesinde analiz devam ediyor.",
+			"analysisFinished": "Docsie analizi tamamladı. Hazır olduğunuzda nihai dokümanları oluşturabilirsiniz.",
+			"finishedDocs": "Docsie bu kaydı dokümantasyona dönüştürmeyi tamamladı.",
+			"finishedPresentation": "Docsie bu kaydı sunuma dönüştürmeyi tamamladı.",
+			"loadedFromHistory": "Tamamlanmış bu Docsie sonucu yerel geçmişten yüklendi."
+		},
+		"toasts": {
+			"openedSignIn": "Docsie oturum açma sayfası tarayıcınızda açıldı",
+			"openedSignUp": "Docsie kayıt sayfası tarayıcınızda açıldı",
+			"generationStarted": "Docsie oluşturma işlemi başladı",
+			"recordingSent": "Kayıt Docsie'ye gönderildi",
+			"markdownSaved": "Markdown kaydedildi",
+			"markdownCopied": "Markdown kopyalandı",
+			"defaultsSaved": "Docsie varsayılanları kaydedildi",
+			"templateSelected": "Şablon seçildi: {{name}}",
+			"templateCleared": "Şablon seçimi temizlendi"
+		},
+		"errors": {
+			"openSignIn": "Docsie oturum açma sayfası açılamadı",
+			"openSignUp": "Docsie kayıt sayfası açılamadı",
+			"connectFirst": "Önce bu kaydediciyi Docsie'ye bağlayın",
+			"loadWorkspaces": "Docsie çalışma alanları yüklenemedi",
+			"saveSettings": "Docsie ayarları kaydedilemedi",
+			"startGeneration": "Docsie oluşturma işlemi başlatılamadı",
+			"pollStatus": "Docsie iş durumu sorgulanamadı",
+			"jobFailed": "Docsie işi başarısız oldu",
+			"generateDocs": "Dokümanlar oluşturulamadı",
+			"noVideo": "Docsie'ye gönderilecek video yok",
+			"connectBeforeConvert": "Bu kaydı dönüştürmeden önce Docsie'ye bağlanın",
+			"startJob": "Docsie işi başlatılamadı",
+			"runAnalysisFirst": "Önce analiz adımını çalıştırın",
+			"connectBeforeGenerate": "Dokümantasyon oluşturmadan önce Docsie'ye bağlanın",
+			"openResult": "Docsie sonucu açılamadı",
+			"openExport": "{{format}} dışa aktarımı açılamadı",
+			"saveMarkdown": "Markdown kaydedilemedi",
+			"copyMarkdown": "Markdown kopyalanamadı",
+			"saveDefaults": "Docsie varsayılanları kaydedilemedi",
+			"saveTokenFirst": "Şablonlara göz atmadan önce bir Docsie API belirteci kaydedin",
+			"exportStatus": "Dışa aktarım {{status}}"
+		},
+		"files": {
+			"title": "Dosyalar",
+			"subtitle": "Docsie sonucunu açın veya oluşturulan dosyaları indirin.",
+			"markdown": "Markdown",
+			"ready": "Hazır",
+			"pending": "Beklemede",
+			"processing": "İşleniyor",
+			"queued": "Kuyrukta",
+			"failed": "Başarısız",
+			"copyMarkdown": "Markdown'ı kopyala",
+			"downloadMarkdown": "Markdown'ı indir",
+			"downloadFormat": "{{format}} indir",
+			"markdownReadyHint": "Markdown kopyalanmaya veya yerel olarak kaydedilmeye hazır.",
+			"markdownPendingHint": "Docsie oluşturmayı tamamladığında Markdown burada görünecek.",
+			"savedInDocsie": "Docsie'ye kaydedildi",
+			"storedInDocsie": "Bu oluşturulan sonuç Docsie'de saklanıyor.",
+			"shelf": "Raf: {{name}}"
+		},
+		"history": {
+			"title": "Analiz Geçmişi",
+			"subtitle": "Bu kayıt için tamamlanan Docsie çalıştırmaları yerel olarak saklanır.",
+			"savedCount": "{{count}} kayıtlı",
+			"savingToHistory": "Tamamlanan bu sonuç yerel geçmişe kaydediliyor."
+		},
+		"settings": {
+			"title": "Ek Ayarlar",
+			"subtitle": "Geçersiz kılmalar, bağlantı yedeği ve iş ayrıntıları.",
+			"workspaceAndOutput": "Çalışma alanı ve çıktı",
+			"intent": "Amaç",
+			"intentDocumentation": "Dokümantasyon",
+			"intentExport": "Yalnızca dışa aktar",
+			"publishToKnowledgeBase": "Bilgi bankasında yayımla",
+			"workspace": "Çalışma alanı",
+			"selectWorkspace": "Bir çalışma alanı seçin",
+			"quality": "Kalite",
+			"language": "Dil",
+			"languagePlaceholder": "english",
+			"docStyle": "Doküman Stili",
+			"deckType": "Sunum Türü",
+			"bookTitle": "Kitap Başlığı",
+			"exportTitle": "Dışa Aktarma Başlığı",
+			"destinationShelf": "Hedef Raf",
+			"createNewShelf": "Kitap başlığından yeni bir raf oluştur",
+			"savedShelf": "Kayıtlı raf ({{id}})",
+			"shelfSelectedHint": "Docsie oluşturulan kitabı bu rafa ekleyecek.",
+			"shelfCreateHint": "Docsie rafı oluşturacak ve sonraki çalıştırmalarda yeniden kullanacak.",
+			"audience": "Hedef Kitle",
+			"audiencePlaceholder": "destek ekibi",
+			"maxSlides": "Maksimum Slayt",
+			"imageQuality": "Görsel Kalitesi",
+			"illustrationStyle": "İllüstrasyon Stili",
+			"illustrationStylePlaceholder": "corporate",
+			"autoGenerateDocs": "Dokümanları otomatik oluştur",
+			"autoGeneratePresentation": "Sunumu otomatik oluştur",
+			"sourceName": "Kaynak Adı",
+			"sourceNamePlaceholder": "Screen Recorder",
+			"enhancement": "İyileştirme",
+			"generateCoverImage": "Kapak görseli oluştur",
+			"embedImages": "Görselleri göm",
+			"rewriteInstructions": "Yeniden Yazma Talimatları",
+			"outputTemplate": "Çıktı Şablonu",
+			"templateSelectedHint": "Seçilen kitaplık şablonunun kimliği Docsie'ye gönderilir. Aşağıdaki özel metin yalnızca yedek olarak saklanır.",
+			"templatePickHint": "Bir kitaplık şablonu seçin veya aşağıya özel bir yapı girin.",
+			"templateInstructionPlaceholder": "Kitaplık şablonu seçilmediğinde kullanılacak isteğe bağlı özel yapı.",
+			"jobDetails": "İş ayrıntıları",
+			"analysisJob": "Analiz İşi",
+			"generationJob": "Oluşturma İşi",
+			"notStarted": "Başlatılmadı",
+			"waitingForAnalysis": "Analiz bekleniyor",
+			"disabled": "Devre dışı"
+		},
+		"quality": {
+			"options": {
+				"draft": {
+					"label": "Taslak",
+					"description": "250 kredi/dk"
+				},
+				"standard": {
+					"label": "Standart",
+					"description": "500 kredi/dk"
+				},
+				"detailed": {
+					"label": "Ayrıntılı",
+					"description": "1.000 kredi/dk"
+				},
+				"ultra": {
+					"label": "Ultra",
+					"description": "2.000 kredi/dk"
+				}
+			}
+		},
+		"docStyleOptions": {
+			"guide": "Kılavuz",
+			"sop": "SOP",
+			"tutorial": "Eğitici",
+			"how-to": "Nasıl yapılır",
+			"blog": "Blog",
+			"training": "Eğitim",
+			"knowledge-base": "Bilgi bankası",
+			"release-notes": "Sürüm notları",
+			"reference": "Referans",
+			"product": "Ürün",
+			"policy": "Politika"
+		},
+		"deckTypeOptions": {
+			"training": "Eğitim",
+			"tutorial": "Eğitici",
+			"sales": "Satış",
+			"executive": "Yönetici",
+			"support": "Destek",
+			"onboarding": "Oryantasyon"
+		},
+		"imageQualityOptions": {
+			"low": "Düşük",
+			"medium": "Orta",
+			"high": "Yüksek"
+		},
+		"enhanceOptions": {
+			"required": "Gerektiğinde",
+			"enhanced": "Geliştirilmiş",
+			"standard": "Standart"
+		}
+	},
+	"templates": {
+		"megaCategories": {
+			"core": "Temel Dokümanlar",
+			"business": "İş Operasyonları",
+			"technology": "Teknoloji ve Veri",
+			"health": "Sağlık ve Yaşam Bilimleri",
+			"industry": "Üretim ve Saha",
+			"commerce": "Ticaret ve Hizmetler",
+			"transport": "Ulaşım ve Lojistik",
+			"public": "Kamu ve Eğitim",
+			"other": "Diğer"
+		},
+		"categories": {
+			"technical": "Teknik",
+			"process": "Süreç ve Operasyon",
+			"product": "Ürün",
+			"compliance": "Uyumluluk",
+			"engineering": "Mühendislik",
+			"training": "Eğitim",
+			"planning": "Planlama",
+			"manufacturing": "Üretim",
+			"healthcare": "Sağlık Hizmetleri",
+			"consulting": "BT/ERP Danışmanlığı",
+			"legal": "Hukuk",
+			"education": "Eğitim Sektörü",
+			"finance": "Finans",
+			"government": "Kamu",
+			"construction": "İnşaat",
+			"retail_ecommerce": "Perakende ve E-ticaret",
+			"logistics_supply_chain": "Lojistik ve Tedarik Zinciri",
+			"energy_utilities": "Enerji ve Altyapı Hizmetleri",
+			"telecom": "Telekom",
+			"insurance": "Sigorta",
+			"hr_people_ops": "İK ve Çalışan Operasyonları",
+			"customer_success": "Müşteri Başarısı",
+			"cybersecurity_privacy": "Siber Güvenlik ve Gizlilik",
+			"data_ai_analytics": "Veri, Yapay Zeka ve Analitik",
+			"hospitality_food_facilities": "Konaklama, Yiyecek ve Tesisler",
+			"pharma_biotech": "İlaç ve Biyoteknoloji",
+			"medical_devices": "Tıbbi Cihazlar",
+			"life_sciences_labs": "Yaşam Bilimleri Laboratuvarları",
+			"chemicals": "Kimya",
+			"environmental_services": "Çevre Hizmetleri",
+			"automotive": "Otomotiv",
+			"aerospace_defense": "Havacılık ve Savunma",
+			"semiconductor_electronics": "Yarı İletken ve Elektronik",
+			"mining_metals": "Madencilik ve Metaller",
+			"industrial_equipment": "Endüstriyel Ekipman",
+			"banking_lending": "Bankacılık ve Kredi",
+			"real_estate_property": "Gayrimenkul ve Mülk",
+			"accounting_audit": "Muhasebe ve Denetim",
+			"nonprofit_ngos": "Kâr Amacı Gütmeyen Kuruluşlar ve STK'lar",
+			"public_safety_emergency": "Kamu Güvenliği ve Acil Durum",
+			"agriculture_food_production": "Tarım ve Gıda Üretimi",
+			"restaurants_food_service": "Restoranlar ve Yemek Hizmetleri",
+			"consumer_packaged_goods": "Hızlı Tüketim Ürünleri",
+			"fashion_apparel": "Moda ve Giyim",
+			"beauty_wellness": "Güzellik ve Sağlıklı Yaşam",
+			"oil_gas": "Petrol ve Gaz",
+			"transportation_transit": "Ulaşım ve Toplu Taşıma",
+			"maritime_shipping": "Denizcilik ve Nakliye",
+			"media_entertainment": "Medya ve Eğlence",
+			"travel_tourism": "Seyahat ve Turizm"
+		},
+		"noTemplate": "Şablon yok",
+		"triggerDescription": "Şablon kitaplığı yapısını zorlamadan seçilen stille oluşturun.",
+		"browse": "Göz at",
+		"libraryTitle": "Şablon Kitaplığı",
+		"libraryDescription": "Bir dokümantasyon şablonu seçin ve oluşturmadan önce örnek çıktıyı önizleyin.",
+		"searchPlaceholder": "Şablon ara...",
+		"groupsAriaLabel": "Şablon grupları",
+		"allTemplates": "Tüm şablonlar",
+		"fallbackTitle": "Şablonlar",
+		"templatesCount": "{{count}} şablon",
+		"allInGroup": "Gruptaki tümü",
+		"noTemplateCardDescription": "Şablon kitaplığı yapısını zorlamadan seçtiğiniz stille oluşturun.",
+		"sections": "Bölümler",
+		"loading": "Şablonlar yükleniyor...",
+		"noMatches": "Aramanızla eşleşen şablon yok.",
+		"previewNote": "Oluşturmadan önce şablon çıktısını önizleyin.",
+		"back": "Geri",
+		"close": "Kapat",
+		"useTemplate": "Bu Şablonu Kullan"
+	},
+	"auth": {
+		"accountRequired": "Docsie hesabı gerekli",
+		"signIn": "Oturum Aç",
+		"createAccount": "Hesap Oluştur",
+		"checking": "Denetleniyor",
+		"connectedConfirm": "Docsie'yi Bağladım",
+		"close": "Kapat",
+		"footer": "Oturum açtıktan sonra kaydedicinin kilidi açılır ve Docsie çalışma alanınıza kaydeder.",
+		"errors": {
+			"openSignIn": "Docsie oturum açma sayfası açılamadı",
+			"openSignUp": "Docsie kayıt sayfası açılamadı"
+		}
+	}
+}

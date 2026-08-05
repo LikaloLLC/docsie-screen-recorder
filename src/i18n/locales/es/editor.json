@@ -1,4 +1,10 @@
 {
+	"newRecording": {
+		"title": "Volver al grabador",
+		"description": "Tu sesión actual se ha guardado.",
+		"cancel": "Cancelar",
+		"confirm": "Confirmar"
+	},
 	"errors": {
 		"noVideoLoaded": "No hay video cargado",
 		"videoNotReady": "El video no está listo",

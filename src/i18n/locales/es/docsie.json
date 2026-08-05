@@ -1,0 +1,352 @@
+{
+	"publish": {
+		"dialog": {
+			"title": "Vídeo a documentos",
+			"analysis": "Análisis",
+			"launch": "Inicio",
+			"aiCredits": "Créditos de IA",
+			"loadingBalance": "Cargando saldo",
+			"balanceUnavailable": "Saldo no disponible"
+		},
+		"phase": {
+			"starting": "Iniciando la conversión",
+			"analysis": "Analizando el vídeo",
+			"generation": "Generando documentos",
+			"completed": "Completado",
+			"failed": "Error",
+			"ready": "Listo"
+		},
+		"duration": {
+			"unknown": "Desconocida",
+			"seconds": "{{seconds}}s",
+			"minutesSeconds": "{{minutes}}m {{seconds}}s"
+		},
+		"sampling": {
+			"everySeconds": "Cada {{seconds}}s"
+		},
+		"credits": {
+			"estimate": "{{credits}} créditos",
+			"available": "{{credits}} créditos disponibles",
+			"monthly": "{{credits}} mensuales",
+			"purchased": "{{credits}} comprados",
+			"charged": "{{credits}} créditos cobrados"
+		},
+		"defaults": {
+			"bookTitle": "Documentación de vídeo",
+			"resultTitle": "Resultado de Docsie",
+			"generatedShelf": "Estantería generada"
+		},
+		"connection": {
+			"connectedTo": "Conectado a {{organization}}",
+			"connected": "Conectado a Docsie",
+			"loginRequired": "Se requiere iniciar sesión en Docsie",
+			"docsieConnected": "Docsie conectado",
+			"signInRequired": "Se requiere iniciar sesión",
+			"noRecording": "No hay grabación cargada"
+		},
+		"artifact": {
+			"docs": "Documentos",
+			"presentation": "Presentación",
+			"docsDescription": "Markdown, DOCX y PDF",
+			"presentationDescription": "Markdown y PowerPoint"
+		},
+		"actions": {
+			"convertVideoToDocs": "Convertir vídeo en documentos",
+			"createPresentation": "Crear presentación",
+			"logInToDocsie": "Iniciar sesión en Docsie",
+			"openInDocsie": "Abrir en Docsie",
+			"runAnalysisAgain": "Repetir el análisis",
+			"additionalSettings": "Ajustes adicionales",
+			"createAccount": "Crear cuenta",
+			"close": "Cerrar",
+			"generateDocs": "Generar documentos",
+			"generatePresentation": "Generar presentación",
+			"view": "Ver",
+			"credits": "Créditos",
+			"loadWorkspaces": "Cargar espacios de trabajo",
+			"saveDefaults": "Guardar valores predeterminados",
+			"refresh": "Actualizar",
+			"loading": "Cargando"
+		},
+		"status": {
+			"preparing": "Docsie está preparando la grabación actual.",
+			"buildingPresentation": "Creando la presentación",
+			"statusLabel": "Estado: {{status}}",
+			"frames": "~{{count}} fotogramas",
+			"estimateHint": "La estimación se carga cuando el grabador puede leer la duración del vídeo.",
+			"steps": {
+				"analyze": "Analizar",
+				"generate": "Generar",
+				"buildDeck": "Crear diapositivas",
+				"exports": "Exportaciones"
+			}
+		},
+		"busy": {
+			"uploading": "Subiendo la grabación actual a Docsie.",
+			"generatingDocsOutput": "Docsie está generando la salida en Markdown, PDF y DOCX.",
+			"generatingPresentationOutput": "Docsie está generando Markdown y una presentación de PowerPoint.",
+			"buildingDocs": "Docsie está creando la documentación final y los archivos de exportación.",
+			"buildingPresentation": "Docsie está creando la presentación y el archivo de exportación.",
+			"analysisRunning": "Docsie aceptó la grabación. El análisis está en curso.",
+			"analysisBeforeDocs": "Docsie aceptó la grabación. El análisis se ejecuta antes de generar los documentos.",
+			"analysisBeforePresentation": "Docsie aceptó la grabación. El análisis se ejecuta antes de generar la presentación.",
+			"analysisFinished": "Docsie terminó el análisis. Puede generar los documentos finales cuando esté listo.",
+			"finishedDocs": "Docsie terminó de convertir esta grabación en documentación.",
+			"finishedPresentation": "Docsie terminó de convertir esta grabación en una presentación.",
+			"loadedFromHistory": "Se cargó este resultado completado de Docsie desde el historial local."
+		},
+		"toasts": {
+			"openedSignIn": "Se abrió el inicio de sesión de Docsie en el navegador",
+			"openedSignUp": "Se abrió el registro de Docsie en el navegador",
+			"generationStarted": "Generación de Docsie iniciada",
+			"recordingSent": "Grabación enviada a Docsie",
+			"markdownSaved": "Markdown guardado",
+			"markdownCopied": "Markdown copiado",
+			"defaultsSaved": "Valores predeterminados de Docsie guardados",
+			"templateSelected": "Plantilla seleccionada: {{name}}",
+			"templateCleared": "Selección de plantilla eliminada"
+		},
+		"errors": {
+			"openSignIn": "No se pudo abrir el inicio de sesión de Docsie",
+			"openSignUp": "No se pudo abrir el registro de Docsie",
+			"connectFirst": "Primero conecte este grabador a Docsie",
+			"loadWorkspaces": "No se pudieron cargar los espacios de trabajo de Docsie",
+			"saveSettings": "No se pudieron guardar los ajustes de Docsie",
+			"startGeneration": "No se pudo iniciar la generación de Docsie",
+			"pollStatus": "No se pudo consultar el estado del trabajo de Docsie",
+			"jobFailed": "El trabajo de Docsie falló",
+			"generateDocs": "No se pudieron generar los documentos",
+			"noVideo": "No hay ningún vídeo disponible para enviar a Docsie",
+			"connectBeforeConvert": "Conéctese a Docsie antes de convertir esta grabación",
+			"startJob": "No se pudo iniciar el trabajo de Docsie",
+			"runAnalysisFirst": "Ejecute primero el paso de análisis",
+			"connectBeforeGenerate": "Conéctese a Docsie antes de generar la documentación",
+			"openResult": "No se pudo abrir el resultado de Docsie",
+			"openExport": "No se pudo abrir la exportación {{format}}",
+			"saveMarkdown": "No se pudo guardar el Markdown",
+			"copyMarkdown": "No se pudo copiar el Markdown",
+			"saveDefaults": "No se pudieron guardar los valores predeterminados de Docsie",
+			"saveTokenFirst": "Guarde un token de API de Docsie antes de explorar las plantillas",
+			"exportStatus": "Exportación {{status}}"
+		},
+		"files": {
+			"title": "Archivos",
+			"subtitle": "Abra el resultado de Docsie o descargue los archivos generados.",
+			"markdown": "Markdown",
+			"ready": "Listo",
+			"pending": "Pendiente",
+			"processing": "Procesando",
+			"queued": "En cola",
+			"failed": "Error",
+			"copyMarkdown": "Copiar Markdown",
+			"downloadMarkdown": "Descargar Markdown",
+			"downloadFormat": "Descargar {{format}}",
+			"markdownReadyHint": "El Markdown está listo para copiar o guardar localmente.",
+			"markdownPendingHint": "El Markdown aparecerá aquí cuando Docsie termine la generación.",
+			"savedInDocsie": "Guardado en Docsie",
+			"storedInDocsie": "Este resultado generado está almacenado en Docsie.",
+			"shelf": "Estantería: {{name}}"
+		},
+		"history": {
+			"title": "Historial de análisis",
+			"subtitle": "Las ejecuciones completadas de Docsie para esta grabación se guardan localmente.",
+			"savedCount": "{{count}} guardados",
+			"savingToHistory": "Este resultado completado se está guardando en el historial local."
+		},
+		"settings": {
+			"title": "Ajustes adicionales",
+			"subtitle": "Ajustes avanzados, conexión alternativa y detalles del trabajo.",
+			"workspaceAndOutput": "Espacio de trabajo y salida",
+			"intent": "Propósito",
+			"intentDocumentation": "Documentación",
+			"intentExport": "Solo exportar",
+			"publishToKnowledgeBase": "Publicar en la base de conocimientos",
+			"workspace": "Espacio de trabajo",
+			"selectWorkspace": "Seleccione un espacio de trabajo",
+			"quality": "Calidad",
+			"language": "Idioma",
+			"languagePlaceholder": "english",
+			"docStyle": "Estilo de documento",
+			"deckType": "Tipo de presentación",
+			"bookTitle": "Título del libro",
+			"exportTitle": "Título de la exportación",
+			"destinationShelf": "Estantería de destino",
+			"createNewShelf": "Crear una nueva estantería a partir del título del libro",
+			"savedShelf": "Estantería guardada ({{id}})",
+			"shelfSelectedHint": "Docsie añadirá el libro generado a esta estantería.",
+			"shelfCreateHint": "Docsie creará la estantería y la reutilizará en futuras ejecuciones.",
+			"audience": "Audiencia",
+			"audiencePlaceholder": "equipo de soporte",
+			"maxSlides": "Máximo de diapositivas",
+			"imageQuality": "Calidad de imagen",
+			"illustrationStyle": "Estilo de ilustración",
+			"illustrationStylePlaceholder": "corporate",
+			"autoGenerateDocs": "Generar documentos automáticamente",
+			"autoGeneratePresentation": "Generar presentación automáticamente",
+			"sourceName": "Nombre de la fuente",
+			"sourceNamePlaceholder": "Screen Recorder",
+			"enhancement": "Mejora",
+			"generateCoverImage": "Generar imagen de portada",
+			"embedImages": "Incrustar imágenes",
+			"rewriteInstructions": "Instrucciones de reescritura",
+			"outputTemplate": "Plantilla de salida",
+			"templateSelectedHint": "El ID de la plantilla de biblioteca seleccionada se envía a Docsie. El texto personalizado de abajo se conserva solo como alternativa.",
+			"templatePickHint": "Elija una plantilla de la biblioteca o introduzca una estructura personalizada abajo.",
+			"templateInstructionPlaceholder": "Estructura personalizada opcional cuando no se selecciona ninguna plantilla de biblioteca.",
+			"jobDetails": "Detalles del trabajo",
+			"analysisJob": "Trabajo de análisis",
+			"generationJob": "Trabajo de generación",
+			"notStarted": "No iniciado",
+			"waitingForAnalysis": "Esperando el análisis",
+			"disabled": "Desactivado"
+		},
+		"quality": {
+			"options": {
+				"draft": {
+					"label": "Borrador",
+					"description": "250 créditos/min"
+				},
+				"standard": {
+					"label": "Estándar",
+					"description": "500 créditos/min"
+				},
+				"detailed": {
+					"label": "Detallada",
+					"description": "1.000 créditos/min"
+				},
+				"ultra": {
+					"label": "Ultra",
+					"description": "2.000 créditos/min"
+				}
+			}
+		},
+		"docStyleOptions": {
+			"guide": "Guía",
+			"sop": "SOP",
+			"tutorial": "Tutorial",
+			"how-to": "Guía práctica",
+			"blog": "Blog",
+			"training": "Formación",
+			"knowledge-base": "Base de conocimientos",
+			"release-notes": "Notas de la versión",
+			"reference": "Referencia",
+			"product": "Producto",
+			"policy": "Política"
+		},
+		"deckTypeOptions": {
+			"training": "Formación",
+			"tutorial": "Tutorial",
+			"sales": "Ventas",
+			"executive": "Ejecutivo",
+			"support": "Soporte",
+			"onboarding": "Incorporación"
+		},
+		"imageQualityOptions": {
+			"low": "Baja",
+			"medium": "Media",
+			"high": "Alta"
+		},
+		"enhanceOptions": {
+			"required": "Según necesidad",
+			"enhanced": "Mejorada",
+			"standard": "Estándar"
+		}
+	},
+	"templates": {
+		"megaCategories": {
+			"core": "Documentos básicos",
+			"business": "Operaciones de negocio",
+			"technology": "Tecnología y datos",
+			"health": "Salud y ciencias de la vida",
+			"industry": "Fabricación y campo",
+			"commerce": "Comercio y servicios",
+			"transport": "Transporte y logística",
+			"public": "Sector público y educación",
+			"other": "Otros"
+		},
+		"categories": {
+			"technical": "Técnico",
+			"process": "Procesos y operaciones",
+			"product": "Producto",
+			"compliance": "Cumplimiento",
+			"engineering": "Ingeniería",
+			"training": "Formación",
+			"planning": "Planificación",
+			"manufacturing": "Fabricación",
+			"healthcare": "Sanidad",
+			"consulting": "Consultoría IT/ERP",
+			"legal": "Legal",
+			"education": "Educación",
+			"finance": "Finanzas",
+			"government": "Gobierno",
+			"construction": "Construcción",
+			"retail_ecommerce": "Comercio minorista y ecommerce",
+			"logistics_supply_chain": "Logística y cadena de suministro",
+			"energy_utilities": "Energía y servicios públicos",
+			"telecom": "Telecomunicaciones",
+			"insurance": "Seguros",
+			"hr_people_ops": "RR. HH. y gestión de personas",
+			"customer_success": "Éxito del cliente",
+			"cybersecurity_privacy": "Ciberseguridad y privacidad",
+			"data_ai_analytics": "Datos, IA y analítica",
+			"hospitality_food_facilities": "Hostelería, alimentación e instalaciones",
+			"pharma_biotech": "Farmacéutica y biotecnología",
+			"medical_devices": "Dispositivos médicos",
+			"life_sciences_labs": "Laboratorios de ciencias de la vida",
+			"chemicals": "Química",
+			"environmental_services": "Servicios medioambientales",
+			"automotive": "Automoción",
+			"aerospace_defense": "Aeroespacial y defensa",
+			"semiconductor_electronics": "Semiconductores y electrónica",
+			"mining_metals": "Minería y metales",
+			"industrial_equipment": "Equipos industriales",
+			"banking_lending": "Banca y préstamos",
+			"real_estate_property": "Inmobiliaria y propiedades",
+			"accounting_audit": "Contabilidad y auditoría",
+			"nonprofit_ngos": "Organizaciones sin ánimo de lucro y ONG",
+			"public_safety_emergency": "Seguridad pública y emergencias",
+			"agriculture_food_production": "Agricultura y producción de alimentos",
+			"restaurants_food_service": "Restaurantes y servicios de comida",
+			"consumer_packaged_goods": "Bienes de consumo envasados",
+			"fashion_apparel": "Moda y confección",
+			"beauty_wellness": "Belleza y bienestar",
+			"oil_gas": "Petróleo y gas",
+			"transportation_transit": "Transporte y tránsito",
+			"maritime_shipping": "Marítimo y transporte naval",
+			"media_entertainment": "Medios y entretenimiento",
+			"travel_tourism": "Viajes y turismo"
+		},
+		"noTemplate": "Sin plantilla",
+		"triggerDescription": "Genere con el estilo seleccionado sin forzar la estructura de la biblioteca de plantillas.",
+		"browse": "Explorar",
+		"libraryTitle": "Biblioteca de plantillas",
+		"libraryDescription": "Elija una plantilla de documentación y previsualice el resultado de ejemplo antes de generar.",
+		"searchPlaceholder": "Buscar plantillas...",
+		"groupsAriaLabel": "Grupos de plantillas",
+		"allTemplates": "Todas las plantillas",
+		"fallbackTitle": "Plantillas",
+		"templatesCount": "{{count}} plantillas",
+		"allInGroup": "Todo el grupo",
+		"noTemplateCardDescription": "Genere con el estilo que haya seleccionado sin forzar la estructura de la biblioteca de plantillas.",
+		"sections": "Secciones",
+		"loading": "Cargando plantillas...",
+		"noMatches": "Ninguna plantilla coincide con la búsqueda.",
+		"previewNote": "Previsualice el resultado de la plantilla antes de generar.",
+		"back": "Atrás",
+		"close": "Cerrar",
+		"useTemplate": "Usar esta plantilla"
+	},
+	"auth": {
+		"accountRequired": "Se requiere una cuenta de Docsie",
+		"signIn": "Iniciar sesión",
+		"createAccount": "Crear cuenta",
+		"checking": "Comprobando",
+		"connectedConfirm": "Ya conecté Docsie",
+		"close": "Cerrar",
+		"footer": "Después de iniciar sesión, el grabador se desbloquea y guarda en el contexto de su espacio de trabajo de Docsie.",
+		"errors": {
+			"openSignIn": "No se pudo abrir el inicio de sesión de Docsie",
+			"openSignUp": "No se pudo abrir el registro de Docsie"
+		}
+	}
+}

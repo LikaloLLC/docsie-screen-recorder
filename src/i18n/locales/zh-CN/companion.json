@@ -1,0 +1,90 @@
+{
+	"shell": {
+		"title": "Docsie 录制助手",
+		"minimize": "最小化",
+		"close": "关闭"
+	},
+	"setup": {
+		"title": "录制助手设置",
+		"subtitle": "只需配置一次。之后应用启动后将直接显示录制按钮。",
+		"accountStep": "1 · Docsie 账户",
+		"connected": "已连接",
+		"notConnected": "未连接",
+		"organizationFallback": "组织",
+		"connect": "连接 Docsie",
+		"defaultsStep": "2 · 录制默认设置",
+		"returnFormatLabel": "生成完成后返回",
+		"returnKb": "知识库链接",
+		"returnPdf": "PDF",
+		"quality": "质量",
+		"qualityDraft": "草稿（最快，消耗积分最少）",
+		"qualityStandard": "标准",
+		"qualityDetailed": "详细",
+		"qualityUltra": "超高",
+		"language": "文档语言",
+		"languageHint": "默认使用您的系统语言（{{language}}）。",
+		"template": "生成模板",
+		"templateNone": "无模板（默认结构）",
+		"templateHint": "连接 Docsie 以加载您的模板。",
+		"microphone": "录制麦克风旁白",
+		"startCapturing": "开始录制",
+		"connectToContinue": "请连接 Docsie 以继续"
+	},
+	"source": {
+		"matchLabel": "附加到标题包含以下内容的窗口",
+		"matchPlaceholder": "例如 Viewer",
+		"attached": "当前匹配：{{name}}",
+		"noMatch": "尚无匹配的窗口 — 请打开目标应用程序进行确认。",
+		"manualLabel": "或手动选择来源",
+		"selectPlaceholder": "选择屏幕或窗口…"
+	},
+	"main": {
+		"noSource": "无来源",
+		"rescan": "重新扫描",
+		"rescanTitle": "重新扫描目标窗口",
+		"setup": "设置",
+		"setupTitle": "打开设置",
+		"connectFirst": "录制前请先连接 Docsie。",
+		"pickSource": "请打开要录制的应用程序，或手动选择来源。"
+	},
+	"session": {
+		"label": "会话名称（将作为文档标题）",
+		"defaultTitle": "培训会话 {{date}} {{time}}"
+	},
+	"record": {
+		"record": "录制",
+		"stop": "停止",
+		"cancel": "取消",
+		"stopWithTime": "停止录制 · {{time}}"
+	},
+	"progress": {
+		"upload": "上传",
+		"analyze": "分析",
+		"generate": "生成",
+		"pdfExport": "PDF 导出",
+		"uploading": "正在将录制内容上传到 Docsie…",
+		"analyzing": "Docsie 正在分析录制内容…",
+		"generating": "Docsie 正在撰写文档…",
+		"preparingPdf": "正在准备 PDF 导出…",
+		"done": "文档已就绪。"
+	},
+	"toast": {
+		"docsReady": "文档已就绪"
+	},
+	"result": {
+		"openKb": "在知识库中打开",
+		"downloadPdf": "下载 PDF",
+		"recordAnother": "录制另一个会话",
+		"dismiss": "关闭"
+	},
+	"errors": {
+		"pollStatusFailed": "无法获取 Docsie 任务状态",
+		"jobEnded": "Docsie 任务已终止：{{status}}",
+		"fetchResultFailed": "无法获取 Docsie 任务结果",
+		"pdfExportEnded": "PDF 导出已终止：{{status}}",
+		"pdfExportTimeout": "等待 PDF 导出超时",
+		"startJobFailed": "无法启动 Docsie 任务",
+		"startGenerationFailed": "无法启动 Docsie 文档生成",
+		"noVideoProduced": "录制已结束，但未生成视频文件。"
+	}
+}

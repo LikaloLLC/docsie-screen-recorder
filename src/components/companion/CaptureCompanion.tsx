@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useScopedT } from "@/contexts/I18nContext";
 import { useScreenRecorder } from "@/hooks/useScreenRecorder";
 import type {
 	DocsieGenerationTemplate,
@@ -18,6 +19,8 @@ const EXPORT_POLL_INTERVAL_MS = 5000;
 const EXPORT_POLL_MAX_ATTEMPTS = 60;
 
 type ReturnFormat = "kb" | "pdf";
+
+type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
 
 // The companion window is frameless; these mark regions as draggable chrome.
 const dragRegionStyle = { WebkitAppRegion: "drag" } as CSSProperties;
@@ -132,12 +135,15 @@ function formatElapsed(totalSeconds: number) {
 	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function defaultSessionTitle() {
+function defaultSessionTitle(t: TranslateFn) {
 	const now = new Date();
-	return `Training session ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {
-		hour: "2-digit",
-		minute: "2-digit",
-	})}`;
+	return t("session.defaultTitle", {
+		date: now.toLocaleDateString(),
+		time: now.toLocaleTimeString([], {
+			hour: "2-digit",
+			minute: "2-digit",
+		}),
+	});
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -154,23 +160,28 @@ function sleep(ms: number) {
 	});
 }
 
-async function pollJobUntilDone(jobId: string): Promise<DocsieVideoToDocsJobResult> {
+async function pollJobUntilDone(
+	jobId: string,
+	t: TranslateFn,
+): Promise<DocsieVideoToDocsJobResult> {
 	for (;;) {
 		const status = await window.electronAPI.docsieGetJobStatus(jobId);
 		if (!status.success) {
-			throw new Error(status.error ?? "Failed to poll Docsie job status");
+			throw new Error(status.error ?? t("errors.pollStatusFailed"));
 		}
 
 		const normalized = (status.normalizedStatus ?? status.status ?? "").toLowerCase();
 		if (normalized === "failed" || normalized === "canceled") {
 			const failedResult = await window.electronAPI.docsieGetJobResult(jobId);
-			throw new Error(failedResult.error ?? status.error ?? `Docsie job ${normalized}`);
+			throw new Error(
+				failedResult.error ?? status.error ?? t("errors.jobEnded", { status: normalized }),
+			);
 		}
 
 		if (normalized === "done") {
 			const result = await window.electronAPI.docsieGetJobResult(jobId);
 			if (!result.success) {
-				throw new Error(result.error ?? "Failed to fetch Docsie job result");
+				throw new Error(result.error ?? t("errors.fetchResultFailed"));
 			}
 			return result;
 		}
@@ -179,7 +190,10 @@ async function pollJobUntilDone(jobId: string): Promise<DocsieVideoToDocsJobResu
 	}
 }
 
-async function resolvePdfExportUrl(result: DocsieVideoToDocsJobResult): Promise<string | null> {
+async function resolvePdfExportUrl(
+	result: DocsieVideoToDocsJobResult,
+	t: TranslateFn,
+): Promise<string | null> {
 	const exports = result.exports;
 	if (!isRecord(exports)) {
 		return null;
@@ -211,16 +225,17 @@ async function resolvePdfExportUrl(result: DocsieVideoToDocsJobResult): Promise<
 			}
 			if (normalized === "failed" || normalized === "canceled") {
 				const error = isRecord(payload) ? asString(payload.error) : null;
-				throw new Error(error ?? `PDF export ${normalized}`);
+				throw new Error(error ?? t("errors.pdfExportEnded", { status: normalized }));
 			}
 		}
 		await sleep(EXPORT_POLL_INTERVAL_MS);
 	}
 
-	throw new Error("Timed out waiting for the PDF export");
+	throw new Error(t("errors.pdfExportTimeout"));
 }
 
 function CompanionShell({ children }: { children: ReactNode }) {
+	const t = useScopedT("companion");
 	return (
 		<div className="w-screen h-screen bg-transparent p-2 font-sans">
 			<div className="w-full h-full rounded-xl border border-white/10 bg-[#101014] shadow-2xl overflow-hidden flex flex-col text-white/90">
@@ -229,13 +244,13 @@ function CompanionShell({ children }: { children: ReactNode }) {
 					style={dragRegionStyle}
 				>
 					<span className="text-[11px] font-medium text-white/50 tracking-wide">
-						Docsie Capture Companion
+						{t("shell.title")}
 					</span>
 					<div className="flex items-center gap-1" style={noDragRegionStyle}>
 						<button
 							type="button"
 							onClick={() => void window.electronAPI.minimizeCurrentWindow()}
-							title="Minimize"
+							title={t("shell.minimize")}
 							className="w-7 h-7 rounded-md text-white/60 hover:bg-white/10 hover:text-white text-sm leading-none"
 						>
 							–
@@ -243,7 +258,7 @@ function CompanionShell({ children }: { children: ReactNode }) {
 						<button
 							type="button"
 							onClick={() => void window.electronAPI.closeCurrentWindow()}
-							title="Close"
+							title={t("shell.close")}
 							className="w-7 h-7 rounded-md text-white/60 hover:bg-red-500/80 hover:text-white text-sm leading-none"
 						>
 							×
@@ -262,6 +277,7 @@ function CompanionShell({ children }: { children: ReactNode }) {
  * Docsie Video-to-Docs using the connection defaults saved at setup time.
  */
 export function CaptureCompanion() {
+	const t = useScopedT("companion");
 	const [docsieState, setDocsieState] = useState<DocsieIntegrationState | null>(null);
 	const [settings, setSettings] = useState<CompanionSettings>(() => loadSettings());
 	const [attachedSource, setAttachedSource] = useState<ProcessedDesktopSource | null>(null);
@@ -280,10 +296,12 @@ export function CaptureCompanion() {
 	sessionTitleRef.current = sessionTitle;
 	const publishPhaseRef = useRef(publishPhase);
 	publishPhaseRef.current = publishPhase;
+	const tRef = useRef(t);
+	tRef.current = t;
 
 	useEffect(() => {
-		document.title = "Docsie Capture Companion";
-	}, []);
+		document.title = t("shell.title");
+	}, [t]);
 
 	const refreshDocsieState = useCallback(async () => {
 		const response = await window.electronAPI.docsieGetState();
@@ -321,9 +339,10 @@ export function CaptureCompanion() {
 	}, [hasToken]);
 
 	const publishRecording = useCallback(async (videoPath: string) => {
+		const translate = tRef.current;
 		const state = docsieStateRef.current;
 		const activeSettings = settingsRef.current;
-		const bookTitle = sessionTitleRef.current.trim() || defaultSessionTitle();
+		const bookTitle = sessionTitleRef.current.trim() || defaultSessionTitle(translate);
 		const outputFormats = activeSettings.returnFormat === "pdf" ? (["pdf"] as const) : undefined;
 		const language = activeSettings.language || state?.defaultLanguage || "english";
 		const generationTemplateId =
@@ -332,7 +351,7 @@ export function CaptureCompanion() {
 		try {
 			setPublishResult(null);
 			setPublishPhase("starting");
-			setStatusText("Uploading the recording to Docsie…");
+			setStatusText(translate("progress.uploading"));
 
 			const start = await window.electronAPI.docsieStartVideoToDocs({
 				videoPath,
@@ -349,15 +368,15 @@ export function CaptureCompanion() {
 				outputFormats: outputFormats ? [...outputFormats] : undefined,
 			});
 			if (!start.success || !start.jobId) {
-				throw new Error(start.error ?? "Failed to start the Docsie job");
+				throw new Error(start.error ?? translate("errors.startJobFailed"));
 			}
 
 			setPublishPhase("analysis");
-			setStatusText("Docsie is analyzing the recording…");
-			const analysis = await pollJobUntilDone(start.jobId);
+			setStatusText(translate("progress.analyzing"));
+			const analysis = await pollJobUntilDone(start.jobId, translate);
 
 			setPublishPhase("generation");
-			setStatusText("Docsie is writing the documentation…");
+			setStatusText(translate("progress.generating"));
 			const generate = await window.electronAPI.docsieGenerateVideoToDocs({
 				jobId: analysis.jobId ?? start.jobId,
 				docStyle: state?.defaultDocStyle ?? "sop",
@@ -369,16 +388,16 @@ export function CaptureCompanion() {
 				outputFormats: outputFormats ? [...outputFormats] : undefined,
 			});
 			if (!generate.success || !generate.generateJobId) {
-				throw new Error(generate.error ?? "Failed to start Docsie generation");
+				throw new Error(generate.error ?? translate("errors.startGenerationFailed"));
 			}
 
-			const result = await pollJobUntilDone(generate.generateJobId);
+			const result = await pollJobUntilDone(generate.generateJobId, translate);
 
 			let pdfUrl: string | null = null;
 			if (activeSettings.returnFormat === "pdf") {
 				setPublishPhase("exporting");
-				setStatusText("Preparing the PDF export…");
-				pdfUrl = await resolvePdfExportUrl(result);
+				setStatusText(translate("progress.preparingPdf"));
+				pdfUrl = await resolvePdfExportUrl(result, translate);
 			}
 
 			setPublishResult({
@@ -387,8 +406,8 @@ export function CaptureCompanion() {
 				title: result.title ?? bookTitle,
 			});
 			setPublishPhase("done");
-			setStatusText("Documentation is ready.");
-			toast.success("Documentation is ready");
+			setStatusText(translate("progress.done"));
+			toast.success(translate("toast.docsReady"));
 
 			void window.electronAPI.docsieSaveVideoToDocsHistory({
 				videoPath,
@@ -415,7 +434,7 @@ export function CaptureCompanion() {
 		async (info: { path: string | null }) => {
 			if (!info.path) {
 				setPublishPhase("failed");
-				setStatusText("The recording finished but no video file was produced.");
+				setStatusText(tRef.current("errors.noVideoProduced"));
 				return;
 			}
 			await publishRecording(info.path);
@@ -531,11 +550,11 @@ export function CaptureCompanion() {
 	const canRecord = connected && Boolean(attachedSource) && !busyPublishing;
 
 	const progressSteps: Array<{ key: PublishPhase; label: string }> = [
-		{ key: "starting", label: "Upload" },
-		{ key: "analysis", label: "Analyze" },
-		{ key: "generation", label: "Generate" },
+		{ key: "starting", label: t("progress.upload") },
+		{ key: "analysis", label: t("progress.analyze") },
+		{ key: "generation", label: t("progress.generate") },
 		...(settings.returnFormat === "pdf"
-			? [{ key: "exporting" as PublishPhase, label: "PDF export" }]
+			? [{ key: "exporting" as PublishPhase, label: t("progress.pdfExport") }]
 			: []),
 	];
 	const phaseOrder: PublishPhase[] = ["starting", "analysis", "generation", "exporting", "done"];
@@ -563,14 +582,14 @@ export function CaptureCompanion() {
 							onClick={toggleRecording}
 							className="px-5 py-2 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
 						>
-							Stop
+							{t("record.stop")}
 						</button>
 						<button
 							type="button"
 							onClick={cancelRecording}
 							className="px-4 py-2 rounded-full border border-white/15 text-xs hover:bg-white/10"
 						>
-							Cancel
+							{t("record.cancel")}
 						</button>
 					</div>
 				</div>
@@ -587,24 +606,22 @@ export function CaptureCompanion() {
 			<CompanionShell>
 				<div className="max-w-md mx-auto px-5 py-6 flex flex-col gap-4">
 					<header>
-						<h1 className="text-lg font-semibold tracking-tight">Capture Companion setup</h1>
-						<p className="text-xs text-white/50">
-							Configure once. After this, the app opens straight to the record button.
-						</p>
+						<h1 className="text-lg font-semibold tracking-tight">{t("setup.title")}</h1>
+						<p className="text-xs text-white/50">{t("setup.subtitle")}</p>
 					</header>
 
 					<section className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm flex flex-col gap-2">
 						<div className="flex items-center justify-between">
-							<span className="text-xs text-white/60">1 · Docsie account</span>
+							<span className="text-xs text-white/60">{t("setup.accountStep")}</span>
 							{connected ? (
-								<span className="text-xs text-emerald-300">Connected</span>
+								<span className="text-xs text-emerald-300">{t("setup.connected")}</span>
 							) : (
-								<span className="text-xs text-amber-300">Not connected</span>
+								<span className="text-xs text-amber-300">{t("setup.notConnected")}</span>
 							)}
 						</div>
 						{connected ? (
 							<div className="text-xs text-white/70">
-								{docsieState?.organizationName ?? "Organization"}
+								{docsieState?.organizationName ?? t("setup.organizationFallback")}
 								{docsieState?.workspaceName ? ` / ${docsieState.workspaceName}` : ""}
 							</div>
 						) : (
@@ -613,41 +630,39 @@ export function CaptureCompanion() {
 								onClick={handleConnect}
 								className="self-start px-3 py-1.5 rounded-md bg-[#FF6738] text-white text-xs font-medium hover:opacity-90"
 							>
-								Connect to Docsie
+								{t("setup.connect")}
 							</button>
 						)}
 					</section>
 
 					<section className="rounded-lg border border-white/10 bg-white/5 p-4 flex flex-col gap-3 text-sm">
-						<span className="text-xs text-white/60">2 · Capture defaults</span>
+						<span className="text-xs text-white/60">{t("setup.defaultsStep")}</span>
 						<label className="flex flex-col gap-1">
-							<span className="text-xs text-white/60">Attach to windows whose title contains</span>
+							<span className="text-xs text-white/60">{t("source.matchLabel")}</span>
 							<input
 								value={settings.matchRule}
 								onChange={(event) => updateSettings({ matchRule: event.target.value })}
-								placeholder="e.g. Viewer"
+								placeholder={t("source.matchPlaceholder")}
 								className="bg-black/40 border border-white/15 rounded-md px-2.5 py-1.5 outline-none focus:border-white/40"
 							/>
 						</label>
 						{attachedSource ? (
 							<div className="flex items-center gap-2 text-xs text-emerald-200">
 								<span className="w-2 h-2 rounded-full bg-emerald-400" />
-								Currently matching: {attachedSource.name}
+								{t("source.attached", { name: attachedSource.name })}
 							</div>
 						) : (
-							<div className="text-xs text-amber-200/90">
-								No open window matches yet — open the target application to verify.
-							</div>
+							<div className="text-xs text-amber-200/90">{t("source.noMatch")}</div>
 						)}
 						<label className="flex flex-col gap-1">
-							<span className="text-[11px] text-white/45">Or choose a source manually</span>
+							<span className="text-[11px] text-white/45">{t("source.manualLabel")}</span>
 							<select
 								value={attachedSource?.id ?? ""}
 								onChange={(event) => void handleManualSelect(event.target.value)}
 								className="bg-black/40 border border-white/15 rounded-md px-2.5 py-1.5 text-xs outline-none focus:border-white/40"
 							>
 								<option value="" disabled>
-									Select a screen or window…
+									{t("source.selectPlaceholder")}
 								</option>
 								{availableSources.map((source) => (
 									<option key={source.id} value={source.id}>
@@ -657,7 +672,7 @@ export function CaptureCompanion() {
 							</select>
 						</label>
 						<div className="flex flex-col gap-1">
-							<span className="text-xs text-white/60">After generation, return</span>
+							<span className="text-xs text-white/60">{t("setup.returnFormatLabel")}</span>
 							<div className="flex gap-2">
 								<button
 									type="button"
@@ -668,7 +683,7 @@ export function CaptureCompanion() {
 											: "border-white/15 hover:bg-white/10"
 									}`}
 								>
-									Knowledge base link
+									{t("setup.returnKb")}
 								</button>
 								<button
 									type="button"
@@ -679,12 +694,12 @@ export function CaptureCompanion() {
 											: "border-white/15 hover:bg-white/10"
 									}`}
 								>
-									PDF
+									{t("setup.returnPdf")}
 								</button>
 							</div>
 						</div>
 						<label className="flex flex-col gap-1">
-							<span className="text-xs text-white/60">Quality</span>
+							<span className="text-xs text-white/60">{t("setup.quality")}</span>
 							<select
 								value={settings.quality}
 								onChange={(event) =>
@@ -692,14 +707,14 @@ export function CaptureCompanion() {
 								}
 								className="bg-black/40 border border-white/15 rounded-md px-2.5 py-1.5 outline-none focus:border-white/40"
 							>
-								<option value="draft">Draft (fastest, fewest credits)</option>
-								<option value="standard">Standard</option>
-								<option value="detailed">Detailed</option>
-								<option value="ultra">Ultra</option>
+								<option value="draft">{t("setup.qualityDraft")}</option>
+								<option value="standard">{t("setup.qualityStandard")}</option>
+								<option value="detailed">{t("setup.qualityDetailed")}</option>
+								<option value="ultra">{t("setup.qualityUltra")}</option>
 							</select>
 						</label>
 						<label className="flex flex-col gap-1">
-							<span className="text-xs text-white/60">Documentation language</span>
+							<span className="text-xs text-white/60">{t("setup.language")}</span>
 							<select
 								value={settings.language}
 								onChange={(event) => updateSettings({ language: event.target.value })}
@@ -715,18 +730,18 @@ export function CaptureCompanion() {
 								)}
 							</select>
 							<span className="text-[10px] text-white/35">
-								Defaults to your system language ({detectSystemLanguage()}).
+								{t("setup.languageHint", { language: detectSystemLanguage() })}
 							</span>
 						</label>
 						<label className="flex flex-col gap-1">
-							<span className="text-xs text-white/60">Generation template</span>
+							<span className="text-xs text-white/60">{t("setup.template")}</span>
 							<select
 								value={settings.generationTemplateId}
 								onChange={(event) => updateSettings({ generationTemplateId: event.target.value })}
 								disabled={!connected}
 								className="bg-black/40 border border-white/15 rounded-md px-2.5 py-1.5 outline-none focus:border-white/40 disabled:opacity-50"
 							>
-								<option value="">No template (default structure)</option>
+								<option value="">{t("setup.templateNone")}</option>
 								{templates.map((template) => (
 									<option key={template.id} value={template.id}>
 										{template.name}
@@ -735,9 +750,7 @@ export function CaptureCompanion() {
 								))}
 							</select>
 							{!connected && (
-								<span className="text-[10px] text-white/35">
-									Connect to Docsie to load your templates.
-								</span>
+								<span className="text-[10px] text-white/35">{t("setup.templateHint")}</span>
 							)}
 						</label>
 						<label className="flex items-center gap-2 text-xs text-white/70">
@@ -746,7 +759,7 @@ export function CaptureCompanion() {
 								checked={microphoneEnabled}
 								onChange={(event) => setMicrophoneEnabled(event.target.checked)}
 							/>
-							Record microphone narration
+							{t("setup.microphone")}
 						</label>
 					</section>
 
@@ -759,7 +772,7 @@ export function CaptureCompanion() {
 						}}
 						className="py-3 rounded-lg bg-[#FF6738] text-white font-semibold text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
 					>
-						{connected ? "Start capturing" : "Connect to Docsie to continue"}
+						{connected ? t("setup.startCapturing") : t("setup.connectToContinue")}
 					</button>
 				</div>
 			</CompanionShell>
@@ -777,37 +790,39 @@ export function CaptureCompanion() {
 							}`}
 						/>
 						<span className="truncate text-white/60">
-							{connected ? (docsieState?.organizationName ?? "Connected") : "Not connected"}
-							{attachedSource ? ` · ${attachedSource.name}` : " · no source"}
+							{connected
+								? (docsieState?.organizationName ?? t("setup.connected"))
+								: t("setup.notConnected")}
+							{attachedSource ? ` · ${attachedSource.name}` : ` · ${t("main.noSource")}`}
 						</span>
 					</div>
 					<div className="flex items-center gap-1.5 flex-none">
 						<button
 							type="button"
 							onClick={() => void scanForSource()}
-							title="Rescan for the target window"
+							title={t("main.rescanTitle")}
 							className="text-[11px] px-2 py-1 rounded border border-white/15 hover:bg-white/10"
 						>
-							Rescan
+							{t("main.rescan")}
 						</button>
 						<button
 							type="button"
 							onClick={() => setShowSettings(true)}
-							title="Open setup"
+							title={t("main.setupTitle")}
 							className="text-[11px] px-2 py-1 rounded border border-white/15 hover:bg-white/10"
 						>
-							Setup
+							{t("main.setup")}
 						</button>
 					</div>
 				</header>
 
 				<section className="rounded-lg border border-white/10 bg-white/5 p-4 flex flex-col gap-3">
 					<label className="flex flex-col gap-1 text-sm">
-						<span className="text-xs text-white/60">Session name (becomes the doc title)</span>
+						<span className="text-xs text-white/60">{t("session.label")}</span>
 						<input
 							value={sessionTitle}
 							onChange={(event) => setSessionTitle(event.target.value)}
-							placeholder={defaultSessionTitle()}
+							placeholder={defaultSessionTitle(t)}
 							disabled={recording || busyPublishing}
 							className="bg-black/40 border border-white/15 rounded-md px-2.5 py-1.5 outline-none focus:border-white/40 disabled:opacity-50"
 						/>
@@ -829,7 +844,9 @@ export function CaptureCompanion() {
 									: "bg-[#FF6738] hover:opacity-90 text-white disabled:opacity-40 disabled:cursor-not-allowed"
 							}`}
 						>
-							{recording ? `Stop recording · ${formatElapsed(elapsedSeconds)}` : "Record"}
+							{recording
+								? t("record.stopWithTime", { time: formatElapsed(elapsedSeconds) })
+								: t("record.record")}
 						</button>
 						{recording && (
 							<button
@@ -837,18 +854,14 @@ export function CaptureCompanion() {
 								onClick={cancelRecording}
 								className="px-3 py-3 rounded-lg border border-white/15 text-xs hover:bg-white/10"
 							>
-								Cancel
+								{t("record.cancel")}
 							</button>
 						)}
 					</div>
 
-					{!connected && (
-						<p className="text-[11px] text-white/45">Connect to Docsie before recording.</p>
-					)}
+					{!connected && <p className="text-[11px] text-white/45">{t("main.connectFirst")}</p>}
 					{connected && !attachedSource && (
-						<p className="text-[11px] text-white/45">
-							Open the application you want to capture, or pick a source manually.
-						</p>
+						<p className="text-[11px] text-white/45">{t("main.pickSource")}</p>
 					)}
 				</section>
 
@@ -902,7 +915,7 @@ export function CaptureCompanion() {
 										}
 										className="py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium"
 									>
-										Open in knowledge base
+										{t("result.openKb")}
 									</button>
 								)}
 								{publishResult.pdfUrl && (
@@ -913,7 +926,7 @@ export function CaptureCompanion() {
 										}
 										className="py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium"
 									>
-										Download PDF
+										{t("result.downloadPdf")}
 									</button>
 								)}
 								<button
@@ -921,7 +934,7 @@ export function CaptureCompanion() {
 									onClick={resetForNextSession}
 									className="py-2 rounded-md border border-white/15 text-xs hover:bg-white/10"
 								>
-									Record another session
+									{t("result.recordAnother")}
 								</button>
 							</div>
 						)}
@@ -932,7 +945,7 @@ export function CaptureCompanion() {
 								onClick={resetForNextSession}
 								className="py-2 rounded-md border border-white/15 text-xs hover:bg-white/10"
 							>
-								Dismiss
+								{t("result.dismiss")}
 							</button>
 						)}
 					</section>

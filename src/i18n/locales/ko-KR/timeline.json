@@ -4,12 +4,14 @@
 		"suggestZooms": "커서 기반 줌 제안",
 		"addTrim": "트림 추가 (T)",
 		"addAnnotation": "주석 추가 (A)",
+		"addBlur": "블러 추가 (B)",
 		"addSpeed": "속도 추가 (S)"
 	},
 	"hints": {
 		"pressZoom": "Z를 눌러 줌 추가",
 		"pressTrim": "T를 눌러 트림 추가",
 		"pressAnnotation": "A를 눌러 주석 추가",
+		"pressBlur": "B를 눌러 블러 영역 추가",
 		"pressSpeed": "S를 눌러 속도 추가"
 	},
 	"labels": {
@@ -19,6 +21,7 @@
 		"trimItem": "트림 {{index}}",
 		"speedItem": "속도 {{index}}",
 		"annotationItem": "주석",
+		"blurItem": "블러 {{index}}",
 		"imageItem": "이미지",
 		"emptyText": "빈 텍스트"
 	},

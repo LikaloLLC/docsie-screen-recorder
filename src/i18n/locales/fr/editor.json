@@ -1,4 +1,10 @@
 {
+	"newRecording": {
+		"title": "Revenir à l'enregistreur",
+		"description": "Votre session actuelle a été enregistrée.",
+		"cancel": "Annuler",
+		"confirm": "Confirmer"
+	},
 	"errors": {
 		"noVideoLoaded": "Aucune vidéo chargée",
 		"videoNotReady": "Vidéo non prête",
@@ -30,6 +36,8 @@
 		"systemAudioUnavailable": "Audio système non disponible. Enregistrement sans audio système.",
 		"microphoneDenied": "Accès au microphone refusé. L'enregistrement continuera sans audio.",
 		"cameraDenied": "Accès à la caméra refusé. L'enregistrement continuera sans webcam.",
+		"cameraDisconnected": "Webcam déconnectée.",
+		"cameraNotFound": "Caméra introuvable.",
 		"permissionDenied": "Permission d'enregistrement refusée. Veuillez autoriser l'enregistrement d'écran."
 	}
 }

@@ -1,0 +1,352 @@
+{
+	"publish": {
+		"dialog": {
+			"title": "影片轉文件",
+			"analysis": "分析",
+			"launch": "啟動",
+			"aiCredits": "AI 點數",
+			"loadingBalance": "正在載入餘額",
+			"balanceUnavailable": "無法取得餘額"
+		},
+		"phase": {
+			"starting": "正在啟動轉換",
+			"analysis": "正在分析影片",
+			"generation": "正在產生文件",
+			"completed": "已完成",
+			"failed": "失敗",
+			"ready": "就緒"
+		},
+		"duration": {
+			"unknown": "未知",
+			"seconds": "{{seconds}}秒",
+			"minutesSeconds": "{{minutes}}分{{seconds}}秒"
+		},
+		"sampling": {
+			"everySeconds": "每 {{seconds}} 秒"
+		},
+		"credits": {
+			"estimate": "{{credits}} 點數",
+			"available": "{{credits}} 點數可用",
+			"monthly": "每月 {{credits}}",
+			"purchased": "已購買 {{credits}}",
+			"charged": "已扣除 {{credits}} 點數"
+		},
+		"defaults": {
+			"bookTitle": "影片文件",
+			"resultTitle": "Docsie 結果",
+			"generatedShelf": "已產生的書架"
+		},
+		"connection": {
+			"connectedTo": "已連接到 {{organization}}",
+			"connected": "已連接到 Docsie",
+			"loginRequired": "需要登入 Docsie",
+			"docsieConnected": "Docsie 已連接",
+			"signInRequired": "需要登入",
+			"noRecording": "未載入錄製"
+		},
+		"artifact": {
+			"docs": "文件",
+			"presentation": "簡報",
+			"docsDescription": "Markdown、DOCX 與 PDF",
+			"presentationDescription": "Markdown 與 PowerPoint"
+		},
+		"actions": {
+			"convertVideoToDocs": "將影片轉換為文件",
+			"createPresentation": "建立簡報",
+			"logInToDocsie": "登入 Docsie",
+			"openInDocsie": "在 Docsie 中開啟",
+			"runAnalysisAgain": "重新執行分析",
+			"additionalSettings": "更多設定",
+			"createAccount": "建立帳戶",
+			"close": "關閉",
+			"generateDocs": "產生文件",
+			"generatePresentation": "產生簡報",
+			"view": "檢視",
+			"credits": "點數",
+			"loadWorkspaces": "載入工作區",
+			"saveDefaults": "儲存預設值",
+			"refresh": "重新整理",
+			"loading": "載入中"
+		},
+		"status": {
+			"preparing": "Docsie 正在準備目前的錄製。",
+			"buildingPresentation": "正在建立簡報",
+			"statusLabel": "狀態：{{status}}",
+			"frames": "約 {{count}} 幀",
+			"estimateHint": "錄製器讀取影片長度後將顯示預估。",
+			"steps": {
+				"analyze": "分析",
+				"generate": "產生",
+				"buildDeck": "建立簡報",
+				"exports": "匯出"
+			}
+		},
+		"busy": {
+			"uploading": "正在將目前的錄製上傳到 Docsie。",
+			"generatingDocsOutput": "Docsie 正在產生 Markdown、PDF 與 DOCX 輸出。",
+			"generatingPresentationOutput": "Docsie 正在產生 Markdown 與 PowerPoint 簡報。",
+			"buildingDocs": "Docsie 正在建立最終文件與匯出檔案。",
+			"buildingPresentation": "Docsie 正在建立簡報與匯出檔案。",
+			"analysisRunning": "Docsie 已接收錄製。分析正在進行中。",
+			"analysisBeforeDocs": "Docsie 已接收錄製。將在產生文件之前進行分析。",
+			"analysisBeforePresentation": "Docsie 已接收錄製。將在產生簡報之前進行分析。",
+			"analysisFinished": "Docsie 已完成分析。準備就緒後即可產生最終文件。",
+			"finishedDocs": "Docsie 已將此錄製轉換為文件。",
+			"finishedPresentation": "Docsie 已將此錄製轉換為簡報。",
+			"loadedFromHistory": "已從本機歷史記錄載入此已完成的 Docsie 結果。"
+		},
+		"toasts": {
+			"openedSignIn": "已在瀏覽器中開啟 Docsie 登入頁面",
+			"openedSignUp": "已在瀏覽器中開啟 Docsie 註冊頁面",
+			"generationStarted": "Docsie 產生已開始",
+			"recordingSent": "錄製已傳送到 Docsie",
+			"markdownSaved": "Markdown 已儲存",
+			"markdownCopied": "Markdown 已複製",
+			"defaultsSaved": "Docsie 預設值已儲存",
+			"templateSelected": "已選擇範本：{{name}}",
+			"templateCleared": "已清除範本選擇"
+		},
+		"errors": {
+			"openSignIn": "無法開啟 Docsie 登入頁面",
+			"openSignUp": "無法開啟 Docsie 註冊頁面",
+			"connectFirst": "請先將此錄製器連接到 Docsie",
+			"loadWorkspaces": "無法載入 Docsie 工作區",
+			"saveSettings": "無法儲存 Docsie 設定",
+			"startGeneration": "無法啟動 Docsie 產生",
+			"pollStatus": "無法查詢 Docsie 工作狀態",
+			"jobFailed": "Docsie 工作失敗",
+			"generateDocs": "無法產生文件",
+			"noVideo": "沒有可傳送到 Docsie 的影片",
+			"connectBeforeConvert": "轉換此錄製之前請先連接 Docsie",
+			"startJob": "無法啟動 Docsie 工作",
+			"runAnalysisFirst": "請先執行分析步驟",
+			"connectBeforeGenerate": "產生文件之前請先連接 Docsie",
+			"openResult": "無法開啟 Docsie 結果",
+			"openExport": "無法開啟 {{format}} 匯出檔案",
+			"saveMarkdown": "無法儲存 Markdown",
+			"copyMarkdown": "無法複製 Markdown",
+			"saveDefaults": "無法儲存 Docsie 預設值",
+			"saveTokenFirst": "瀏覽範本之前請先儲存 Docsie API 權杖",
+			"exportStatus": "匯出 {{status}}"
+		},
+		"files": {
+			"title": "檔案",
+			"subtitle": "開啟 Docsie 結果或下載產生的檔案。",
+			"markdown": "Markdown",
+			"ready": "就緒",
+			"pending": "等待中",
+			"processing": "處理中",
+			"queued": "排隊中",
+			"failed": "失敗",
+			"copyMarkdown": "複製 Markdown",
+			"downloadMarkdown": "下載 Markdown",
+			"downloadFormat": "下載 {{format}}",
+			"markdownReadyHint": "Markdown 已就緒，可複製或儲存到本機。",
+			"markdownPendingHint": "Docsie 完成產生後，Markdown 將顯示在此處。",
+			"savedInDocsie": "已儲存到 Docsie",
+			"storedInDocsie": "此產生結果已儲存在 Docsie 中。",
+			"shelf": "書架：{{name}}"
+		},
+		"history": {
+			"title": "分析歷史",
+			"subtitle": "此錄製已完成的 Docsie 執行會儲存在本機。",
+			"savedCount": "已儲存 {{count}} 筆",
+			"savingToHistory": "正在將此已完成的結果儲存到本機歷史記錄。"
+		},
+		"settings": {
+			"title": "更多設定",
+			"subtitle": "覆寫設定、連線備援與工作詳細資訊。",
+			"workspaceAndOutput": "工作區與輸出",
+			"intent": "用途",
+			"intentDocumentation": "文件",
+			"intentExport": "僅匯出",
+			"publishToKnowledgeBase": "發佈到知識庫",
+			"workspace": "工作區",
+			"selectWorkspace": "選擇工作區",
+			"quality": "品質",
+			"language": "語言",
+			"languagePlaceholder": "english",
+			"docStyle": "文件樣式",
+			"deckType": "簡報類型",
+			"bookTitle": "書籍標題",
+			"exportTitle": "匯出標題",
+			"destinationShelf": "目標書架",
+			"createNewShelf": "根據書籍標題建立新書架",
+			"savedShelf": "已儲存的書架（{{id}}）",
+			"shelfSelectedHint": "Docsie 會將產生的書籍加入此書架。",
+			"shelfCreateHint": "Docsie 將建立書架，並在後續執行中重複使用。",
+			"audience": "受眾",
+			"audiencePlaceholder": "支援團隊",
+			"maxSlides": "最大投影片數",
+			"imageQuality": "影像品質",
+			"illustrationStyle": "插圖風格",
+			"illustrationStylePlaceholder": "corporate",
+			"autoGenerateDocs": "自動產生文件",
+			"autoGeneratePresentation": "自動產生簡報",
+			"sourceName": "來源名稱",
+			"sourceNamePlaceholder": "Screen Recorder",
+			"enhancement": "增強",
+			"generateCoverImage": "產生封面影像",
+			"embedImages": "嵌入影像",
+			"rewriteInstructions": "改寫指示",
+			"outputTemplate": "輸出範本",
+			"templateSelectedHint": "所選範本庫的範本 ID 將傳送到 Docsie。下方的自訂文字僅作為備援保留。",
+			"templatePickHint": "選擇範本庫範本，或在下方輸入自訂結構。",
+			"templateInstructionPlaceholder": "未選擇範本庫範本時的選用自訂結構。",
+			"jobDetails": "工作詳細資訊",
+			"analysisJob": "分析工作",
+			"generationJob": "產生工作",
+			"notStarted": "尚未開始",
+			"waitingForAnalysis": "等待分析",
+			"disabled": "已停用"
+		},
+		"quality": {
+			"options": {
+				"draft": {
+					"label": "草稿",
+					"description": "250 點數/分鐘"
+				},
+				"standard": {
+					"label": "標準",
+					"description": "500 點數/分鐘"
+				},
+				"detailed": {
+					"label": "詳細",
+					"description": "1,000 點數/分鐘"
+				},
+				"ultra": {
+					"label": "超高",
+					"description": "2,000 點數/分鐘"
+				}
+			}
+		},
+		"docStyleOptions": {
+			"guide": "指南",
+			"sop": "SOP",
+			"tutorial": "教學",
+			"how-to": "操作指南",
+			"blog": "部落格",
+			"training": "培訓",
+			"knowledge-base": "知識庫",
+			"release-notes": "版本說明",
+			"reference": "參考",
+			"product": "產品",
+			"policy": "政策"
+		},
+		"deckTypeOptions": {
+			"training": "培訓",
+			"tutorial": "教學",
+			"sales": "銷售",
+			"executive": "高階主管",
+			"support": "支援",
+			"onboarding": "入門引導"
+		},
+		"imageQualityOptions": {
+			"low": "低",
+			"medium": "中",
+			"high": "高"
+		},
+		"enhanceOptions": {
+			"required": "依需求",
+			"enhanced": "增強",
+			"standard": "標準"
+		}
+	},
+	"templates": {
+		"megaCategories": {
+			"core": "核心文件",
+			"business": "商業營運",
+			"technology": "技術與資料",
+			"health": "健康與生命科學",
+			"industry": "製造與現場",
+			"commerce": "商業與服務",
+			"transport": "運輸與物流",
+			"public": "公共與教育",
+			"other": "其他"
+		},
+		"categories": {
+			"technical": "技術",
+			"process": "流程與營運",
+			"product": "產品",
+			"compliance": "法規遵循",
+			"engineering": "工程",
+			"training": "培訓",
+			"planning": "規劃",
+			"manufacturing": "製造",
+			"healthcare": "醫療保健",
+			"consulting": "IT/ERP 顧問",
+			"legal": "法務",
+			"education": "教育",
+			"finance": "金融",
+			"government": "政府",
+			"construction": "營建",
+			"retail_ecommerce": "零售與電商",
+			"logistics_supply_chain": "物流與供應鏈",
+			"energy_utilities": "能源與公用事業",
+			"telecom": "電信",
+			"insurance": "保險",
+			"hr_people_ops": "人力資源與人員營運",
+			"customer_success": "客戶成功",
+			"cybersecurity_privacy": "網路安全與隱私",
+			"data_ai_analytics": "資料、AI 與分析",
+			"hospitality_food_facilities": "餐旅、餐飲與設施",
+			"pharma_biotech": "製藥與生物技術",
+			"medical_devices": "醫療器材",
+			"life_sciences_labs": "生命科學實驗室",
+			"chemicals": "化學",
+			"environmental_services": "環境服務",
+			"automotive": "汽車",
+			"aerospace_defense": "航太與國防",
+			"semiconductor_electronics": "半導體與電子",
+			"mining_metals": "採礦與金屬",
+			"industrial_equipment": "工業設備",
+			"banking_lending": "銀行與貸款",
+			"real_estate_property": "不動產與物業",
+			"accounting_audit": "會計與稽核",
+			"nonprofit_ngos": "非營利組織與 NGO",
+			"public_safety_emergency": "公共安全與緊急應變",
+			"agriculture_food_production": "農業與食品生產",
+			"restaurants_food_service": "餐廳與餐飲服務",
+			"consumer_packaged_goods": "民生消費品",
+			"fashion_apparel": "時尚與服飾",
+			"beauty_wellness": "美容與養生",
+			"oil_gas": "石油與天然氣",
+			"transportation_transit": "交通運輸",
+			"maritime_shipping": "海運航運",
+			"media_entertainment": "媒體與娛樂",
+			"travel_tourism": "旅遊與觀光"
+		},
+		"noTemplate": "無範本",
+		"triggerDescription": "使用所選樣式產生，不強制套用範本庫結構。",
+		"browse": "瀏覽",
+		"libraryTitle": "範本庫",
+		"libraryDescription": "選擇文件範本，並在產生前預覽範例輸出。",
+		"searchPlaceholder": "搜尋範本...",
+		"groupsAriaLabel": "範本群組",
+		"allTemplates": "所有範本",
+		"fallbackTitle": "範本",
+		"templatesCount": "{{count}} 個範本",
+		"allInGroup": "群組內全部",
+		"noTemplateCardDescription": "使用您選擇的樣式產生，不強制套用範本庫結構。",
+		"sections": "章節",
+		"loading": "正在載入範本...",
+		"noMatches": "沒有符合搜尋的範本。",
+		"previewNote": "產生前可預覽範本輸出。",
+		"back": "返回",
+		"close": "關閉",
+		"useTemplate": "使用此範本"
+	},
+	"auth": {
+		"accountRequired": "需要 Docsie 帳戶",
+		"signIn": "登入",
+		"createAccount": "建立帳戶",
+		"checking": "檢查中",
+		"connectedConfirm": "我已連接 Docsie",
+		"close": "關閉",
+		"footer": "登入後，錄製器將解鎖並儲存到您的 Docsie 工作區。",
+		"errors": {
+			"openSignIn": "無法開啟 Docsie 登入頁面",
+			"openSignUp": "無法開啟 Docsie 註冊頁面"
+		}
+	}
+}

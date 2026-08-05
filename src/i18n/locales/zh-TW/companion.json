@@ -1,0 +1,90 @@
+{
+	"shell": {
+		"title": "Docsie 錄製助手",
+		"minimize": "最小化",
+		"close": "關閉"
+	},
+	"setup": {
+		"title": "錄製助手設定",
+		"subtitle": "只需設定一次。之後應用程式啟動後將直接顯示錄製按鈕。",
+		"accountStep": "1 · Docsie 帳戶",
+		"connected": "已連線",
+		"notConnected": "未連線",
+		"organizationFallback": "組織",
+		"connect": "連線 Docsie",
+		"defaultsStep": "2 · 錄製預設設定",
+		"returnFormatLabel": "產生完成後返回",
+		"returnKb": "知識庫連結",
+		"returnPdf": "PDF",
+		"quality": "品質",
+		"qualityDraft": "草稿（最快，消耗點數最少）",
+		"qualityStandard": "標準",
+		"qualityDetailed": "詳細",
+		"qualityUltra": "超高",
+		"language": "文件語言",
+		"languageHint": "預設使用您的系統語言（{{language}}）。",
+		"template": "產生範本",
+		"templateNone": "無範本（預設結構）",
+		"templateHint": "連線 Docsie 以載入您的範本。",
+		"microphone": "錄製麥克風旁白",
+		"startCapturing": "開始錄製",
+		"connectToContinue": "請連線 Docsie 以繼續"
+	},
+	"source": {
+		"matchLabel": "附加到標題包含以下內容的視窗",
+		"matchPlaceholder": "例如 Viewer",
+		"attached": "目前符合：{{name}}",
+		"noMatch": "尚無符合的視窗 — 請開啟目標應用程式進行確認。",
+		"manualLabel": "或手動選擇來源",
+		"selectPlaceholder": "選擇螢幕或視窗…"
+	},
+	"main": {
+		"noSource": "無來源",
+		"rescan": "重新掃描",
+		"rescanTitle": "重新掃描目標視窗",
+		"setup": "設定",
+		"setupTitle": "開啟設定",
+		"connectFirst": "錄製前請先連線 Docsie。",
+		"pickSource": "請開啟要錄製的應用程式，或手動選擇來源。"
+	},
+	"session": {
+		"label": "工作階段名稱（將作為文件標題）",
+		"defaultTitle": "培訓工作階段 {{date}} {{time}}"
+	},
+	"record": {
+		"record": "錄製",
+		"stop": "停止",
+		"cancel": "取消",
+		"stopWithTime": "停止錄製 · {{time}}"
+	},
+	"progress": {
+		"upload": "上傳",
+		"analyze": "分析",
+		"generate": "產生",
+		"pdfExport": "PDF 匯出",
+		"uploading": "正在將錄製內容上傳到 Docsie…",
+		"analyzing": "Docsie 正在分析錄製內容…",
+		"generating": "Docsie 正在撰寫文件…",
+		"preparingPdf": "正在準備 PDF 匯出…",
+		"done": "文件已就緒。"
+	},
+	"toast": {
+		"docsReady": "文件已就緒"
+	},
+	"result": {
+		"openKb": "在知識庫中開啟",
+		"downloadPdf": "下載 PDF",
+		"recordAnother": "錄製另一個工作階段",
+		"dismiss": "關閉"
+	},
+	"errors": {
+		"pollStatusFailed": "無法取得 Docsie 工作狀態",
+		"jobEnded": "Docsie 工作已終止：{{status}}",
+		"fetchResultFailed": "無法取得 Docsie 工作結果",
+		"pdfExportEnded": "PDF 匯出已終止：{{status}}",
+		"pdfExportTimeout": "等待 PDF 匯出逾時",
+		"startJobFailed": "無法啟動 Docsie 工作",
+		"startGenerationFailed": "無法啟動 Docsie 文件產生",
+		"noVideoProduced": "錄製已結束，但未產生影片檔案。"
+	}
+}

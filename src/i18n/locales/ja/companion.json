@@ -1,0 +1,90 @@
+{
+	"shell": {
+		"title": "Docsie キャプチャコンパニオン",
+		"minimize": "最小化",
+		"close": "閉じる"
+	},
+	"setup": {
+		"title": "キャプチャコンパニオンの設定",
+		"subtitle": "設定は一度だけです。以降はアプリを起動するとすぐに録画ボタンが表示されます。",
+		"accountStep": "1 · Docsie アカウント",
+		"connected": "接続済み",
+		"notConnected": "未接続",
+		"organizationFallback": "組織",
+		"connect": "Docsie に接続",
+		"defaultsStep": "2 · キャプチャの既定設定",
+		"returnFormatLabel": "生成後に受け取る形式",
+		"returnKb": "ナレッジベースのリンク",
+		"returnPdf": "PDF",
+		"quality": "品質",
+		"qualityDraft": "ドラフト（最速・最少クレジット）",
+		"qualityStandard": "標準",
+		"qualityDetailed": "詳細",
+		"qualityUltra": "ウルトラ",
+		"language": "ドキュメントの言語",
+		"languageHint": "システム言語（{{language}}）が既定になります。",
+		"template": "生成テンプレート",
+		"templateNone": "テンプレートなし（既定の構成）",
+		"templateHint": "テンプレートを読み込むには Docsie に接続してください。",
+		"microphone": "マイクのナレーションを録音する",
+		"startCapturing": "キャプチャを開始",
+		"connectToContinue": "続行するには Docsie に接続してください"
+	},
+	"source": {
+		"matchLabel": "タイトルに次の文字列を含むウィンドウにアタッチ",
+		"matchPlaceholder": "例: Viewer",
+		"attached": "現在一致中: {{name}}",
+		"noMatch": "一致するウィンドウがまだありません。対象のアプリケーションを開いて確認してください。",
+		"manualLabel": "またはソースを手動で選択",
+		"selectPlaceholder": "画面またはウィンドウを選択…"
+	},
+	"main": {
+		"noSource": "ソースなし",
+		"rescan": "再スキャン",
+		"rescanTitle": "対象ウィンドウを再スキャン",
+		"setup": "設定",
+		"setupTitle": "設定を開く",
+		"connectFirst": "録画する前に Docsie に接続してください。",
+		"pickSource": "キャプチャしたいアプリケーションを開くか、ソースを手動で選択してください。"
+	},
+	"session": {
+		"label": "セッション名（ドキュメントのタイトルになります）",
+		"defaultTitle": "トレーニングセッション {{date}} {{time}}"
+	},
+	"record": {
+		"record": "録画",
+		"stop": "停止",
+		"cancel": "キャンセル",
+		"stopWithTime": "録画を停止 · {{time}}"
+	},
+	"progress": {
+		"upload": "アップロード",
+		"analyze": "解析",
+		"generate": "生成",
+		"pdfExport": "PDF エクスポート",
+		"uploading": "録画を Docsie にアップロードしています…",
+		"analyzing": "Docsie が録画を解析しています…",
+		"generating": "Docsie がドキュメントを作成しています…",
+		"preparingPdf": "PDF エクスポートを準備しています…",
+		"done": "ドキュメントの準備ができました。"
+	},
+	"toast": {
+		"docsReady": "ドキュメントの準備ができました"
+	},
+	"result": {
+		"openKb": "ナレッジベースで開く",
+		"downloadPdf": "PDF をダウンロード",
+		"recordAnother": "別のセッションを録画",
+		"dismiss": "閉じる"
+	},
+	"errors": {
+		"pollStatusFailed": "Docsie ジョブの状態を取得できませんでした",
+		"jobEnded": "Docsie ジョブが {{status}} になりました",
+		"fetchResultFailed": "Docsie ジョブの結果を取得できませんでした",
+		"pdfExportEnded": "PDF エクスポートが {{status}} になりました",
+		"pdfExportTimeout": "PDF エクスポートの待機がタイムアウトしました",
+		"startJobFailed": "Docsie ジョブを開始できませんでした",
+		"startGenerationFailed": "Docsie の生成を開始できませんでした",
+		"noVideoProduced": "録画は終了しましたが、動画ファイルが生成されませんでした。"
+	}
+}

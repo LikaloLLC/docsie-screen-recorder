@@ -14,18 +14,7 @@
 		"disableSystemAudio": "Sistem sesini devre dışı bırak",
 		"enableMicrophone": "Mikrofonu etkinleştir",
 		"disableMicrophone": "Mikrofonu devre dışı bırak",
-		"defaultMicrophone": "Varsayılan Mikrofon",
-		"enableNoiseReduction": "Gürültü azaltmayı etkinleştir (yapay zeka destekli)",
-		"disableNoiseReduction": "Gürültü azaltmayı devre dışı bırak",
-		"noiseReduction": "Gürültü azaltma",
-		"clickToCycle": "Seviye değiştirmek için tıklayın",
-		"nrLevel": {
-			"light": "Hafif",
-			"moderate": "Orta",
-			"aggressive": "Güçlü"
-		},
-		"noiseReductionPrompt": "Daha net ses için yapay zeka destekli gürültü azaltmayı etkinleştirmek ister misiniz?",
-		"enableNoiseReductionShort": "Etkinleştir"
+		"defaultMicrophone": "Varsayılan Mikrofon"
 	},
 	"webcam": {
 		"enableWebcam": "Kamerayı etkinleştir",
@@ -45,5 +34,11 @@
 	"recording": {
 		"selectSource": "Lütfen kayıt için bir kaynak seçin"
 	},
-	"language": "Dil"
+	"language": "Dil",
+	"systemLanguagePrompt": {
+		"title": "Sistem dilinizi kullanmak ister misiniz?",
+		"description": "Sistem diliniz {{language}} olarak algılandı. Docsie Screen Recorder'ı {{language}} diline geçirmek ister misiniz?",
+		"switch": "{{language}} diline geç",
+		"keepDefault": "Mevcut dili koru"
+	}
 }

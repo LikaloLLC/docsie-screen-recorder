@@ -1,0 +1,183 @@
+{
+	"zoom": {
+		"level": "ズームレベル",
+		"selectRegion": "調整するズーム領域を選択してください",
+		"deleteZoom": "ズームを削除",
+		"focusMode": {
+			"title": "フォーカスモード",
+			"manual": "手動",
+			"auto": "自動",
+			"autoDescription": "カメラが記録されたカーソル位置を追従します"
+		},
+		"speed": {
+			"title": "ズーム速度",
+			"instant": "瞬間",
+			"fast": "高速",
+			"smooth": "スムーズ",
+			"lazy": "ゆっくり"
+		}
+	},
+	"speed": {
+		"playbackSpeed": "再生速度",
+		"selectRegion": "調整する速度領域を選択してください",
+		"deleteRegion": "速度領域を削除",
+		"customPlaybackSpeed": "カスタム再生速度",
+		"maxSpeedError": "速度は 16× を超えることはできません"
+	},
+	"trim": {
+		"deleteRegion": "トリミング領域を削除"
+	},
+	"layout": {
+		"title": "レイアウト",
+		"preset": "プリセット",
+		"selectPreset": "プリセットを選択",
+		"pictureInPicture": "ピクチャーインピクチャー",
+		"verticalStack": "縦並び",
+		"dualFrame": "デュアルフレーム",
+		"webcamShape": "カメラの形状",
+		"webcamSize": "ウェブカメラのサイズ"
+	},
+	"effects": {
+		"title": "動画エフェクト",
+		"blurBg": "背景ぼかし",
+		"motionBlur": "モーションブラー",
+		"off": "オフ",
+		"shadow": "シャドウ",
+		"roundness": "角丸",
+		"padding": "余白"
+	},
+	"background": {
+		"title": "背景",
+		"image": "画像",
+		"color": "カラー",
+		"gradient": "グラデーション",
+		"uploadCustom": "カスタム画像をアップロード",
+		"gradientLabel": "グラデーション {{index}}"
+	},
+	"crop": {
+		"title": "クロップ",
+		"cropVideo": "動画をクロップ",
+		"dragInstruction": "各辺をドラッグしてクロップ範囲を調整します",
+		"ratio": "比率",
+		"free": "フリー",
+		"done": "完了",
+		"lockAspectRatio": "縦横比を固定",
+		"unlockAspectRatio": "縦横比の固定を解除"
+	},
+	"exportFormat": {
+		"mp4": "MP4",
+		"gif": "GIF",
+		"mp4Video": "MP4 動画",
+		"mp4Description": "高品質な動画ファイル",
+		"gifAnimation": "GIF アニメーション",
+		"gifDescription": "共有に便利なアニメーション画像"
+	},
+	"exportQuality": {
+		"title": "エクスポート品質",
+		"low": "低",
+		"medium": "中",
+		"high": "高"
+	},
+	"gifSettings": {
+		"frameRate": "GIF フレームレート",
+		"size": "GIF サイズ",
+		"loop": "GIF をループ再生"
+	},
+	"project": {
+		"save": "プロジェクトを保存",
+		"load": "プロジェクトを読み込む"
+	},
+	"export": {
+		"videoButton": "動画をエクスポート",
+		"gifButton": "GIF をエクスポート",
+		"chooseSaveLocation": "保存先を選択"
+	},
+	"links": {
+		"reportBug": "メールでサポートに問い合わせ",
+		"starOnGithub": "Docsie ホーム"
+	},
+	"imageUpload": {
+		"invalidFileType": "無効なファイル形式です",
+		"jpgOnly": "JPG または JPEG 画像ファイルをアップロードしてください。",
+		"uploadSuccess": "カスタム画像をアップロードしました！",
+		"failedToUpload": "画像のアップロードに失敗しました",
+		"errorReading": "ファイルの読み込み中にエラーが発生しました。"
+	},
+	"annotation": {
+		"title": "注釈設定",
+		"active": "アクティブ",
+		"typeText": "テキスト",
+		"typeImage": "画像",
+		"typeArrow": "矢印",
+		"typeBlur": "ぼかし",
+		"textContent": "テキスト内容",
+		"textPlaceholder": "テキストを入力...",
+		"fontStyle": "フォントスタイル",
+		"selectStyle": "スタイルを選択",
+		"size": "サイズ",
+		"customFonts": "カスタムフォント",
+		"textColor": "テキストカラー",
+		"background": "背景",
+		"none": "なし",
+		"color": "カラー",
+		"clearBackground": "背景をクリア",
+		"uploadImage": "画像をアップロード",
+		"supportedFormats": "対応形式: JPG、PNG、GIF、WebP",
+		"arrowDirection": "矢印の向き",
+		"strokeWidth": "線の太さ: {{width}}px",
+		"arrowColor": "矢印のカラー",
+		"blurType": "ぼかしの種類",
+		"blurTypeBlur": "ぼかし",
+		"blurTypeMosaic": "モザイク",
+		"blurColor": "ぼかしのカラー",
+		"blurColorWhite": "白",
+		"blurColorBlack": "黒",
+		"blurShape": "ぼかしの形状",
+		"blurIntensity": "ぼかしの強さ",
+		"mosaicBlockSize": "モザイクのブロックサイズ",
+		"blurShapeRectangle": "長方形",
+		"blurShapeOval": "楕円",
+		"blurShapeFreehand": "フリーハンド",
+		"deleteAnnotation": "注釈を削除",
+		"shortcutsAndTips": "ショートカットとヒント",
+		"tipMovePlayhead": "再生ヘッドを重なっている注釈の区間に移動し、項目を選択します。",
+		"tipTabCycle": "Tab キーで重なっている項目を順に切り替えられます。",
+		"tipShiftTabCycle": "Shift+Tab キーで逆順に切り替えられます。",
+		"invalidImageType": "無効なファイル形式です",
+		"imageFormatsOnly": "JPG、PNG、GIF、または WebP 画像ファイルをアップロードしてください。",
+		"imageUploadSuccess": "画像をアップロードしました！",
+		"failedImageUpload": "画像のアップロードに失敗しました"
+	},
+	"fontStyles": {
+		"classic": "クラシック",
+		"editor": "エディター",
+		"strong": "ストロング",
+		"typewriter": "タイプライター",
+		"deco": "デコ",
+		"simple": "シンプル",
+		"modern": "モダン",
+		"clean": "クリーン"
+	},
+	"customFont": {
+		"dialogTitle": "Google フォントを追加",
+		"urlLabel": "Google Fonts インポート URL",
+		"urlPlaceholder": "https://fonts.googleapis.com/css2?family=Roboto&display=swap",
+		"urlHelp": "Google Fonts で取得できます: フォントを選択 → 「Get font」をクリック → @import URL をコピー",
+		"nameLabel": "表示名",
+		"namePlaceholder": "マイカスタムフォント",
+		"nameHelp": "フォントセレクターに表示される名前です",
+		"addButton": "フォントを追加",
+		"addingButton": "追加中...",
+		"errorEmptyUrl": "Google Fonts のインポート URL を入力してください",
+		"errorInvalidUrl": "有効な Google Fonts の URL を入力してください",
+		"errorEmptyName": "フォント名を入力してください",
+		"errorExtractFailed": "URL からフォントファミリーを取得できませんでした",
+		"successMessage": "フォント「{{fontName}}」を追加しました",
+		"failedToAdd": "フォントの追加に失敗しました",
+		"errorTimeout": "フォントの読み込みに時間がかかりすぎました。URL を確認してもう一度お試しください。",
+		"errorLoadFailed": "フォントを読み込めませんでした。Google Fonts の URL が正しいか確認してください。"
+	},
+	"language": {
+		"title": "言語"
+	}
+}

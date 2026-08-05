@@ -1,0 +1,352 @@
+{
+	"publish": {
+		"dialog": {
+			"title": "動画からドキュメントへ",
+			"analysis": "解析",
+			"launch": "開始",
+			"aiCredits": "AIクレジット",
+			"loadingBalance": "残高を読み込み中",
+			"balanceUnavailable": "残高を取得できません"
+		},
+		"phase": {
+			"starting": "変換を開始しています",
+			"analysis": "動画を解析中",
+			"generation": "ドキュメントを生成中",
+			"completed": "完了",
+			"failed": "失敗",
+			"ready": "準備完了"
+		},
+		"duration": {
+			"unknown": "不明",
+			"seconds": "{{seconds}}秒",
+			"minutesSeconds": "{{minutes}}分{{seconds}}秒"
+		},
+		"sampling": {
+			"everySeconds": "{{seconds}}秒ごと"
+		},
+		"credits": {
+			"estimate": "{{credits}}クレジット",
+			"available": "{{credits}}クレジット利用可能",
+			"monthly": "月間 {{credits}}",
+			"purchased": "購入済み {{credits}}",
+			"charged": "{{credits}}クレジット消費"
+		},
+		"defaults": {
+			"bookTitle": "動画ドキュメント",
+			"resultTitle": "Docsieの結果",
+			"generatedShelf": "生成されたシェルフ"
+		},
+		"connection": {
+			"connectedTo": "{{organization}} に接続済み",
+			"connected": "Docsieに接続済み",
+			"loginRequired": "Docsieへのログインが必要です",
+			"docsieConnected": "Docsie接続済み",
+			"signInRequired": "サインインが必要です",
+			"noRecording": "録画が読み込まれていません"
+		},
+		"artifact": {
+			"docs": "ドキュメント",
+			"presentation": "プレゼンテーション",
+			"docsDescription": "Markdown、DOCX、PDF",
+			"presentationDescription": "MarkdownとPowerPoint"
+		},
+		"actions": {
+			"convertVideoToDocs": "動画をドキュメントに変換",
+			"createPresentation": "プレゼンテーションを作成",
+			"logInToDocsie": "Docsieにログイン",
+			"openInDocsie": "Docsieで開く",
+			"runAnalysisAgain": "解析を再実行",
+			"additionalSettings": "詳細設定",
+			"createAccount": "アカウント作成",
+			"close": "閉じる",
+			"generateDocs": "ドキュメントを生成",
+			"generatePresentation": "プレゼンテーションを生成",
+			"view": "表示",
+			"credits": "クレジット",
+			"loadWorkspaces": "ワークスペースを読み込む",
+			"saveDefaults": "既定値を保存",
+			"refresh": "更新",
+			"loading": "読み込み中"
+		},
+		"status": {
+			"preparing": "Docsieが現在の録画を準備しています。",
+			"buildingPresentation": "プレゼンテーションを作成中",
+			"statusLabel": "ステータス: {{status}}",
+			"frames": "約{{count}}フレーム",
+			"estimateHint": "動画の長さを読み取ると見積もりが表示されます。",
+			"steps": {
+				"analyze": "解析",
+				"generate": "生成",
+				"buildDeck": "デッキ作成",
+				"exports": "エクスポート"
+			}
+		},
+		"busy": {
+			"uploading": "現在の録画をDocsieにアップロードしています。",
+			"generatingDocsOutput": "DocsieがMarkdown、PDF、DOCXの出力を生成しています。",
+			"generatingPresentationOutput": "DocsieがMarkdownとPowerPointデッキを生成しています。",
+			"buildingDocs": "Docsieが完成したドキュメントとエクスポートファイルを作成しています。",
+			"buildingPresentation": "Docsieがプレゼンテーションとエクスポートファイルを作成しています。",
+			"analysisRunning": "Docsieが録画を受け付けました。解析を実行中です。",
+			"analysisBeforeDocs": "Docsieが録画を受け付けました。ドキュメント生成の前に解析を実行中です。",
+			"analysisBeforePresentation": "Docsieが録画を受け付けました。プレゼンテーション生成の前に解析を実行中です。",
+			"analysisFinished": "Docsieが解析を完了しました。準備ができたら最終ドキュメントを生成できます。",
+			"finishedDocs": "Docsieがこの録画をドキュメントに変換しました。",
+			"finishedPresentation": "Docsieがこの録画をプレゼンテーションに変換しました。",
+			"loadedFromHistory": "ローカル履歴から完了済みのDocsie結果を読み込みました。"
+		},
+		"toasts": {
+			"openedSignIn": "ブラウザーでDocsieのサインインを開きました",
+			"openedSignUp": "ブラウザーでDocsieのサインアップを開きました",
+			"generationStarted": "Docsieの生成を開始しました",
+			"recordingSent": "録画をDocsieに送信しました",
+			"markdownSaved": "Markdownを保存しました",
+			"markdownCopied": "Markdownをコピーしました",
+			"defaultsSaved": "Docsieの既定値を保存しました",
+			"templateSelected": "テンプレートを選択しました: {{name}}",
+			"templateCleared": "テンプレートの選択を解除しました"
+		},
+		"errors": {
+			"openSignIn": "Docsieのサインインを開けませんでした",
+			"openSignUp": "Docsieのサインアップを開けませんでした",
+			"connectFirst": "先にこのレコーダーをDocsieに接続してください",
+			"loadWorkspaces": "Docsieのワークスペースを読み込めませんでした",
+			"saveSettings": "Docsieの設定を保存できませんでした",
+			"startGeneration": "Docsieの生成を開始できませんでした",
+			"pollStatus": "Docsieジョブのステータスを取得できませんでした",
+			"jobFailed": "Docsieジョブが失敗しました",
+			"generateDocs": "ドキュメントを生成できませんでした",
+			"noVideo": "Docsieに送信できる動画がありません",
+			"connectBeforeConvert": "この録画を変換する前にDocsieに接続してください",
+			"startJob": "Docsieジョブを開始できませんでした",
+			"runAnalysisFirst": "先に解析ステップを実行してください",
+			"connectBeforeGenerate": "ドキュメントを生成する前にDocsieに接続してください",
+			"openResult": "Docsieの結果を開けませんでした",
+			"openExport": "{{format}}のエクスポートを開けませんでした",
+			"saveMarkdown": "Markdownを保存できませんでした",
+			"copyMarkdown": "Markdownをコピーできませんでした",
+			"saveDefaults": "Docsieの既定値を保存できませんでした",
+			"saveTokenFirst": "テンプレートを閲覧する前にDocsieのAPIトークンを保存してください",
+			"exportStatus": "エクスポート {{status}}"
+		},
+		"files": {
+			"title": "ファイル",
+			"subtitle": "Docsieの結果を開くか、生成されたファイルをダウンロードします。",
+			"markdown": "Markdown",
+			"ready": "準備完了",
+			"pending": "待機中",
+			"processing": "処理中",
+			"queued": "キュー待ち",
+			"failed": "失敗",
+			"copyMarkdown": "Markdownをコピー",
+			"downloadMarkdown": "Markdownをダウンロード",
+			"downloadFormat": "{{format}}をダウンロード",
+			"markdownReadyHint": "Markdownをコピーまたはローカルに保存できます。",
+			"markdownPendingHint": "Docsieの生成が完了するとMarkdownがここに表示されます。",
+			"savedInDocsie": "Docsieに保存済み",
+			"storedInDocsie": "この生成結果はDocsieに保存されています。",
+			"shelf": "シェルフ: {{name}}"
+		},
+		"history": {
+			"title": "解析履歴",
+			"subtitle": "この録画で完了したDocsieの実行はローカルに保存されます。",
+			"savedCount": "{{count}}件保存済み",
+			"savingToHistory": "この完了した結果をローカル履歴に保存しています。"
+		},
+		"settings": {
+			"title": "詳細設定",
+			"subtitle": "上書き設定、接続フォールバック、ジョブの詳細です。",
+			"workspaceAndOutput": "ワークスペースと出力",
+			"intent": "目的",
+			"intentDocumentation": "ドキュメント",
+			"intentExport": "エクスポートのみ",
+			"publishToKnowledgeBase": "ナレッジベースに公開",
+			"workspace": "ワークスペース",
+			"selectWorkspace": "ワークスペースを選択",
+			"quality": "品質",
+			"language": "言語",
+			"languagePlaceholder": "english",
+			"docStyle": "ドキュメントスタイル",
+			"deckType": "デッキタイプ",
+			"bookTitle": "ブックタイトル",
+			"exportTitle": "エクスポートタイトル",
+			"destinationShelf": "保存先シェルフ",
+			"createNewShelf": "ブックタイトルから新しいシェルフを作成",
+			"savedShelf": "保存済みシェルフ ({{id}})",
+			"shelfSelectedHint": "Docsieは生成されたブックをこのシェルフに追加します。",
+			"shelfCreateHint": "Docsieはシェルフを作成し、以降の実行でも再利用します。",
+			"audience": "対象読者",
+			"audiencePlaceholder": "サポートチーム",
+			"maxSlides": "最大スライド数",
+			"imageQuality": "画像品質",
+			"illustrationStyle": "イラストスタイル",
+			"illustrationStylePlaceholder": "corporate",
+			"autoGenerateDocs": "ドキュメントを自動生成",
+			"autoGeneratePresentation": "プレゼンテーションを自動生成",
+			"sourceName": "ソース名",
+			"sourceNamePlaceholder": "Screen Recorder",
+			"enhancement": "エンハンス",
+			"generateCoverImage": "カバー画像を生成",
+			"embedImages": "画像を埋め込む",
+			"rewriteInstructions": "リライト指示",
+			"outputTemplate": "出力テンプレート",
+			"templateSelectedHint": "選択したライブラリテンプレートのIDがDocsieに送信されます。下のカスタムテキストはフォールバックとしてのみ保持されます。",
+			"templatePickHint": "ライブラリテンプレートを選ぶか、下にカスタム構成を入力してください。",
+			"templateInstructionPlaceholder": "ライブラリテンプレートを選択しない場合の任意のカスタム構成です。",
+			"jobDetails": "ジョブの詳細",
+			"analysisJob": "解析ジョブ",
+			"generationJob": "生成ジョブ",
+			"notStarted": "未開始",
+			"waitingForAnalysis": "解析待ち",
+			"disabled": "無効"
+		},
+		"quality": {
+			"options": {
+				"draft": {
+					"label": "ドラフト",
+					"description": "250クレジット/分"
+				},
+				"standard": {
+					"label": "スタンダード",
+					"description": "500クレジット/分"
+				},
+				"detailed": {
+					"label": "詳細",
+					"description": "1,000クレジット/分"
+				},
+				"ultra": {
+					"label": "ウルトラ",
+					"description": "2,000クレジット/分"
+				}
+			}
+		},
+		"docStyleOptions": {
+			"guide": "ガイド",
+			"sop": "SOP",
+			"tutorial": "チュートリアル",
+			"how-to": "ハウツー",
+			"blog": "ブログ",
+			"training": "トレーニング",
+			"knowledge-base": "ナレッジベース",
+			"release-notes": "リリースノート",
+			"reference": "リファレンス",
+			"product": "製品",
+			"policy": "ポリシー"
+		},
+		"deckTypeOptions": {
+			"training": "トレーニング",
+			"tutorial": "チュートリアル",
+			"sales": "営業",
+			"executive": "経営層向け",
+			"support": "サポート",
+			"onboarding": "オンボーディング"
+		},
+		"imageQualityOptions": {
+			"low": "低",
+			"medium": "中",
+			"high": "高"
+		},
+		"enhanceOptions": {
+			"required": "必要に応じて",
+			"enhanced": "強化",
+			"standard": "標準"
+		}
+	},
+	"templates": {
+		"megaCategories": {
+			"core": "基本ドキュメント",
+			"business": "ビジネス業務",
+			"technology": "テクノロジーとデータ",
+			"health": "ヘルスケアとライフサイエンス",
+			"industry": "製造と現場",
+			"commerce": "商業とサービス",
+			"transport": "輸送と物流",
+			"public": "公共と教育",
+			"other": "その他"
+		},
+		"categories": {
+			"technical": "技術",
+			"process": "プロセスと運用",
+			"product": "製品",
+			"compliance": "コンプライアンス",
+			"engineering": "エンジニアリング",
+			"training": "トレーニング",
+			"planning": "計画",
+			"manufacturing": "製造",
+			"healthcare": "ヘルスケア",
+			"consulting": "IT/ERPコンサルティング",
+			"legal": "法務",
+			"education": "教育",
+			"finance": "金融",
+			"government": "行政",
+			"construction": "建設",
+			"retail_ecommerce": "小売とEコマース",
+			"logistics_supply_chain": "物流とサプライチェーン",
+			"energy_utilities": "エネルギーと公益事業",
+			"telecom": "通信",
+			"insurance": "保険",
+			"hr_people_ops": "人事と労務",
+			"customer_success": "カスタマーサクセス",
+			"cybersecurity_privacy": "サイバーセキュリティとプライバシー",
+			"data_ai_analytics": "データ・AI・アナリティクス",
+			"hospitality_food_facilities": "ホスピタリティ・フード・施設",
+			"pharma_biotech": "製薬とバイオテクノロジー",
+			"medical_devices": "医療機器",
+			"life_sciences_labs": "ライフサイエンス研究所",
+			"chemicals": "化学",
+			"environmental_services": "環境サービス",
+			"automotive": "自動車",
+			"aerospace_defense": "航空宇宙と防衛",
+			"semiconductor_electronics": "半導体とエレクトロニクス",
+			"mining_metals": "鉱業と金属",
+			"industrial_equipment": "産業機器",
+			"banking_lending": "銀行と融資",
+			"real_estate_property": "不動産",
+			"accounting_audit": "会計と監査",
+			"nonprofit_ngos": "非営利団体とNGO",
+			"public_safety_emergency": "公共安全と緊急対応",
+			"agriculture_food_production": "農業と食品生産",
+			"restaurants_food_service": "レストランとフードサービス",
+			"consumer_packaged_goods": "消費財",
+			"fashion_apparel": "ファッションとアパレル",
+			"beauty_wellness": "美容とウェルネス",
+			"oil_gas": "石油とガス",
+			"transportation_transit": "交通と輸送",
+			"maritime_shipping": "海運",
+			"media_entertainment": "メディアとエンターテインメント",
+			"travel_tourism": "旅行と観光"
+		},
+		"noTemplate": "テンプレートなし",
+		"triggerDescription": "テンプレートライブラリの構成を強制せず、選択したスタイルで生成します。",
+		"browse": "参照",
+		"libraryTitle": "テンプレートライブラリ",
+		"libraryDescription": "ドキュメントテンプレートを選び、生成前にサンプル出力をプレビューできます。",
+		"searchPlaceholder": "テンプレートを検索...",
+		"groupsAriaLabel": "テンプレートグループ",
+		"allTemplates": "すべてのテンプレート",
+		"fallbackTitle": "テンプレート",
+		"templatesCount": "{{count}}件のテンプレート",
+		"allInGroup": "グループ内すべて",
+		"noTemplateCardDescription": "テンプレートライブラリの構成を強制せず、選択したスタイルで生成します。",
+		"sections": "セクション",
+		"loading": "テンプレートを読み込み中...",
+		"noMatches": "検索に一致するテンプレートがありません。",
+		"previewNote": "生成前にテンプレートの出力をプレビューできます。",
+		"back": "戻る",
+		"close": "閉じる",
+		"useTemplate": "このテンプレートを使用"
+	},
+	"auth": {
+		"accountRequired": "Docsieアカウントが必要です",
+		"signIn": "サインイン",
+		"createAccount": "アカウント作成",
+		"checking": "確認中",
+		"connectedConfirm": "Docsieを接続しました",
+		"close": "閉じる",
+		"footer": "サインイン後、レコーダーのロックが解除され、Docsieワークスペースに保存されます。",
+		"errors": {
+			"openSignIn": "Docsieのサインインを開けませんでした",
+			"openSignUp": "Docsieのサインアップを開けませんでした"
+		}
+	}
+}

@@ -1,0 +1,90 @@
+{
+	"shell": {
+		"title": "Docsie Capture Companion",
+		"minimize": "Simge durumuna küçült",
+		"close": "Kapat"
+	},
+	"setup": {
+		"title": "Capture Companion kurulumu",
+		"subtitle": "Bir kez yapılandırın. Sonrasında uygulama doğrudan kayıt düğmesiyle açılır.",
+		"accountStep": "1 · Docsie hesabı",
+		"connected": "Bağlı",
+		"notConnected": "Bağlı değil",
+		"organizationFallback": "Kuruluş",
+		"connect": "Docsie'ye bağlan",
+		"defaultsStep": "2 · Yakalama varsayılanları",
+		"returnFormatLabel": "Oluşturma tamamlandığında döndürülecek",
+		"returnKb": "Bilgi bankası bağlantısı",
+		"returnPdf": "PDF",
+		"quality": "Kalite",
+		"qualityDraft": "Taslak (en hızlı, en az kredi)",
+		"qualityStandard": "Standart",
+		"qualityDetailed": "Ayrıntılı",
+		"qualityUltra": "Ultra",
+		"language": "Dokümantasyon dili",
+		"languageHint": "Varsayılan olarak sistem diliniz kullanılır ({{language}}).",
+		"template": "Oluşturma şablonu",
+		"templateNone": "Şablon yok (varsayılan yapı)",
+		"templateHint": "Şablonlarınızı yüklemek için Docsie'ye bağlanın.",
+		"microphone": "Mikrofon anlatımını kaydet",
+		"startCapturing": "Yakalamaya başla",
+		"connectToContinue": "Devam etmek için Docsie'ye bağlanın"
+	},
+	"source": {
+		"matchLabel": "Başlığında şunu içeren pencerelere bağlan",
+		"matchPlaceholder": "örn. Viewer",
+		"attached": "Şu anda eşleşiyor: {{name}}",
+		"noMatch": "Henüz eşleşen açık pencere yok — doğrulamak için hedef uygulamayı açın.",
+		"manualLabel": "Veya bir kaynağı elle seçin",
+		"selectPlaceholder": "Bir ekran veya pencere seçin…"
+	},
+	"main": {
+		"noSource": "kaynak yok",
+		"rescan": "Yeniden tara",
+		"rescanTitle": "Hedef pencereyi yeniden tara",
+		"setup": "Kurulum",
+		"setupTitle": "Kurulumu aç",
+		"connectFirst": "Kayıttan önce Docsie'ye bağlanın.",
+		"pickSource": "Yakalamak istediğiniz uygulamayı açın veya bir kaynağı elle seçin."
+	},
+	"session": {
+		"label": "Oturum adı (doküman başlığı olur)",
+		"defaultTitle": "Eğitim oturumu {{date}} {{time}}"
+	},
+	"record": {
+		"record": "Kaydı başlat",
+		"stop": "Durdur",
+		"cancel": "İptal",
+		"stopWithTime": "Kaydı durdur · {{time}}"
+	},
+	"progress": {
+		"upload": "Yükleme",
+		"analyze": "Analiz",
+		"generate": "Oluşturma",
+		"pdfExport": "PDF dışa aktarma",
+		"uploading": "Kayıt Docsie'ye yükleniyor…",
+		"analyzing": "Docsie kaydı analiz ediyor…",
+		"generating": "Docsie dokümantasyonu yazıyor…",
+		"preparingPdf": "PDF dışa aktarma hazırlanıyor…",
+		"done": "Dokümantasyon hazır."
+	},
+	"toast": {
+		"docsReady": "Dokümantasyon hazır"
+	},
+	"result": {
+		"openKb": "Bilgi bankasında aç",
+		"downloadPdf": "PDF'yi indir",
+		"recordAnother": "Başka bir oturum kaydet",
+		"dismiss": "Kapat"
+	},
+	"errors": {
+		"pollStatusFailed": "Docsie iş durumu sorgulanamadı",
+		"jobEnded": "Docsie işi: {{status}}",
+		"fetchResultFailed": "Docsie iş sonucu alınamadı",
+		"pdfExportEnded": "PDF dışa aktarma: {{status}}",
+		"pdfExportTimeout": "PDF dışa aktarma beklenirken zaman aşımı oluştu",
+		"startJobFailed": "Docsie işi başlatılamadı",
+		"startGenerationFailed": "Docsie oluşturma işlemi başlatılamadı",
+		"noVideoProduced": "Kayıt tamamlandı ancak video dosyası oluşturulmadı."
+	}
+}

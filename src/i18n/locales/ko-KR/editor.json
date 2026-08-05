@@ -36,6 +36,8 @@
 		"systemAudioUnavailable": "시스템 오디오를 사용할 수 없습니다. 시스템 오디오 없이 녹화합니다.",
 		"microphoneDenied": "마이크 접근이 거부되었습니다. 오디오 없이 녹화를 계속합니다.",
 		"cameraDenied": "카메라 접근이 거부되었습니다. 웹캠 없이 녹화를 계속합니다.",
+		"cameraDisconnected": "웹캠 연결이 끊어졌습니다.",
+		"cameraNotFound": "카메라를 찾을 수 없습니다.",
 		"permissionDenied": "녹화 권한이 거부되었습니다. 화면 녹화를 허용해 주세요."
 	}
 }

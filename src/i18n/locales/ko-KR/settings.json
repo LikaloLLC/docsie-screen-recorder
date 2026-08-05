@@ -8,6 +8,13 @@
 			"manual": "수동",
 			"auto": "자동",
 			"autoDescription": "녹화된 커서 위치를 따라 카메라가 이동합니다"
+		},
+		"speed": {
+			"title": "줌 속도",
+			"instant": "즉시",
+			"fast": "빠르게",
+			"smooth": "부드럽게",
+			"lazy": "느리게"
 		}
 	},
 	"speed": {
@@ -26,6 +33,7 @@
 		"selectPreset": "프리셋 선택",
 		"pictureInPicture": "화면 속 화면",
 		"verticalStack": "세로 배치",
+		"dualFrame": "듀얼 프레임",
 		"webcamShape": "카메라 모양",
 		"webcamSize": "웹캠 크기"
 	},
@@ -101,6 +109,7 @@
 		"typeText": "텍스트",
 		"typeImage": "이미지",
 		"typeArrow": "화살표",
+		"typeBlur": "블러",
 		"textContent": "텍스트 내용",
 		"textPlaceholder": "텍스트를 입력하세요...",
 		"fontStyle": "폰트 스타일",
@@ -117,6 +126,18 @@
 		"arrowDirection": "화살표 방향",
 		"strokeWidth": "선 두께: {{width}}px",
 		"arrowColor": "화살표 색상",
+		"blurType": "블러 유형",
+		"blurTypeBlur": "블러",
+		"blurTypeMosaic": "모자이크 블러",
+		"blurColor": "블러 색상",
+		"blurColorWhite": "흰색",
+		"blurColorBlack": "검은색",
+		"blurShape": "블러 모양",
+		"blurIntensity": "블러 강도",
+		"mosaicBlockSize": "모자이크 블록 크기",
+		"blurShapeRectangle": "사각형",
+		"blurShapeOval": "타원",
+		"blurShapeFreehand": "자유형",
 		"deleteAnnotation": "주석 삭제",
 		"shortcutsAndTips": "단축키 및 팁",
 		"tipMovePlayhead": "재생 헤드를 주석 구간으로 옮겨 항목을 선택하세요.",

@@ -1,0 +1,352 @@
+{
+	"publish": {
+		"dialog": {
+			"title": "视频转文档",
+			"analysis": "分析",
+			"launch": "启动",
+			"aiCredits": "AI 积分",
+			"loadingBalance": "正在加载余额",
+			"balanceUnavailable": "余额不可用"
+		},
+		"phase": {
+			"starting": "正在启动转换",
+			"analysis": "正在分析视频",
+			"generation": "正在生成文档",
+			"completed": "已完成",
+			"failed": "失败",
+			"ready": "就绪"
+		},
+		"duration": {
+			"unknown": "未知",
+			"seconds": "{{seconds}}秒",
+			"minutesSeconds": "{{minutes}}分{{seconds}}秒"
+		},
+		"sampling": {
+			"everySeconds": "每 {{seconds}} 秒"
+		},
+		"credits": {
+			"estimate": "{{credits}} 积分",
+			"available": "{{credits}} 积分可用",
+			"monthly": "每月 {{credits}}",
+			"purchased": "已购买 {{credits}}",
+			"charged": "已消耗 {{credits}} 积分"
+		},
+		"defaults": {
+			"bookTitle": "视频文档",
+			"resultTitle": "Docsie 结果",
+			"generatedShelf": "已生成的书架"
+		},
+		"connection": {
+			"connectedTo": "已连接到 {{organization}}",
+			"connected": "已连接到 Docsie",
+			"loginRequired": "需要登录 Docsie",
+			"docsieConnected": "Docsie 已连接",
+			"signInRequired": "需要登录",
+			"noRecording": "未加载录制"
+		},
+		"artifact": {
+			"docs": "文档",
+			"presentation": "演示文稿",
+			"docsDescription": "Markdown、DOCX 和 PDF",
+			"presentationDescription": "Markdown 和 PowerPoint"
+		},
+		"actions": {
+			"convertVideoToDocs": "将视频转换为文档",
+			"createPresentation": "创建演示文稿",
+			"logInToDocsie": "登录 Docsie",
+			"openInDocsie": "在 Docsie 中打开",
+			"runAnalysisAgain": "重新运行分析",
+			"additionalSettings": "更多设置",
+			"createAccount": "创建账户",
+			"close": "关闭",
+			"generateDocs": "生成文档",
+			"generatePresentation": "生成演示文稿",
+			"view": "查看",
+			"credits": "积分",
+			"loadWorkspaces": "加载工作区",
+			"saveDefaults": "保存默认值",
+			"refresh": "刷新",
+			"loading": "加载中"
+		},
+		"status": {
+			"preparing": "Docsie 正在准备当前录制。",
+			"buildingPresentation": "正在构建演示文稿",
+			"statusLabel": "状态：{{status}}",
+			"frames": "约 {{count}} 帧",
+			"estimateHint": "录制器读取视频时长后将显示预估。",
+			"steps": {
+				"analyze": "分析",
+				"generate": "生成",
+				"buildDeck": "构建幻灯片",
+				"exports": "导出"
+			}
+		},
+		"busy": {
+			"uploading": "正在将当前录制上传到 Docsie。",
+			"generatingDocsOutput": "Docsie 正在生成 Markdown、PDF 和 DOCX 输出。",
+			"generatingPresentationOutput": "Docsie 正在生成 Markdown 和 PowerPoint 幻灯片。",
+			"buildingDocs": "Docsie 正在构建最终文档和导出文件。",
+			"buildingPresentation": "Docsie 正在构建演示文稿和导出文件。",
+			"analysisRunning": "Docsie 已接收录制。分析正在进行中。",
+			"analysisBeforeDocs": "Docsie 已接收录制。将在生成文档之前进行分析。",
+			"analysisBeforePresentation": "Docsie 已接收录制。将在生成演示文稿之前进行分析。",
+			"analysisFinished": "Docsie 已完成分析。准备就绪后即可生成最终文档。",
+			"finishedDocs": "Docsie 已将此录制转换为文档。",
+			"finishedPresentation": "Docsie 已将此录制转换为演示文稿。",
+			"loadedFromHistory": "已从本地历史记录加载此已完成的 Docsie 结果。"
+		},
+		"toasts": {
+			"openedSignIn": "已在浏览器中打开 Docsie 登录页面",
+			"openedSignUp": "已在浏览器中打开 Docsie 注册页面",
+			"generationStarted": "Docsie 生成已开始",
+			"recordingSent": "录制已发送到 Docsie",
+			"markdownSaved": "Markdown 已保存",
+			"markdownCopied": "Markdown 已复制",
+			"defaultsSaved": "Docsie 默认值已保存",
+			"templateSelected": "已选择模板：{{name}}",
+			"templateCleared": "已清除模板选择"
+		},
+		"errors": {
+			"openSignIn": "无法打开 Docsie 登录页面",
+			"openSignUp": "无法打开 Docsie 注册页面",
+			"connectFirst": "请先将此录制器连接到 Docsie",
+			"loadWorkspaces": "无法加载 Docsie 工作区",
+			"saveSettings": "无法保存 Docsie 设置",
+			"startGeneration": "无法启动 Docsie 生成",
+			"pollStatus": "无法查询 Docsie 任务状态",
+			"jobFailed": "Docsie 任务失败",
+			"generateDocs": "无法生成文档",
+			"noVideo": "没有可发送到 Docsie 的视频",
+			"connectBeforeConvert": "转换此录制之前请先连接 Docsie",
+			"startJob": "无法启动 Docsie 任务",
+			"runAnalysisFirst": "请先运行分析步骤",
+			"connectBeforeGenerate": "生成文档之前请先连接 Docsie",
+			"openResult": "无法打开 Docsie 结果",
+			"openExport": "无法打开 {{format}} 导出文件",
+			"saveMarkdown": "无法保存 Markdown",
+			"copyMarkdown": "无法复制 Markdown",
+			"saveDefaults": "无法保存 Docsie 默认值",
+			"saveTokenFirst": "浏览模板之前请先保存 Docsie API 令牌",
+			"exportStatus": "导出 {{status}}"
+		},
+		"files": {
+			"title": "文件",
+			"subtitle": "打开 Docsie 结果或下载生成的文件。",
+			"markdown": "Markdown",
+			"ready": "就绪",
+			"pending": "等待中",
+			"processing": "处理中",
+			"queued": "排队中",
+			"failed": "失败",
+			"copyMarkdown": "复制 Markdown",
+			"downloadMarkdown": "下载 Markdown",
+			"downloadFormat": "下载 {{format}}",
+			"markdownReadyHint": "Markdown 已就绪，可复制或保存到本地。",
+			"markdownPendingHint": "Docsie 完成生成后，Markdown 将显示在此处。",
+			"savedInDocsie": "已保存到 Docsie",
+			"storedInDocsie": "此生成结果已存储在 Docsie 中。",
+			"shelf": "书架：{{name}}"
+		},
+		"history": {
+			"title": "分析历史",
+			"subtitle": "此录制已完成的 Docsie 运行会保存在本地。",
+			"savedCount": "已保存 {{count}} 条",
+			"savingToHistory": "正在将此已完成的结果保存到本地历史记录。"
+		},
+		"settings": {
+			"title": "更多设置",
+			"subtitle": "覆盖设置、连接回退和任务详情。",
+			"workspaceAndOutput": "工作区和输出",
+			"intent": "用途",
+			"intentDocumentation": "文档",
+			"intentExport": "仅导出",
+			"publishToKnowledgeBase": "发布到知识库",
+			"workspace": "工作区",
+			"selectWorkspace": "选择工作区",
+			"quality": "质量",
+			"language": "语言",
+			"languagePlaceholder": "english",
+			"docStyle": "文档样式",
+			"deckType": "幻灯片类型",
+			"bookTitle": "书籍标题",
+			"exportTitle": "导出标题",
+			"destinationShelf": "目标书架",
+			"createNewShelf": "根据书籍标题创建新书架",
+			"savedShelf": "已保存的书架（{{id}}）",
+			"shelfSelectedHint": "Docsie 会将生成的书籍添加到此书架。",
+			"shelfCreateHint": "Docsie 将创建书架，并在后续运行中复用。",
+			"audience": "受众",
+			"audiencePlaceholder": "支持团队",
+			"maxSlides": "最大幻灯片数",
+			"imageQuality": "图像质量",
+			"illustrationStyle": "插图风格",
+			"illustrationStylePlaceholder": "corporate",
+			"autoGenerateDocs": "自动生成文档",
+			"autoGeneratePresentation": "自动生成演示文稿",
+			"sourceName": "来源名称",
+			"sourceNamePlaceholder": "Screen Recorder",
+			"enhancement": "增强",
+			"generateCoverImage": "生成封面图像",
+			"embedImages": "嵌入图像",
+			"rewriteInstructions": "改写说明",
+			"outputTemplate": "输出模板",
+			"templateSelectedHint": "所选库模板 ID 将发送到 Docsie。下方的自定义文本仅作为后备保留。",
+			"templatePickHint": "选择库模板，或在下方输入自定义结构。",
+			"templateInstructionPlaceholder": "未选择库模板时的可选自定义结构。",
+			"jobDetails": "任务详情",
+			"analysisJob": "分析任务",
+			"generationJob": "生成任务",
+			"notStarted": "未开始",
+			"waitingForAnalysis": "等待分析",
+			"disabled": "已禁用"
+		},
+		"quality": {
+			"options": {
+				"draft": {
+					"label": "草稿",
+					"description": "250 积分/分钟"
+				},
+				"standard": {
+					"label": "标准",
+					"description": "500 积分/分钟"
+				},
+				"detailed": {
+					"label": "详细",
+					"description": "1,000 积分/分钟"
+				},
+				"ultra": {
+					"label": "超高",
+					"description": "2,000 积分/分钟"
+				}
+			}
+		},
+		"docStyleOptions": {
+			"guide": "指南",
+			"sop": "SOP",
+			"tutorial": "教程",
+			"how-to": "操作指南",
+			"blog": "博客",
+			"training": "培训",
+			"knowledge-base": "知识库",
+			"release-notes": "版本说明",
+			"reference": "参考",
+			"product": "产品",
+			"policy": "政策"
+		},
+		"deckTypeOptions": {
+			"training": "培训",
+			"tutorial": "教程",
+			"sales": "销售",
+			"executive": "高管",
+			"support": "支持",
+			"onboarding": "入门引导"
+		},
+		"imageQualityOptions": {
+			"low": "低",
+			"medium": "中",
+			"high": "高"
+		},
+		"enhanceOptions": {
+			"required": "按需",
+			"enhanced": "增强",
+			"standard": "标准"
+		}
+	},
+	"templates": {
+		"megaCategories": {
+			"core": "核心文档",
+			"business": "商业运营",
+			"technology": "技术与数据",
+			"health": "健康与生命科学",
+			"industry": "制造与现场",
+			"commerce": "商业与服务",
+			"transport": "运输与物流",
+			"public": "公共与教育",
+			"other": "其他"
+		},
+		"categories": {
+			"technical": "技术",
+			"process": "流程与运营",
+			"product": "产品",
+			"compliance": "合规",
+			"engineering": "工程",
+			"training": "培训",
+			"planning": "规划",
+			"manufacturing": "制造",
+			"healthcare": "医疗保健",
+			"consulting": "IT/ERP 咨询",
+			"legal": "法务",
+			"education": "教育",
+			"finance": "金融",
+			"government": "政府",
+			"construction": "建筑",
+			"retail_ecommerce": "零售与电商",
+			"logistics_supply_chain": "物流与供应链",
+			"energy_utilities": "能源与公用事业",
+			"telecom": "电信",
+			"insurance": "保险",
+			"hr_people_ops": "人力资源与员工运营",
+			"customer_success": "客户成功",
+			"cybersecurity_privacy": "网络安全与隐私",
+			"data_ai_analytics": "数据、AI 与分析",
+			"hospitality_food_facilities": "酒店、餐饮与设施",
+			"pharma_biotech": "制药与生物技术",
+			"medical_devices": "医疗器械",
+			"life_sciences_labs": "生命科学实验室",
+			"chemicals": "化工",
+			"environmental_services": "环境服务",
+			"automotive": "汽车",
+			"aerospace_defense": "航空航天与国防",
+			"semiconductor_electronics": "半导体与电子",
+			"mining_metals": "采矿与金属",
+			"industrial_equipment": "工业设备",
+			"banking_lending": "银行与信贷",
+			"real_estate_property": "房地产与物业",
+			"accounting_audit": "会计与审计",
+			"nonprofit_ngos": "非营利组织与 NGO",
+			"public_safety_emergency": "公共安全与应急",
+			"agriculture_food_production": "农业与食品生产",
+			"restaurants_food_service": "餐厅与餐饮服务",
+			"consumer_packaged_goods": "快速消费品",
+			"fashion_apparel": "时尚与服装",
+			"beauty_wellness": "美容与健康",
+			"oil_gas": "石油与天然气",
+			"transportation_transit": "交通运输",
+			"maritime_shipping": "海运航运",
+			"media_entertainment": "媒体与娱乐",
+			"travel_tourism": "旅行与旅游"
+		},
+		"noTemplate": "无模板",
+		"triggerDescription": "使用所选样式生成，不强制套用模板库结构。",
+		"browse": "浏览",
+		"libraryTitle": "模板库",
+		"libraryDescription": "选择文档模板，并在生成前预览示例输出。",
+		"searchPlaceholder": "搜索模板...",
+		"groupsAriaLabel": "模板分组",
+		"allTemplates": "所有模板",
+		"fallbackTitle": "模板",
+		"templatesCount": "{{count}} 个模板",
+		"allInGroup": "组内全部",
+		"noTemplateCardDescription": "使用您选择的样式生成，不强制套用模板库结构。",
+		"sections": "章节",
+		"loading": "正在加载模板...",
+		"noMatches": "没有与搜索匹配的模板。",
+		"previewNote": "生成前可预览模板输出。",
+		"back": "返回",
+		"close": "关闭",
+		"useTemplate": "使用此模板"
+	},
+	"auth": {
+		"accountRequired": "需要 Docsie 账户",
+		"signIn": "登录",
+		"createAccount": "创建账户",
+		"checking": "检查中",
+		"connectedConfirm": "我已连接 Docsie",
+		"close": "关闭",
+		"footer": "登录后，录制器将解锁并保存到您的 Docsie 工作区。",
+		"errors": {
+			"openSignIn": "无法打开 Docsie 登录页面",
+			"openSignUp": "无法打开 Docsie 注册页面"
+		}
+	}
+}
