@@ -246,6 +246,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setLocale: (locale: string) => {
 		return ipcRenderer.invoke("set-locale", locale);
 	},
+	companionSetRecordingBar: (active: boolean) => {
+		return ipcRenderer.invoke("companion-set-recording-bar", active);
+	},
 	setMicrophoneExpanded: (expanded: boolean) => {
 		ipcRenderer.send("hud:setMicrophoneExpanded", expanded);
 	},

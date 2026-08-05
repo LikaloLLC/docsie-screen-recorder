@@ -229,6 +229,95 @@ export function createSourceSelectorWindow(): BrowserWindow {
 }
 
 /**
+ * Creates the Capture Companion kiosk window: a small always-available surface
+ * with a single record/stop flow that auto-publishes to Docsie Video-to-Docs.
+ * Used for capture-appliance deployments on training stations.
+ */
+export function createCompanionWindow(): BrowserWindow {
+	const primaryDisplay = screen.getPrimaryDisplay();
+	const { workArea } = primaryDisplay;
+	const windowWidth = 440;
+	const windowHeight = 680;
+	const x = Math.floor(workArea.x + workArea.width - windowWidth - 24);
+	const y = Math.floor(workArea.y + (workArea.height - windowHeight) / 2);
+
+	const win = new BrowserWindow({
+		width: windowWidth,
+		height: windowHeight,
+		minWidth: 400,
+		minHeight: 560,
+		x,
+		y,
+		frame: true,
+		transparent: false,
+		resizable: true,
+		alwaysOnTop: false,
+		skipTaskbar: false,
+		title: "Docsie Capture Companion",
+		backgroundColor: "#101014",
+		show: !HEADLESS,
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			backgroundThrottling: false,
+		},
+	});
+
+	win.webContents.on("did-finish-load", () => {
+		win?.webContents.send("main-process-message", new Date().toLocaleString());
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=capture-companion");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "capture-companion" },
+		});
+	}
+
+	return win;
+}
+
+/**
+ * Creates the demo viewer simulator window: a normal window titled "Viewer"
+ * showing a fake mixed-reality headset feed, so the Companion's window match
+ * rule has something to attach to during demos.
+ */
+export function createViewerSimulatorWindow(): BrowserWindow {
+	const win = new BrowserWindow({
+		width: 1080,
+		height: 720,
+		minWidth: 720,
+		minHeight: 480,
+		frame: true,
+		transparent: false,
+		resizable: true,
+		alwaysOnTop: false,
+		skipTaskbar: false,
+		title: "Viewer (Simulator)",
+		backgroundColor: "#05070c",
+		show: !HEADLESS,
+		webPreferences: {
+			preload: path.join(__dirname, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			backgroundThrottling: false,
+		},
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=viewer-simulator");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "viewer-simulator" },
+		});
+	}
+
+	return win;
+}
+
+/**
  * Creates a centered transparent countdown overlay window that sits above the
  * HUD while recording pre-roll is running.
  */

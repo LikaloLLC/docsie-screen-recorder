@@ -85,6 +85,7 @@
   },
   "nsis": {
     "oneClick": false,
-    "allowToChangeInstallationDirectory": true
+    "allowToChangeInstallationDirectory": true,
+    "include": "scripts/installer.nsh"
   }
 }

@@ -1,278 +1,174 @@
 # CLAUDE.md
 
-This file documents how the current Docsie Screen Recorder editor works, what was added for the Docsie bridge, and where to extend it for future AI features.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Overview
+## What This Is
 
-This fork is currently a **local desktop capture + editing client** for Docsie:
+Docsie Screen Recorder — an Electron + React desktop screen recorder and video editor, forked from [OpenScreen](https://github.com/siddharthvaddem/openscreen). Records screen/webcam/audio, edits on a timeline (zoom, trim, speed, annotations, blur, crop, webcam layout), exports MP4/GIF locally, and publishes recordings to Docsie's existing **Video-to-Docs** external API.
 
-- Capture and import recordings in Electron
-- Edit them in a React-based timeline editor
-- Export rendered video/GIF locally
-- Send the current recording to Docsie's existing **Video to Docs** external API flow
+Boundary: all Docsie integration here is a **desktop client bridge**. The Docsie backend already exists and is consumed over its external API — no Django server code lives in this repo.
 
-Important boundary:
+Node `22.22.1`, npm `10.9.4` (enforced via `engines`; `.nvmrc` present).
 
-- The **editor-side and Electron-side Docsie integration are implemented in this repo**
-- The **Docsie backend processing already existed** and is consumed through the external API
-- This pass did **not** add new Django server code under the main `docsie/` app
+## Commands
 
-## Main Entry Points
+```bash
+npm run dev                # Vite dev server + Electron (vite-plugin-electron)
+npm run lint               # biome check .
+npm run lint:fix           # biome check --write .
+npx tsc --noEmit           # typecheck (CI runs this; `npm run build` also typechecks)
+npm run i18n:check         # key-parity check of all locales against `en`; exits 1 on drift
+npm test                   # vitest --run (jsdom/node unit tests)
+npm run test:watch
+npm run test:browser       # real-Chromium tests (*.browser.test.ts) — export pipeline
+npm run test:browser:install   # one-time: playwright install chromium-headless-shell
+npm run test:e2e           # playwright, tests/e2e/
+```
 
-- App shell: `src/App.tsx`
-- Main editor: `src/components/video-editor/VideoEditor.tsx`
-- Undo/redo editor state: `src/hooks/useEditorHistory.ts`
-- Preview player/compositor: `src/components/video-editor/VideoPlayback.tsx`
-- Timeline UI: `src/components/video-editor/timeline/TimelineEditor.tsx`
-- Settings side panel: `src/components/video-editor/SettingsPanel.tsx`
-- Project persistence: `src/components/video-editor/projectPersistence.ts`
-- Export pipeline: `src/lib/exporter/videoExporter.ts`, `src/lib/exporter/gifExporter.ts`, `src/lib/exporter/frameRenderer.ts`
+Single test file / single test:
 
-## Editor Model
+```bash
+npx vitest --run src/lib/compositeLayout.test.ts
+npx vitest --run -t "clamps webcam size preset"
+npx vitest --config vitest.browser.config.ts --run src/lib/exporter/gifExporter.browser.test.ts
+```
 
-The editor is built around one undoable state object in `useEditorHistory.ts`:
+Build / release:
 
-- `zoomRegions`
-- `trimRegions`
-- `speedRegions`
-- `annotationRegions`
-- crop/layout/look settings
-- webcam layout settings
+```bash
+npm run build              # tsc && vite build && electron-builder (current platform)
+npm run build:mac | build:win | build:linux
+npm run build:mas          # Mac App Store pkg
+npm run release:patch      # bumps package.json, commits, pushes branch + tag -> GH Actions release
+```
 
-Selections and playback runtime are intentionally **not** part of undo state. `VideoEditor.tsx` keeps those as non-undoable React state.
+CI (`.github/workflows/ci.yml`) runs lint, `tsc --noEmit`, `test:browser`, and `vite build`. Note CI runs **`test:browser`, not `npm test`** — the jsdom suite is not gated in CI. Husky pre-commit runs `lint-staged` → biome on staged TS/JS/JSON.
 
-### Annotation Model
+Biome, not ESLint/Prettier: **tabs**, double quotes, line width 100, `recommended: false` with an explicit rule allowlist. Import organization is on via `assist`.
 
-Annotations are first-class timeline objects defined in `src/components/video-editor/types.ts`.
+## Architecture
 
-Supported annotation types:
+### Windows are one bundle, selected by query param
 
-- `text`
-- `image`
-- `figure`
-- `blur`
+There is no router. Electron creates five `BrowserWindow`s that all load the same renderer bundle with a different `?windowType=`; `src/App.tsx:60-83` switches on it.
 
-Each annotation has:
+| `windowType` | Renders | Factory (`electron/windows.ts`) |
+|---|---|---|
+| `launch` / `hud-overlay` | `LaunchWindow` | `createLaunchWindow` |
+| `editor` | `ShortcutsProvider` + `VideoEditor` | `createEditorWindow` |
+| `source-selector` | `SourceSelector` | `createSourceSelectorWindow` |
+| `countdown-overlay` | `CountdownOverlay` | `createCountdownOverlayWindow` |
 
-- `startMs`, `endMs`
-- `position`, `size`
-- `zIndex`
-- text styling
-- optional figure/blur payloads
+`mainWindow` in `electron/main.ts` is a **single slot holding either the launch window or the editor window** — switching destroys one and creates the other. `isEditorWindow()` sniffs this by string-matching `windowType=editor` in the window URL, so changing how windows are loaded (e.g. query param → hash) silently breaks File-menu routing.
 
-This is the key seam for future AI-assisted editing. If an LLM or external service can produce valid `AnnotationRegion[]`, the editor, preview, persistence, and export stack already know how to handle them.
+The editor window runs with `webSecurity: false` (needed to load `file://` media). Never load remote content there.
 
-## Current Editor Flow
+### Main process
 
-`VideoEditor.tsx` is the orchestration layer.
+Only 8 files in `electron/`. `electron/ipc/` has exactly two: `handlers.ts` (~1900 lines, nearly the whole IPC surface) and `docsie.ts` (~1900 lines, a pure Docsie API client with no `ipcMain` registration of its own).
 
-It currently:
+`registerIpcHandlers(...)` takes **8 positional callbacks** (three window factories, three getters, `onRecordingStateChange`, `switchToHud`) — ordering is easy to get wrong.
 
-- loads the active recording or a saved project
-- keeps non-undoable runtime state like current time, selections, export progress, and loaded file paths
-- splits `annotationRegions` into normal annotations vs blur regions
-- passes editor state into the preview, timeline, and settings panel
-- opens export and Docsie publishing dialogs
+Preload exposes exactly one global: `window.electronAPI` (`contextBridge.exposeInMainWorld`). Its type is declared **twice** — `electron/electron-env.d.ts` and `src/vite-env.d.ts` — and both must be kept in sync. All windows share the same preload, so every window sees the full API.
 
-### Preview
+**Recording is streamed to disk, not buffered.** `begin-recording-session` truncates the target files; each `MediaRecorder` `dataavailable` chunk goes through `append-recording-chunk` and is appended via a per-asset promise chain (`asset.queue = asset.queue.then(() => fs.appendFile(...))`). `finish-recording-session` awaits all queues and writes a `.session.json` manifest. There are no temp files — chunks land directly in their final `.webm`, so a crash mid-recording leaves a partial file with no manifest.
 
-`VideoPlayback.tsx` renders the interactive preview:
+Storage under `app.getPath("userData")`:
+- `recordings/` — `recording-<id>.webm`, `-webcam.webm`, `-audio.webm`, `recording-<id>.session.json`, `recording-<id>.webm.cursor.json`
+- `shortcuts.json`, `update-check.json`
+- `docsie-integration.json` (bearer token; `safeStorage`-encrypted when available, **plaintext fallback** otherwise)
+- `docsie-video-to-docs-history.json` (per-video result history, capped at 12), `docsie-voiceovers/`
 
-- main screen video
-- optional webcam video
-- crop/layout/border/shadow
-- zoom focus interaction
-- draggable/resizable annotations and blur regions
-- cursor telemetry-assisted zoom suggestions
+**File reads go through a runtime path allowlist** (`approvedPaths`). Only `recordings/` is statically allowed; other paths get approved by file pickers, project loads (restricted to trusted dirs so a malicious `.docsiescreen` can't approve arbitrary reads), and recording session start. The set is **never persisted**, so after a restart an externally-picked video must be re-picked before it's readable.
 
-### Timeline
+**Cursor telemetry has no native module.** `screen.getCursorScreenPoint()` polled at 100 ms while recording, normalized 0–1 against the selected display's bounds — so window-mode recordings get screen-relative, not window-relative, coordinates.
 
-`TimelineEditor.tsx` manages timeline rows for:
+macOS screen-capture permission cannot be prompted for. `getScreenCaptureAccessState()` reads `systemPreferences.getMediaAccessStatus("screen")` (returns granted unconditionally off-darwin); the UI deep-links to System Settings and offers `restart-app`, because the TCC grant only takes effect on relaunch.
 
-- zoom
-- trim
-- speed
-- annotation
-- blur
+### Renderer: editor state model
 
-All of these feed back into the same editor state and history model.
+`useEditorHistory.ts` holds one undoable `EditorState`: `zoomRegions`, `trimRegions`, `speedRegions`, `annotationRegions`, `cropRegion`, `wallpaper`, `shadowIntensity`, `showBlur`, `motionBlurAmount`, `borderRadius`, `padding`, `aspectRatio`, webcam layout/mask/size/position, `voiceover`.
 
-### Persistence
+Deliberately **not** undoable, kept as plain `useState` in `VideoEditor.tsx`: the five selection IDs, playhead/`isPlaying`, media paths, export settings, dialog visibility, project path. (Export settings *are* persisted to the project file but sit outside history — undoing past an export-setting change won't revert it.)
 
-Projects are saved through `projectPersistence.ts`.
+The three-verb gesture protocol is the thing to get right — it's what stops a slider drag from creating 200 undo entries:
 
-Current project file facts:
+- `pushState(update)` — discrete edit (add/delete region, change depth). Always checkpoints.
+- `updateState(update)` — continuous drag. Checkpoints only on the **first** call of a gesture, then mutates in place.
+- `commitState()` — ends the gesture so the next `updateState` checkpoints again. Wire it to drag-end (`onZoomFocusDragEnd={commitState}`, `onBlurDataCommit={commitState}`, …).
 
-- extension: `.docsiescreen`
-- versioned format: `PROJECT_VERSION = 2`
-- stores media references plus full editor state
-- persists `annotationRegions`, zooms, trims, speeds, crop, layout, and export preferences
+`SettingsPanel`'s recurring `onXChange` / `onXCommit` prop pairs are the UI side of this contract. `resolve()` does a shallow merge, so handlers must build new arrays rather than mutating nested region objects.
 
-If we add AI-generated edits later, they should be persisted by keeping them inside the existing editor state shape instead of inventing a parallel storage system.
+All region types are flat arrays of `{ id, startMs, endMs, ... }` — no track abstraction. `AnnotationRegion` is a union-by-`type` over `text | image | figure | blur`; blur is an annotation subtype that the UI splits out into its own timeline row and settings panel. Annotation `position`/`size` are **percent (0-100)**; crop is **normalized 0-1**; zoom `focus` is normalized 0-1 with `depth` 1-6.
 
-## Export Pipeline
+### Preview and export share their math — this is the load-bearing decision
 
-The export path already supports annotations.
+`src/components/video-editor/videoPlayback/*` holds pure, framework-free zoom/layout helpers (`findDominantRegion`, `applyZoomTransform`, `adaptiveSmoothFactor`, `smoothCursorFocus`, `computeCompositeLayout`). Both the live Pixi ticker in `VideoPlayback.tsx` and the offline `frameRenderer.ts` import the same functions and call them with the same shape. **If you change zoom/layout behavior, change it there — not in one consumer.**
 
-Key pieces:
+Preview: a hidden `<video>` decodes; PixiJS renders it (`cameraContainer > videoContainer > videoSprite` with blur/motion-blur filters); annotations, crop handles, and the focus indicator are **HTML overlays above the canvas**, not Pixi objects. Props are mirrored into refs so the ticker closure reads fresh values.
 
-- `VideoExporter` and `GifExporter` assemble render jobs
-- `FrameRenderer` composites the screen/webcam layout and then renders annotations on top
-- `frameRenderer.ts` calls `renderAnnotations(...)` during export
+Export (`videoExporter.ts`): `web-demuxer` (WASM) → WebCodecs `VideoDecoder` → `FrameRenderer` → WebCodecs `VideoEncoder` (`avc1.640033`) → mediabunny MP4 mux. Because annotations are DOM-only in the preview, `FrameRenderer` re-draws them on canvas 2D with a `scaleFactor` derived from `previewWidth`/`previewHeight` — that's how export matches preview. Trim and speed regions are resolved **at the decoder level**, so the renderer never sees trimmed frames.
 
-That means there is no need to rewrite export to support auto-annotations. As long as suggestions become normal `annotationRegions`, they will show up in:
+Two platform branches in the export path worth knowing: encoder preference is `["prefer-software", "prefer-hardware"]` on **Windows** (hardware encoders are flaky there) and the reverse elsewhere; on **Linux** the GPU shared-image path can silently emit empty frames, so frames are forced through a CPU `getImageData` readback.
 
-- live preview
-- saved projects
-- local exports
+GIF export reuses the same decoder + `FrameRenderer` front half, then hands off to `gif.js` workers.
 
-## Docsie Bridge Added In This Fork
+### Project persistence
 
-The Docsie integration is a desktop client bridge to the existing Docsie external API.
+`.docsiescreen`, `PROJECT_VERSION = 3`, plain JSON: `{ version, media?: {screenVideoPath, webcamVideoPath?, audioPath?}, editor, videoPath? }` (`videoPath` is a read-only v1 legacy field).
 
-### Renderer/UI
+`normalizeProjectEditor` is **total — it never throws** and always returns a valid state. It clamps every region (`endMs >= startMs + 1`, zoom depth 1-6, focus 0-1, speed clamped, annotation position 0-100, crop kept inside the frame), migrates `motionBlurEnabled: boolean` → `motionBlurAmount: number`, cross-validates webcam layout against orientation (`vertical-stack` dropped for landscape, `dual-frame` for portrait, both → picture-in-picture), and forces `voiceover.enabled` false when the generated audio file is missing. Add new persisted fields **inside this normalizer**, not around it.
 
-- Publish dialog: `src/components/video-editor/DocsiePublishDialog.tsx`
-- Launch point in editor toolbar: `src/components/video-editor/VideoEditor.tsx`
-- Shared request/response types: `src/lib/docsieIntegration.ts`
+Dirty tracking compares serialized *normalized* snapshots, so cosmetic differences don't register as edits. `hasUnsavedChanges` is pushed to the main process so it can intercept window close.
 
-The dialog currently supports:
+### i18n
 
-- Docsie API base URL
-- `Api-Key` or `Bearer` auth mode
-- workspace selection
-- quality tier
-- language
-- doc style
-- rewrite instructions
-- template instructions
-- auto-generate toggle
-- cost estimate
-- job polling
-- markdown/result preview
+7 locales × 7 namespaces = 49 JSON files under `src/i18n/locales/`, all eagerly bundled via `import.meta.glob`. `t("editor.foo.bar")` splits on the **first** dot into namespace + key.
 
-### Electron/Main Process
+Two overlapping checks: at runtime, a locale missing any required namespace file is silently **dropped from the language picker**; at build time, `npm run i18n:check` compares flattened key paths against `en` and fails on missing/extra keys. Neither verifies that a value was actually translated (an English copy passes) or that `{{placeholders}}` survived.
 
-- Preload bridge: `electron/preload.ts`
-- IPC handlers: `electron/ipc/handlers.ts`
-- Docsie API implementation: `electron/ipc/docsie.ts`
+### Docsie integration
 
-Current flow:
+Renderer: `DocsiePublishDialog.tsx` (largest file in the repo), `DocsieTemplatePicker.tsx`, `src/components/docsie/DocsieAuthGate.tsx`, shared types in `src/lib/docsieIntegration.ts`. Main: `electron/ipc/docsie.ts`, surfaced as ~18 `docsie:*` IPC channels.
 
-1. Save Docsie connection settings locally
-2. List Docsie workspaces
-3. Estimate video-to-docs credits
-4. Read the current exported/recorded video from disk
-5. Request a temporary upload URL from Docsie
-6. Upload the binary to Docsie storage
-7. Register the uploaded file in Docsie
-8. Submit the `video-to-docs` job
-9. Poll analysis/generation status
-10. Fetch final result payload and markdown preview
+Publish flow: save connection settings → (optionally exchange a web desktop-auth handoff for a bearer token) → list workspaces → list target shelves → list generation templates → fetch credit balance + estimate → read video from disk → request temp upload URL → upload bytes → register file via `/files/upload/` → submit `video-to-docs` job → poll → fetch result + generated file links → save to local per-video history.
 
-### Token Storage
+Desktop auth: the app registers the `docsie-screen://` protocol; Docsie web redirects to `docsie-screen://connect?handoff_id=...&state=...&api_base_url=...`, which main exchanges at `/desktop-auth/handoffs/exchange/`. See `DOCSIE_DESKTOP_AUTH.md`.
 
-The recorder stores Docsie connection settings in Electron user data:
+When `generation_template_id` is set, the renderer keeps custom template text as fallback only and main sends an empty `template_instruction` — never send both, they conflict as template sources.
 
-- file: `docsie-integration.json`
-- path root comes from `app.getPath("userData")`
+Updates (`electron/updateChecker.ts`) are a **notification + download prompt** against the GitHub releases API, not silent self-update.
 
-The token is encrypted with `safeStorage` when available. If the platform cannot encrypt, it falls back to plaintext storage in that local config file.
+## Licensing Boundary
 
-This is acceptable for the current bridge, but for production auth hardening we should move to a stronger session/token strategy.
+Mixed-license repo, and this matters for where code goes:
 
-## What Is Implemented vs Not Implemented
+- Root/inherited OpenScreen code stays **MIT** (`LICENSE`). Upstream notices must remain intact.
+- New Docsie-only commercial work goes under `enterprise/` and follows `enterprise/LICENSE.md`.
+- Enterprise code may call into MIT core; copying MIT files into `enterprise/` does not relicense them.
 
-Implemented now:
+Read `LICENSING.md` before moving code across that boundary.
 
-- Docsie branding/theme changes across the recorder/editor
-- local packaging/build flow
-- editor-side Docsie publishing dialog
-- Electron IPC bridge to Docsie external API
-- upload, submit, estimate, poll, and result preview
+## Testing Notes
 
-Not implemented yet:
+Well covered: `compositeLayout` (the richest suite — anchoring, orientation consistency, preset clamping), `projectPersistence` (legacy migration, normalization, dirty detection), `streamingDecoder` duration validation, `gradientParser`, `userPreferences` migration, `blurEffects` (asserts mosaic is information-lossy, i.e. verifying privacy not just appearance), `useCameraDevices`.
 
-- direct Docsie account sign-in / PKCE login flow
-- deep linking into a specific Docsie editor shelf/documentation target
-- importing Docsie-generated structure back into the local timeline automatically
-- server-driven auto-annotation writeback into the editor
-- doc-to-video authoring flow without a source recording
+Untested: `useEditorHistory` (the gesture protocol, `MAX_HISTORY = 80`, future-clearing — all unverified), `frameRenderer` compositing, the zoom math in `videoPlayback/*` (only exercised indirectly through browser export tests), `zoomSuggestionUtils`, and every React component. `fast-check` is installed but unused.
 
-## Best Extension Point For LLM Auto-Annotations
+`HEADLESS=true` makes every window invisible — used by e2e.
 
-The clean path is:
+## Sharp Edges
 
-1. Analyze the recording with Docsie or another AI service
-2. Return structured suggestions, ideally normalized to `AnnotationRegion[]`
-3. Insert them into editor state in `VideoEditor.tsx`
-4. Let the existing preview/export/persistence stack handle the rest
-
-Useful follow-on AI outputs that fit the current model:
-
-- `AnnotationRegion[]`
-- `ZoomRegion[]`
-- `TrimRegion[]`
-- `SpeedRegion[]`
-- chapter markers or suggested cut points
-
-Recommended implementation shape:
-
-- keep AI generation outside the core editor renderer
-- add one import/apply layer that validates the generated JSON
-- merge suggestions into history with `pushState(...)`
-
-This keeps AI optional and reversible with normal undo/redo.
-
-## Using This Editor For Documentation-to-Video
-
-Yes, the same editing stack can be reused for documentation-to-video, but there is one important limitation:
-
-- the **current editor assumes a loaded source video exists**
-
-What is already reusable:
-
-- timeline editing model
-- annotation model
-- layering and styling controls
-- export pipeline
-- project persistence format
-
-What doc-to-video would still need:
-
-- a scene generator or synthetic media source
-- support for step/image/title-card timelines without requiring a recorded screen video
-- an adapter that converts Docsie documentation structure into editor state
-
-A good direction is to generate a project-like intermediate model from Docsie content, then map it into:
-
-- base media or synthetic scenes
-- `annotationRegions`
-- zoom/crop/speed regions where useful
-- export settings
-
-In practice, this means the current editor is a strong foundation for doc-to-video, but it is not yet a full doc-to-video authoring tool out of the box.
-
-## Recommended Next Steps
-
-If continuing this work, the highest-value next additions are:
-
-1. Add a validated JSON import path for AI-generated annotations and zooms
-2. Add explicit Docsie auth/session handoff instead of manual token entry
-3. Add result import from Docsie generation back into the local editor
-4. Define an intermediate "scene/step" model for documentation-to-video generation
-5. Extend the editor to support non-recording timelines for synthetic video creation
+- **Circular import:** `handlers.ts` imports `RECORDINGS_DIR` from `../main` while `main.ts` imports `registerIpcHandlers` from it. Works only because that constant is evaluated at `main.ts` top level. Moving it below the imports breaks startup obscurely.
+- **`app.getPath("userData")` is read at module scope** in `handlers.ts`, `docsie.ts`, and `updateChecker.ts` — before `app.whenReady()` and before `app.setName()`. The userData dir is therefore derived from `package.json`'s `name`, not the display name.
+- **The countdown-overlay hide is deliberately debounced 1200 ms** with an opacity-first sequence guarded by a monotonic id (and a separate Linux branch, since `setOpacity` isn't supported there). Don't "simplify" it to `win.hide()` — it exists to avoid compositor flashes on rapid restart.
+- **`get-recorded-video-path` sorts by mtime, not name** — lexicographic sort breaks on `recording-9` vs `recording-10`.
+- Recording filenames may not contain path segments (`resolveRecordingOutputPath` rejects any).
+- The macOS CoreAudio switch (`disable-features=MacCatapLoopbackAudioForScreenShare`) must stay at `main.ts` module top level, before `app.whenReady()`.
+- `AUDIO_EDITING_ENABLED` in `VideoEditor.tsx` is `false` — `AudioEditorPanel.tsx` is live code behind a disabled flag.
 
 ## Files To Read First
 
-For anyone extending this feature set, start here:
+`src/components/video-editor/VideoEditor.tsx`, `src/hooks/useEditorHistory.ts`, `src/components/video-editor/types.ts`, `src/components/video-editor/projectPersistence.ts`, `src/components/video-editor/videoPlayback/`, `src/lib/exporter/frameRenderer.ts`, `electron/main.ts`, `electron/ipc/handlers.ts`, `electron/ipc/docsie.ts`, `electron/preload.ts`.
 
-- `src/components/video-editor/VideoEditor.tsx`
-- `src/hooks/useEditorHistory.ts`
-- `src/components/video-editor/types.ts`
-- `src/components/video-editor/projectPersistence.ts`
-- `src/components/video-editor/DocsiePublishDialog.tsx`
-- `electron/ipc/docsie.ts`
-- `electron/ipc/handlers.ts`
-- `electron/preload.ts`
-- `src/lib/exporter/frameRenderer.ts`
+Related docs: `AGENTS.md` (Docsie bridge feature status + roadmap), `DOCSIE_DESKTOP_AUTH.md`, `RELEASING.md`, `LICENSING.md`.

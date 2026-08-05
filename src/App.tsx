@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { CaptureCompanion } from "./components/companion/CaptureCompanion";
+import { ViewerSimulator } from "./components/companion/ViewerSimulator";
 import { CountdownOverlay } from "./components/launch/CountdownOverlay.tsx";
 import { LaunchWindow } from "./components/launch/LaunchWindow";
 import { SourceSelector } from "./components/launch/SourceSelector";
@@ -66,6 +68,10 @@ export default function App() {
 				return <SourceSelector />;
 			case "countdown-overlay":
 				return <CountdownOverlay />;
+			case "capture-companion":
+				return <CaptureCompanion />;
+			case "viewer-simulator":
+				return <ViewerSimulator />;
 			case "editor":
 				return (
 					<ShortcutsProvider>

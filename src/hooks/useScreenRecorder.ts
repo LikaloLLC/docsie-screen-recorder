@@ -43,6 +43,20 @@ const WEBCAM_TARGET_WIDTH = 1280;
 const WEBCAM_TARGET_HEIGHT = 720;
 const WEBCAM_TARGET_FRAME_RATE = 30;
 
+export type RecordingFinalizedInfo = {
+	session: import("../lib/recordingSession").RecordingSession | null;
+	path: string | null;
+};
+
+export type UseScreenRecorderOptions = {
+	/**
+	 * When provided, called after the recording session is finalized and stored
+	 * instead of switching to the editor window. Used by the Capture Companion
+	 * kiosk flow to run auto-publish without leaving the companion window.
+	 */
+	onRecordingFinalized?: (info: RecordingFinalizedInfo) => void | Promise<void>;
+};
+
 type UseScreenRecorderReturn = {
 	recording: boolean;
 	paused: boolean;
@@ -129,8 +143,10 @@ function stopRecorder(handle: RecorderHandle | null | undefined) {
 	}
 }
 
-export function useScreenRecorder(): UseScreenRecorderReturn {
+export function useScreenRecorder(options?: UseScreenRecorderOptions): UseScreenRecorderReturn {
 	const t = useScopedT("editor");
+	const onRecordingFinalizedRef = useRef(options?.onRecordingFinalized);
+	onRecordingFinalizedRef.current = options?.onRecordingFinalized;
 	const [recording, setRecording] = useState(false);
 	const [paused, setPaused] = useState(false);
 	const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -450,7 +466,15 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						await window.electronAPI.setCurrentVideoPath(result.path);
 					}
 
-					await window.electronAPI.switchToEditor();
+					const onFinalized = onRecordingFinalizedRef.current;
+					if (onFinalized) {
+						await onFinalized({
+							session: result.session ?? null,
+							path: result.session?.screenVideoPath ?? result.path ?? null,
+						});
+					} else {
+						await window.electronAPI.switchToEditor();
+					}
 				} catch (error) {
 					console.error("Error saving recording:", error);
 				} finally {

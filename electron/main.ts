@@ -8,6 +8,7 @@ import {
 	ipcMain,
 	Menu,
 	nativeImage,
+	screen,
 	session,
 	systemPreferences,
 	Tray,
@@ -18,10 +19,12 @@ import { connectDocsieDesktopHandoff } from "./ipc/docsie";
 import { registerIpcHandlers } from "./ipc/handlers";
 import { checkForUpdates } from "./updateChecker";
 import {
+	createCompanionWindow,
 	createCountdownOverlayWindow,
 	createEditorWindow,
 	createLaunchWindow,
 	createSourceSelectorWindow,
+	createViewerSimulatorWindow,
 } from "./windows";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -82,6 +85,8 @@ app.setAboutPanelOptions({
 let mainWindow: BrowserWindow | null = null;
 let sourceSelectorWindow: BrowserWindow | null = null;
 let countdownOverlayWindow: BrowserWindow | null = null;
+let viewerSimulatorWindow: BrowserWindow | null = null;
+const COMPANION_MODE = process.argv.includes("--companion") || process.env.COMPANION === "1";
 let tray: Tray | null = null;
 let selectedSourceName = "";
 const isMac = process.platform === "darwin";
@@ -94,8 +99,35 @@ const defaultTrayIcon = getTrayIcon("docsie_app_icon.png", trayIconSize);
 const recordingTrayIcon = getTrayIcon("rec-button.png", trayIconSize);
 
 function createWindow() {
-	mainWindow = createLaunchWindow();
+	mainWindow = COMPANION_MODE ? createCompanionWindow() : createLaunchWindow();
 	attachDesktopAuthEventFlush(mainWindow);
+}
+
+function openCompanionWindowWrapper() {
+	if (mainWindow && !mainWindow.isDestroyed()) {
+		if (mainWindow.webContents.getURL().includes("windowType=capture-companion")) {
+			mainWindow.show();
+			mainWindow.focus();
+			return;
+		}
+		isForceClosing = true;
+		mainWindow.close();
+		isForceClosing = false;
+	}
+	mainWindow = createCompanionWindow();
+	attachDesktopAuthEventFlush(mainWindow);
+}
+
+function openViewerSimulatorWindow() {
+	if (viewerSimulatorWindow && !viewerSimulatorWindow.isDestroyed()) {
+		viewerSimulatorWindow.show();
+		viewerSimulatorWindow.focus();
+		return;
+	}
+	viewerSimulatorWindow = createViewerSimulatorWindow();
+	viewerSimulatorWindow.on("closed", () => {
+		viewerSimulatorWindow = null;
+	});
 }
 
 function showMainWindow() {
@@ -211,6 +243,24 @@ function setupApplicationMenu() {
 				: [{ role: "minimize" }, { role: "close" }],
 		},
 	);
+
+	template.push({
+		label: "Tools",
+		submenu: [
+			{
+				label: "Open Capture Companion",
+				click: () => {
+					openCompanionWindowWrapper();
+				},
+			},
+			{
+				label: "Open Viewer Simulator (Demo)",
+				click: () => {
+					openViewerSimulatorWindow();
+				},
+			},
+		],
+	});
 
 	template.push({
 		label: "Help",
@@ -419,6 +469,41 @@ let isForceClosing = false;
 
 ipcMain.on("set-has-unsaved-changes", (_, hasChanges: boolean) => {
 	editorHasUnsavedChanges = hasChanges;
+});
+
+// While the Capture Companion records, collapse its window into a slim
+// always-on-top bar pinned to the bottom of the screen; restore it on stop.
+const COMPANION_MIN_WIDTH = 400;
+const COMPANION_MIN_HEIGHT = 560;
+const COMPANION_BAR_WIDTH = 560;
+const COMPANION_BAR_HEIGHT = 96;
+let companionRestoreBounds: Electron.Rectangle | null = null;
+
+ipcMain.handle("companion-set-recording-bar", (event, active: boolean) => {
+	const win = BrowserWindow.fromWebContents(event.sender);
+	if (!win || win.isDestroyed()) {
+		return;
+	}
+
+	if (active) {
+		companionRestoreBounds = win.getBounds();
+		const { workArea } = screen.getDisplayNearestPoint(win.getBounds());
+		win.setMinimumSize(200, 60);
+		win.setBounds({
+			x: Math.round(workArea.x + (workArea.width - COMPANION_BAR_WIDTH) / 2),
+			y: Math.round(workArea.y + workArea.height - COMPANION_BAR_HEIGHT - 8),
+			width: COMPANION_BAR_WIDTH,
+			height: COMPANION_BAR_HEIGHT,
+		});
+		win.setAlwaysOnTop(true, "floating");
+	} else {
+		win.setAlwaysOnTop(false);
+		win.setMinimumSize(COMPANION_MIN_WIDTH, COMPANION_MIN_HEIGHT);
+		if (companionRestoreBounds) {
+			win.setBounds(companionRestoreBounds);
+			companionRestoreBounds = null;
+		}
+	}
 });
 
 function forceCloseEditorWindow(windowToClose: BrowserWindow | null) {

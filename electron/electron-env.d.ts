@@ -286,6 +286,7 @@ interface Window {
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean> | boolean) => () => void;
 		setLocale: (locale: string) => Promise<void>;
+		companionSetRecordingBar: (active: boolean) => Promise<void>;
 	};
 }
 
