@@ -27,7 +27,8 @@ export default function App() {
 			type === "hud-overlay" ||
 			type === "launch" ||
 			type === "source-selector" ||
-			type === "countdown-overlay"
+			type === "countdown-overlay" ||
+			type === "capture-companion"
 		) {
 			document.body.style.background = "transparent";
 			document.documentElement.style.background = "transparent";

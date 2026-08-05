@@ -1,3 +1,4 @@
+import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useScreenRecorder } from "@/hooks/useScreenRecorder";
@@ -16,6 +17,10 @@ const EXPORT_POLL_INTERVAL_MS = 5000;
 const EXPORT_POLL_MAX_ATTEMPTS = 60;
 
 type ReturnFormat = "kb" | "pdf";
+
+// The companion window is frameless; these mark regions as draggable chrome.
+const dragRegionStyle = { WebkitAppRegion: "drag" } as CSSProperties;
+const noDragRegionStyle = { WebkitAppRegion: "no-drag" } as CSSProperties;
 
 type CompanionSettings = {
 	matchRule: string;
@@ -168,6 +173,42 @@ async function resolvePdfExportUrl(result: DocsieVideoToDocsJobResult): Promise<
 	}
 
 	throw new Error("Timed out waiting for the PDF export");
+}
+
+function CompanionShell({ children }: { children: ReactNode }) {
+	return (
+		<div className="w-screen h-screen bg-transparent p-2 font-sans">
+			<div className="w-full h-full rounded-xl border border-white/10 bg-[#101014] shadow-2xl overflow-hidden flex flex-col text-white/90">
+				<div
+					className="flex items-center justify-between pl-4 pr-2 h-10 flex-none border-b border-white/5"
+					style={dragRegionStyle}
+				>
+					<span className="text-[11px] font-medium text-white/50 tracking-wide">
+						Docsie Capture Companion
+					</span>
+					<div className="flex items-center gap-1" style={noDragRegionStyle}>
+						<button
+							type="button"
+							onClick={() => void window.electronAPI.minimizeCurrentWindow()}
+							title="Minimize"
+							className="w-7 h-7 rounded-md text-white/60 hover:bg-white/10 hover:text-white text-sm leading-none"
+						>
+							–
+						</button>
+						<button
+							type="button"
+							onClick={() => void window.electronAPI.closeCurrentWindow()}
+							title="Close"
+							className="w-7 h-7 rounded-md text-white/60 hover:bg-red-500/80 hover:text-white text-sm leading-none"
+						>
+							×
+						</button>
+					</div>
+				</div>
+				<div className="flex-1 overflow-y-auto">{children}</div>
+			</div>
+		</div>
+	);
 }
 
 /**
@@ -436,26 +477,35 @@ export function CaptureCompanion() {
 	// process) — render only the bar controls.
 	if (recording) {
 		return (
-			<div className="w-screen h-screen bg-[#101014] text-white/90 font-sans flex items-center gap-3 px-4 select-none overflow-hidden">
-				<span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-none" />
-				<span className="font-mono text-sm tabular-nums flex-none">
-					{formatElapsed(elapsedSeconds)}
-				</span>
-				<span className="text-xs text-white/50 truncate flex-1">{attachedSource?.name ?? ""}</span>
-				<button
-					type="button"
-					onClick={toggleRecording}
-					className="flex-none px-4 py-2 rounded-md bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
+			<div className="w-screen h-screen bg-transparent flex items-center justify-center font-sans">
+				<div
+					className="flex items-center gap-3 w-full mx-3 h-16 rounded-full bg-[#101014]/95 border border-white/10 shadow-2xl px-5 select-none overflow-hidden text-white/90"
+					style={dragRegionStyle}
 				>
-					Stop
-				</button>
-				<button
-					type="button"
-					onClick={cancelRecording}
-					className="flex-none px-3 py-2 rounded-md border border-white/15 text-xs hover:bg-white/10"
-				>
-					Cancel
-				</button>
+					<span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-none" />
+					<span className="font-mono text-sm tabular-nums flex-none">
+						{formatElapsed(elapsedSeconds)}
+					</span>
+					<span className="text-xs text-white/50 truncate flex-1">
+						{attachedSource?.name ?? ""}
+					</span>
+					<div className="flex items-center gap-2 flex-none" style={noDragRegionStyle}>
+						<button
+							type="button"
+							onClick={toggleRecording}
+							className="px-5 py-2 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
+						>
+							Stop
+						</button>
+						<button
+							type="button"
+							onClick={cancelRecording}
+							className="px-4 py-2 rounded-full border border-white/15 text-xs hover:bg-white/10"
+						>
+							Cancel
+						</button>
+					</div>
+				</div>
 			</div>
 		);
 	}
@@ -466,7 +516,7 @@ export function CaptureCompanion() {
 
 	if (inSetup) {
 		return (
-			<div className="w-screen h-screen overflow-y-auto bg-[#101014] text-white/90 font-sans">
+			<CompanionShell>
 				<div className="max-w-md mx-auto px-5 py-6 flex flex-col gap-4">
 					<header>
 						<h1 className="text-lg font-semibold tracking-tight">Capture Companion setup</h1>
@@ -602,12 +652,12 @@ export function CaptureCompanion() {
 						{connected ? "Start capturing" : "Connect to Docsie to continue"}
 					</button>
 				</div>
-			</div>
+			</CompanionShell>
 		);
 	}
 
 	return (
-		<div className="w-screen h-screen overflow-y-auto bg-[#101014] text-white/90 font-sans">
+		<CompanionShell>
 			<div className="max-w-md mx-auto px-5 py-6 flex flex-col gap-4">
 				<header className="flex items-center justify-between gap-2">
 					<div className="flex items-center gap-2 min-w-0 text-xs">
@@ -778,6 +828,6 @@ export function CaptureCompanion() {
 					</section>
 				)}
 			</div>
-		</div>
+		</CompanionShell>
 	);
 }
