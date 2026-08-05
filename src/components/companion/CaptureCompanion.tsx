@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useScreenRecorder } from "@/hooks/useScreenRecorder";
 import type {
+	DocsieGenerationTemplate,
 	DocsieIntegrationState,
 	DocsieVideoToDocsJobResult,
 	DocsieVideoToDocsQuality,
@@ -26,8 +27,44 @@ type CompanionSettings = {
 	matchRule: string;
 	returnFormat: ReturnFormat;
 	quality: DocsieVideoToDocsQuality;
+	language: string;
+	generationTemplateId: string;
 	setupComplete: boolean;
 };
+
+// Docsie's video-to-docs API takes plain language names. The default follows
+// the operating system locale so e.g. a Japanese Windows install produces
+// Japanese documentation out of the box.
+const LANGUAGE_OPTIONS = [
+	{ value: "english", label: "English" },
+	{ value: "japanese", label: "日本語 (Japanese)" },
+	{ value: "german", label: "Deutsch (German)" },
+	{ value: "french", label: "Français (French)" },
+	{ value: "spanish", label: "Español (Spanish)" },
+	{ value: "portuguese", label: "Português (Portuguese)" },
+	{ value: "italian", label: "Italiano (Italian)" },
+	{ value: "chinese", label: "中文 (Chinese)" },
+	{ value: "korean", label: "한국어 (Korean)" },
+	{ value: "turkish", label: "Türkçe (Turkish)" },
+] as const;
+
+const SYSTEM_LANGUAGE_MAP: Record<string, string> = {
+	en: "english",
+	ja: "japanese",
+	de: "german",
+	fr: "french",
+	es: "spanish",
+	pt: "portuguese",
+	it: "italian",
+	zh: "chinese",
+	ko: "korean",
+	tr: "turkish",
+};
+
+function detectSystemLanguage(): string {
+	const prefix = (navigator.language || "en").split("-")[0].toLowerCase();
+	return SYSTEM_LANGUAGE_MAP[prefix] ?? "english";
+}
 
 type PublishPhase =
 	| "idle"
@@ -59,6 +96,12 @@ function loadSettings(): CompanionSettings {
 					parsed.quality === "ultra"
 						? parsed.quality
 						: "standard",
+				language:
+					typeof parsed.language === "string" && parsed.language.trim()
+						? parsed.language
+						: detectSystemLanguage(),
+				generationTemplateId:
+					typeof parsed.generationTemplateId === "string" ? parsed.generationTemplateId : "",
 				setupComplete: parsed.setupComplete === true,
 			};
 		}
@@ -69,6 +112,8 @@ function loadSettings(): CompanionSettings {
 		matchRule: DEFAULT_MATCH_RULE,
 		returnFormat: "kb",
 		quality: "standard",
+		language: detectSystemLanguage(),
+		generationTemplateId: "",
 		setupComplete: false,
 	};
 }
@@ -258,11 +303,31 @@ export function CaptureCompanion() {
 		};
 	}, [refreshDocsieState]);
 
+	const [templates, setTemplates] = useState<DocsieGenerationTemplate[]>([]);
+	const hasToken = Boolean(docsieState?.hasToken);
+	useEffect(() => {
+		if (!hasToken) {
+			return;
+		}
+		let cancelled = false;
+		void window.electronAPI.docsieListGenerationTemplates().then((response) => {
+			if (!cancelled && response.success) {
+				setTemplates(response.templates);
+			}
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [hasToken]);
+
 	const publishRecording = useCallback(async (videoPath: string) => {
 		const state = docsieStateRef.current;
 		const activeSettings = settingsRef.current;
 		const bookTitle = sessionTitleRef.current.trim() || defaultSessionTitle();
 		const outputFormats = activeSettings.returnFormat === "pdf" ? (["pdf"] as const) : undefined;
+		const language = activeSettings.language || state?.defaultLanguage || "english";
+		const generationTemplateId =
+			activeSettings.generationTemplateId || state?.defaultGenerationTemplateId || undefined;
 
 		try {
 			setPublishResult(null);
@@ -272,9 +337,10 @@ export function CaptureCompanion() {
 			const start = await window.electronAPI.docsieStartVideoToDocs({
 				videoPath,
 				quality: activeSettings.quality,
-				language: state?.defaultLanguage ?? "en",
+				language,
 				workspaceId: state?.workspaceId,
 				docStyle: state?.defaultDocStyle ?? "sop",
+				generationTemplateId,
 				intent: "documentation",
 				targetDocumentationId: state?.targetDocumentationId || undefined,
 				autoPublishToKnowledgeBase: activeSettings.returnFormat === "kb",
@@ -295,7 +361,8 @@ export function CaptureCompanion() {
 			const generate = await window.electronAPI.docsieGenerateVideoToDocs({
 				jobId: analysis.jobId ?? start.jobId,
 				docStyle: state?.defaultDocStyle ?? "sop",
-				targetLanguage: state?.defaultLanguage ?? "en",
+				targetLanguage: language,
+				generationTemplateId,
 				targetDocumentationId: state?.targetDocumentationId || undefined,
 				autoPublishToKnowledgeBase: activeSettings.returnFormat === "kb",
 				bookTitle,
@@ -328,7 +395,8 @@ export function CaptureCompanion() {
 				bookTitle,
 				quality: activeSettings.quality,
 				docStyle: state?.defaultDocStyle ?? "sop",
-				language: state?.defaultLanguage ?? "en",
+				generationTemplateId,
+				language,
 				targetDocumentationId: state?.targetDocumentationId || undefined,
 				autoPublishToKnowledgeBase: activeSettings.returnFormat === "kb",
 				analysisJobId: start.jobId,
@@ -629,6 +697,48 @@ export function CaptureCompanion() {
 								<option value="detailed">Detailed</option>
 								<option value="ultra">Ultra</option>
 							</select>
+						</label>
+						<label className="flex flex-col gap-1">
+							<span className="text-xs text-white/60">Documentation language</span>
+							<select
+								value={settings.language}
+								onChange={(event) => updateSettings({ language: event.target.value })}
+								className="bg-black/40 border border-white/15 rounded-md px-2.5 py-1.5 outline-none focus:border-white/40"
+							>
+								{LANGUAGE_OPTIONS.map((option) => (
+									<option key={option.value} value={option.value}>
+										{option.label}
+									</option>
+								))}
+								{!LANGUAGE_OPTIONS.some((option) => option.value === settings.language) && (
+									<option value={settings.language}>{settings.language}</option>
+								)}
+							</select>
+							<span className="text-[10px] text-white/35">
+								Defaults to your system language ({detectSystemLanguage()}).
+							</span>
+						</label>
+						<label className="flex flex-col gap-1">
+							<span className="text-xs text-white/60">Generation template</span>
+							<select
+								value={settings.generationTemplateId}
+								onChange={(event) => updateSettings({ generationTemplateId: event.target.value })}
+								disabled={!connected}
+								className="bg-black/40 border border-white/15 rounded-md px-2.5 py-1.5 outline-none focus:border-white/40 disabled:opacity-50"
+							>
+								<option value="">No template (default structure)</option>
+								{templates.map((template) => (
+									<option key={template.id} value={template.id}>
+										{template.name}
+										{template.category ? ` — ${template.category}` : ""}
+									</option>
+								))}
+							</select>
+							{!connected && (
+								<span className="text-[10px] text-white/35">
+									Connect to Docsie to load your templates.
+								</span>
+							)}
 						</label>
 						<label className="flex items-center gap-2 text-xs text-white/70">
 							<input
