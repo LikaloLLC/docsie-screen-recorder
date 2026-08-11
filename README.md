@@ -1,6 +1,3 @@
-> [!WARNING]
-> This is very much in beta and might be buggy here and there (but hope you have a good experience!).
-
 <p align="center">
   <img src="public/openscreen.png" alt="OpenScreen Logo" width="64" />
   <br />
@@ -14,9 +11,13 @@
   </a>
 </p>
 
-# <p align="center">Docsie Screen Recorder</p>
+# <p align="center">Docsie Screen Recorder · Capture Companion</p>
 
-<p align="center"><strong>A free screen recorder built on OpenScreen, with Docsie ecosystem enterprise extensions.</strong></p>
+<p align="center"><strong>Capture application workflows, edit recordings, and turn them into structured documentation with Docsie.</strong></p>
+
+Docsie Capture Companion is ready for practical screen-capture, editing, and
+Video-to-Docs workflows. Enterprise deployments may add customer-specific security,
+deployment, terminology, and integration hardening.
 
 ## Download
 

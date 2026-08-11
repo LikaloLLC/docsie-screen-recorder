@@ -564,11 +564,14 @@ jobs:
 
           copy_first() {
             local alias="$1"
+            local candidate source
             shift
 
-            for source in "$@"; do
-              if [[ -f "$source" ]]; then
+            for candidate in "$@"; do
+              source="$(find . -type f -name "$candidate" -print -quit)"
+              if [[ -n "$source" ]]; then
                 cp -f "$source" "$alias"
+                echo "Created $alias from $source"
                 return 0
               fi
             done
