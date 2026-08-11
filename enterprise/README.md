@@ -6,6 +6,11 @@ not intended to inherit the repo's default MIT licensing treatment.
 Everything under this directory is intended to be licensed under
 [enterprise/LICENSE.md](./LICENSE.md), unless a file states otherwise.
 
+Current enterprise modules:
+
+- [`capture-companion/`](./capture-companion/): the Docsie Capture Companion UI
+  and demo simulator
+
 ## What belongs here
 
 - Docsie-specific authentication integrations

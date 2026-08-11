@@ -151,6 +151,9 @@ This fork is **not** relicensing the inherited upstream project.
   [MIT License](./LICENSE).
 - New Docsie-only enterprise work should go under [enterprise/](./enterprise/)
   and is intended to follow [enterprise/LICENSE.md](./enterprise/LICENSE.md).
+- The Docsie Capture Companion application layer is located in
+  [enterprise/capture-companion/](./enterprise/capture-companion/) and is
+  covered by the Docsie Enterprise License rather than the root MIT License.
 
 This is the same general repository pattern used by mixed-license/source-available
 projects: keep the original open-source base intact, and place separately

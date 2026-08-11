@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CaptureCompanion } from "./components/companion/CaptureCompanion";
-import { ViewerSimulator } from "./components/companion/ViewerSimulator";
+import { CaptureCompanion } from "../enterprise/capture-companion/CaptureCompanion";
+import { ViewerSimulator } from "../enterprise/capture-companion/ViewerSimulator";
 import { CountdownOverlay } from "./components/launch/CountdownOverlay.tsx";
 import { LaunchWindow } from "./components/launch/LaunchWindow";
 import { SourceSelector } from "./components/launch/SourceSelector";

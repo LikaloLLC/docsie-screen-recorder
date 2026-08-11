@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Likalo LLC
+// SPDX-License-Identifier: LicenseRef-Docsie-Enterprise-1.0
+
 import { useEffect, useRef, useState } from "react";
 
 const STEPS = [

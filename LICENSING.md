@@ -22,6 +22,10 @@ intended for **Docsie-authored enterprise features** and are covered by the
 license in [enterprise/LICENSE.md](./enterprise/LICENSE.md), unless a file says
 otherwise.
 
+The Capture Companion application layer is located under
+[`enterprise/capture-companion/`](./enterprise/capture-companion/) and uses the
+custom SPDX identifier `LicenseRef-Docsie-Enterprise-1.0`.
+
 This boundary is here so the repo can support:
 
 - MIT-licensed inherited recorder/editor code
@@ -38,6 +42,10 @@ possible:
 
 If you modify an existing MIT file outside `enterprise/`, that file still
 contains MIT-governed upstream material.
+
+Application-shell and bridge files outside `enterprise/` may load or call an
+enterprise module without changing their own MIT licensing. This keeps the
+boundary explicit without attempting to relicense inherited OpenScreen files.
 
 ## 4. Release Note
 
