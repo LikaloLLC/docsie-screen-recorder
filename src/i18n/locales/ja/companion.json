@@ -22,7 +22,7 @@
 		"qualityDetailed": "詳細",
 		"qualityUltra": "ウルトラ",
 		"language": "ドキュメントの言語",
-		"languageHint": "システム言語（{{language}}）が既定になります。",
+		"languageHint": "アプリの言語（{{language}}）が既定になります。",
 		"template": "生成テンプレート",
 		"templateNone": "テンプレートなし（既定の構成）",
 		"templateHint": "テンプレートを読み込むには Docsie に接続してください。",

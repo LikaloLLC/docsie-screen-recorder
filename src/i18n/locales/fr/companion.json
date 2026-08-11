@@ -22,7 +22,7 @@
 		"qualityDetailed": "Détaillée",
 		"qualityUltra": "Ultra",
 		"language": "Langue de la documentation",
-		"languageHint": "Par défaut, la langue de votre système est utilisée ({{language}}).",
+		"languageHint": "Par défaut, la langue de l'application est utilisée ({{language}}).",
 		"template": "Modèle de génération",
 		"templateNone": "Aucun modèle (structure par défaut)",
 		"templateHint": "Connectez-vous à Docsie pour charger vos modèles.",

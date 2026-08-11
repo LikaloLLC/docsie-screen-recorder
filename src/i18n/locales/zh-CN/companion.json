@@ -22,7 +22,7 @@
 		"qualityDetailed": "详细",
 		"qualityUltra": "超高",
 		"language": "文档语言",
-		"languageHint": "默认使用您的系统语言（{{language}}）。",
+		"languageHint": "默认使用您的应用语言（{{language}}）。",
 		"template": "生成模板",
 		"templateNone": "无模板（默认结构）",
 		"templateHint": "连接 Docsie 以加载您的模板。",

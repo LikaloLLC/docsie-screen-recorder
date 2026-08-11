@@ -22,7 +22,7 @@
 		"qualityDetailed": "詳細",
 		"qualityUltra": "超高",
 		"language": "文件語言",
-		"languageHint": "預設使用您的系統語言（{{language}}）。",
+		"languageHint": "預設使用您的應用程式語言（{{language}}）。",
 		"template": "產生範本",
 		"templateNone": "無範本（預設結構）",
 		"templateHint": "連線 Docsie 以載入您的範本。",

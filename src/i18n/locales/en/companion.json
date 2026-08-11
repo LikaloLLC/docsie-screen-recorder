@@ -22,7 +22,7 @@
 		"qualityDetailed": "Detailed",
 		"qualityUltra": "Ultra",
 		"language": "Documentation language",
-		"languageHint": "Defaults to your system language ({{language}}).",
+		"languageHint": "Defaults to your app language ({{language}}).",
 		"template": "Generation template",
 		"templateNone": "No template (default structure)",
 		"templateHint": "Connect to Docsie to load your templates.",

@@ -22,7 +22,7 @@
 		"qualityDetailed": "Ayrıntılı",
 		"qualityUltra": "Ultra",
 		"language": "Dokümantasyon dili",
-		"languageHint": "Varsayılan olarak sistem diliniz kullanılır ({{language}}).",
+		"languageHint": "Varsayılan olarak uygulama diliniz kullanılır ({{language}}).",
 		"template": "Oluşturma şablonu",
 		"templateNone": "Şablon yok (varsayılan yapı)",
 		"templateHint": "Şablonlarınızı yüklemek için Docsie'ye bağlanın.",

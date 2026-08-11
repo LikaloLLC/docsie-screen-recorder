@@ -22,7 +22,7 @@
 		"qualityDetailed": "상세",
 		"qualityUltra": "울트라",
 		"language": "문서 언어",
-		"languageHint": "기본적으로 시스템 언어({{language}})가 사용됩니다.",
+		"languageHint": "기본적으로 앱 언어({{language}})가 사용됩니다.",
 		"template": "생성 템플릿",
 		"templateNone": "템플릿 없음 (기본 구조)",
 		"templateHint": "템플릿을 불러오려면 Docsie에 연결하세요.",

@@ -1,8 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useScopedT } from "@/contexts/I18nContext";
+import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { useScreenRecorder } from "@/hooks/useScreenRecorder";
+import { LOCALE_STORAGE_KEY } from "@/i18n/config";
 import type {
 	DocsieGenerationTemplate,
 	DocsieIntegrationState,
@@ -31,13 +32,14 @@ type CompanionSettings = {
 	returnFormat: ReturnFormat;
 	quality: DocsieVideoToDocsQuality;
 	language: string;
+	languageManuallySet: boolean;
 	generationTemplateId: string;
 	setupComplete: boolean;
 };
 
 // Docsie's video-to-docs API takes plain language names. The default follows
-// the operating system locale so e.g. a Japanese Windows install produces
-// Japanese documentation out of the box.
+// the app UI locale unless the user explicitly chooses a different document
+// language.
 const LANGUAGE_OPTIONS = [
 	{ value: "english", label: "English" },
 	{ value: "japanese", label: "日本語 (Japanese)" },
@@ -51,7 +53,7 @@ const LANGUAGE_OPTIONS = [
 	{ value: "turkish", label: "Türkçe (Turkish)" },
 ] as const;
 
-const SYSTEM_LANGUAGE_MAP: Record<string, string> = {
+const LOCALE_LANGUAGE_MAP: Record<string, string> = {
 	en: "english",
 	ja: "japanese",
 	de: "german",
@@ -64,9 +66,27 @@ const SYSTEM_LANGUAGE_MAP: Record<string, string> = {
 	tr: "turkish",
 };
 
+function getDocumentLanguageForLocale(locale: string | null | undefined): string {
+	const normalized = (locale || "en").toLowerCase();
+	if (normalized.startsWith("zh")) return "chinese";
+	const prefix = normalized.split("-")[0];
+	return LOCALE_LANGUAGE_MAP[prefix] ?? "english";
+}
+
 function detectSystemLanguage(): string {
-	const prefix = (navigator.language || "en").split("-")[0].toLowerCase();
-	return SYSTEM_LANGUAGE_MAP[prefix] ?? "english";
+	return getDocumentLanguageForLocale(navigator.language || "en");
+}
+
+function detectPreferredDocumentLanguage(): string {
+	try {
+		const storedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+		if (storedLocale) {
+			return getDocumentLanguageForLocale(storedLocale);
+		}
+	} catch {
+		// Fall back to browser/system locale.
+	}
+	return detectSystemLanguage();
 }
 
 type PublishPhase =
@@ -89,6 +109,7 @@ function loadSettings(): CompanionSettings {
 		const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
 		if (raw) {
 			const parsed = JSON.parse(raw) as Partial<CompanionSettings>;
+			const languageManuallySet = parsed.languageManuallySet === true;
 			return {
 				matchRule: typeof parsed.matchRule === "string" ? parsed.matchRule : DEFAULT_MATCH_RULE,
 				returnFormat: parsed.returnFormat === "pdf" ? "pdf" : "kb",
@@ -100,9 +121,10 @@ function loadSettings(): CompanionSettings {
 						? parsed.quality
 						: "standard",
 				language:
-					typeof parsed.language === "string" && parsed.language.trim()
+					languageManuallySet && typeof parsed.language === "string" && parsed.language.trim()
 						? parsed.language
-						: detectSystemLanguage(),
+						: detectPreferredDocumentLanguage(),
+				languageManuallySet,
 				generationTemplateId:
 					typeof parsed.generationTemplateId === "string" ? parsed.generationTemplateId : "",
 				setupComplete: parsed.setupComplete === true,
@@ -115,7 +137,8 @@ function loadSettings(): CompanionSettings {
 		matchRule: DEFAULT_MATCH_RULE,
 		returnFormat: "kb",
 		quality: "standard",
-		language: detectSystemLanguage(),
+		language: detectPreferredDocumentLanguage(),
+		languageManuallySet: false,
 		generationTemplateId: "",
 		setupComplete: false,
 	};
@@ -278,6 +301,7 @@ function CompanionShell({ children }: { children: ReactNode }) {
  */
 export function CaptureCompanion() {
 	const t = useScopedT("companion");
+	const { locale } = useI18n();
 	const [docsieState, setDocsieState] = useState<DocsieIntegrationState | null>(null);
 	const [settings, setSettings] = useState<CompanionSettings>(() => loadSettings());
 	const [attachedSource, setAttachedSource] = useState<ProcessedDesktopSource | null>(null);
@@ -534,6 +558,16 @@ export function CaptureCompanion() {
 		});
 	}, []);
 
+	useEffect(() => {
+		if (settings.languageManuallySet) {
+			return;
+		}
+		const languageForLocale = getDocumentLanguageForLocale(locale);
+		if (settings.language !== languageForLocale) {
+			updateSettings({ language: languageForLocale });
+		}
+	}, [locale, settings.language, settings.languageManuallySet, updateSettings]);
+
 	const resetForNextSession = useCallback(() => {
 		setPublishPhase("idle");
 		setPublishResult(null);
@@ -717,7 +751,12 @@ export function CaptureCompanion() {
 							<span className="text-xs text-white/60">{t("setup.language")}</span>
 							<select
 								value={settings.language}
-								onChange={(event) => updateSettings({ language: event.target.value })}
+								onChange={(event) =>
+									updateSettings({
+										language: event.target.value,
+										languageManuallySet: true,
+									})
+								}
 								className="bg-black/40 border border-white/15 rounded-md px-2.5 py-1.5 outline-none focus:border-white/40"
 							>
 								{LANGUAGE_OPTIONS.map((option) => (
@@ -730,7 +769,9 @@ export function CaptureCompanion() {
 								)}
 							</select>
 							<span className="text-[10px] text-white/35">
-								{t("setup.languageHint", { language: detectSystemLanguage() })}
+								{t("setup.languageHint", {
+									language: getDocumentLanguageForLocale(locale),
+								})}
 							</span>
 						</label>
 						<label className="flex flex-col gap-1">
