@@ -590,12 +590,15 @@ jobs:
             "docsie-screen-recorder-mac-universal-${VERSION}.dmg" \
             "docsie-screen-recorder-mac-universal.dmg"
           copy_first "Docsie.Screen.Recorder.Setup.exe" \
+            "Docsie Screen Recorder Setup ${VERSION}.exe" \
             "Docsie.Screen.Recorder.Setup.${VERSION}.exe" \
             "Docsie-Screen-Recorder-Setup-${VERSION}.exe"
           copy_first "Docsie.Screen.Recorder-Linux.AppImage" \
+            "Docsie Screen Recorder-Linux-${VERSION}.AppImage" \
             "Docsie.Screen.Recorder-Linux-${VERSION}.AppImage" \
             "Docsie-Screen-Recorder-Linux-${VERSION}.AppImage"
           copy_first "Docsie.Screen.Recorder-Linux.deb" \
+            "Docsie Screen Recorder-Linux-${VERSION}.deb" \
             "Docsie.Screen.Recorder-Linux-${VERSION}.deb" \
             "Docsie-Screen-Recorder-Linux-${VERSION}.deb"
 
