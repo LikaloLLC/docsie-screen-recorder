@@ -9,7 +9,8 @@ Everything under this directory is intended to be licensed under
 Current enterprise modules:
 
 - [`capture-companion/`](./capture-companion/): the Docsie Capture Companion UI
-  and demo simulator
+  and demo simulator, covered by its own
+  [Capture Companion Enterprise License](./capture-companion/LICENSE.md)
 
 ## What belongs here
 

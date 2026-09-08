@@ -37,6 +37,18 @@
     {
       "from": "public/wallpapers",
       "to": "assets/wallpapers"
+    },
+    {
+      "from": "LICENSE",
+      "to": "licenses/OpenScreen-MIT-LICENSE"
+    },
+    {
+      "from": "LICENSING.md",
+      "to": "licenses/LICENSING.md"
+    },
+    {
+      "from": "enterprise/capture-companion/LICENSE.md",
+      "to": "licenses/Docsie-Capture-Companion-Enterprise-LICENSE.md"
     }
   ],
 

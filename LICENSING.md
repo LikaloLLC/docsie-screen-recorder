@@ -23,8 +23,11 @@ license in [enterprise/LICENSE.md](./enterprise/LICENSE.md), unless a file says
 otherwise.
 
 The Capture Companion application layer is located under
-[`enterprise/capture-companion/`](./enterprise/capture-companion/) and uses the
-custom SPDX identifier `LicenseRef-Docsie-Enterprise-1.0`.
+[`enterprise/capture-companion/`](./enterprise/capture-companion/) and is
+covered by its own
+[Capture Companion Enterprise License](./enterprise/capture-companion/LICENSE.md).
+Its source files use the custom SPDX identifier
+`LicenseRef-Docsie-Capture-Companion-Enterprise-1.0`.
 
 This boundary is here so the repo can support:
 

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Likalo LLC
-// SPDX-License-Identifier: LicenseRef-Docsie-Enterprise-1.0
+// SPDX-License-Identifier: LicenseRef-Docsie-Capture-Companion-Enterprise-1.0
 
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
