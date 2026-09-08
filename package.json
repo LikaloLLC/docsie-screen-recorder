@@ -1,7 +1,7 @@
 {
 	"name": "docsie-screen-recorder",
 	"private": true,
-	"version": "1.3.21",
+	"version": "1.3.22",
 	"license": "SEE LICENSE IN LICENSING.md",
 	"type": "module",
 	"packageManager": "npm@10.9.4",
