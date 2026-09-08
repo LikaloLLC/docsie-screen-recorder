@@ -78,7 +78,8 @@
 		"openKb": "Ouvrir dans la base de connaissances",
 		"downloadPdf": "Télécharger le PDF",
 		"recordAnother": "Enregistrer une autre session",
-		"dismiss": "Fermer"
+		"dismiss": "Fermer",
+		"reconnect": "Se reconnecter à Docsie"
 	},
 	"errors": {
 		"pollStatusFailed": "Impossible d'interroger l'état de la tâche Docsie",
@@ -88,6 +89,8 @@
 		"pdfExportTimeout": "Délai d'attente dépassé pour l'export PDF",
 		"startJobFailed": "Impossible de démarrer la tâche Docsie",
 		"startGenerationFailed": "Impossible de démarrer la génération Docsie",
-		"noVideoProduced": "L'enregistrement est terminé, mais aucun fichier vidéo n'a été produit."
+		"noVideoProduced": "L'enregistrement est terminé, mais aucun fichier vidéo n'a été produit.",
+		"sessionExpired": "Votre session Docsie a expiré. Reconnectez-vous pour reprendre le traitement de cet enregistrement.",
+		"openSignInFailed": "Impossible d'ouvrir la page de connexion Docsie."
 	}
 }

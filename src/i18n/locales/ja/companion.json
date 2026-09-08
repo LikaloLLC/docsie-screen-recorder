@@ -78,7 +78,8 @@
 		"openKb": "ナレッジベースで開く",
 		"downloadPdf": "PDF をダウンロード",
 		"recordAnother": "別のセッションを録画",
-		"dismiss": "閉じる"
+		"dismiss": "閉じる",
+		"reconnect": "Docsieに再接続"
 	},
 	"errors": {
 		"pollStatusFailed": "Docsie ジョブの状態を取得できませんでした",
@@ -88,6 +89,8 @@
 		"pdfExportTimeout": "PDF エクスポートの待機がタイムアウトしました",
 		"startJobFailed": "Docsie ジョブを開始できませんでした",
 		"startGenerationFailed": "Docsie の生成を開始できませんでした",
-		"noVideoProduced": "録画は終了しましたが、動画ファイルが生成されませんでした。"
+		"noVideoProduced": "録画は終了しましたが、動画ファイルが生成されませんでした。",
+		"sessionExpired": "Docsieのセッションの有効期限が切れました。再度サインインすると、この録画の処理を再開します。",
+		"openSignInFailed": "Docsieのサインインページを開けませんでした。"
 	}
 }

@@ -38,6 +38,7 @@ import {
 import { mainT } from "../i18n";
 import { RECORDINGS_DIR } from "../main";
 import {
+	clearDocsieAuthentication,
 	estimateDocsieVideoToDocs,
 	generateDocsieVideoToDocs,
 	generateDocsieVoiceover,
@@ -1283,6 +1284,15 @@ export function registerIpcHandlers(
 			return { success: true, state: await getDocsieIntegrationState() };
 		} catch (error) {
 			console.error("Failed to read Docsie integration state:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
+	ipcMain.handle("docsie:clear-auth", async () => {
+		try {
+			return { success: true, state: await clearDocsieAuthentication() };
+		} catch (error) {
+			console.error("Failed to clear Docsie authentication:", error);
 			return { success: false, error: String(error) };
 		}
 	});

@@ -9,12 +9,14 @@ import { useScreenRecorder } from "@/hooks/useScreenRecorder";
 import { LOCALE_STORAGE_KEY } from "@/i18n/config";
 import { getAvailableLocales, getLocaleName } from "@/i18n/loader";
 import type {
+	DocsieDesktopAuthEvent,
 	DocsieGenerationTemplate,
 	DocsieIntegrationState,
 	DocsieVideoToDocsJobResult,
 	DocsieVideoToDocsQuality,
 } from "@/lib/docsieIntegration";
 import { buildDocsieDesktopLoginUrl, getDocsieWebAppUrl } from "@/lib/docsieIntegration";
+import { isDocsieAuthenticationError } from "./authRecovery";
 
 const SETTINGS_STORAGE_KEY = "docsie-companion-settings";
 const DEFAULT_MATCH_RULE = "Viewer";
@@ -337,6 +339,9 @@ export function CaptureCompanion() {
 	const [statusText, setStatusText] = useState("");
 	const [publishResult, setPublishResult] = useState<PublishResult | null>(null);
 	const [showSettings, setShowSettings] = useState(false);
+	const [authRecoveryRequired, setAuthRecoveryRequired] = useState(false);
+	const [authRecoveryCompleted, setAuthRecoveryCompleted] = useState(false);
+	const [pendingRetryVideoPath, setPendingRetryVideoPath] = useState<string | null>(null);
 
 	const settingsRef = useRef(settings);
 	settingsRef.current = settings;
@@ -357,19 +362,40 @@ export function CaptureCompanion() {
 		const response = await window.electronAPI.docsieGetState();
 		if (response.success && response.state) {
 			setDocsieState(response.state);
+			return response.state;
 		}
+		return null;
 	}, []);
 
 	useEffect(() => {
 		void refreshDocsieState();
-		const onAuthEvent = () => {
+		const onAuthEvent = (event: Event) => {
+			const authEvent = (event as CustomEvent<DocsieDesktopAuthEvent>).detail;
+			if (authEvent?.status === "success") {
+				setAuthRecoveryCompleted(true);
+			}
+			if (authEvent?.state) {
+				setDocsieState(authEvent.state);
+				return;
+			}
 			void refreshDocsieState();
 		};
-		window.addEventListener("docsie-desktop-auth-event", onAuthEvent);
+		window.addEventListener("docsie-desktop-auth-event", onAuthEvent as EventListener);
 		return () => {
-			window.removeEventListener("docsie-desktop-auth-event", onAuthEvent);
+			window.removeEventListener("docsie-desktop-auth-event", onAuthEvent as EventListener);
 		};
 	}, [refreshDocsieState]);
+
+	const openDocsieLogin = useCallback(async () => {
+		const loginUrl = buildDocsieDesktopLoginUrl(
+			getDocsieWebAppUrl(docsieStateRef.current?.apiBaseUrl),
+		);
+		const result = await window.electronAPI.openExternalUrl(loginUrl);
+		if (!result.success) {
+			toast.error(result.error ?? tRef.current("errors.openSignInFailed"));
+		}
+		return result.success;
+	}, []);
 
 	const [templates, setTemplates] = useState<DocsieGenerationTemplate[]>([]);
 	const hasToken = Boolean(docsieState?.hasToken);
@@ -388,97 +414,131 @@ export function CaptureCompanion() {
 		};
 	}, [hasToken]);
 
-	const publishRecording = useCallback(async (videoPath: string) => {
-		const translate = tRef.current;
-		const state = docsieStateRef.current;
-		const activeSettings = settingsRef.current;
-		const bookTitle = sessionTitleRef.current.trim() || defaultSessionTitle(translate);
-		const outputFormats = activeSettings.returnFormat === "pdf" ? (["pdf"] as const) : undefined;
-		const language = activeSettings.language || state?.defaultLanguage || "english";
-		const generationTemplateId =
-			activeSettings.generationTemplateId || state?.defaultGenerationTemplateId || undefined;
+	const publishRecording = useCallback(
+		async (videoPath: string) => {
+			const translate = tRef.current;
+			const state = docsieStateRef.current;
+			const activeSettings = settingsRef.current;
+			const bookTitle = sessionTitleRef.current.trim() || defaultSessionTitle(translate);
+			const outputFormats = activeSettings.returnFormat === "pdf" ? (["pdf"] as const) : undefined;
+			const language = activeSettings.language || state?.defaultLanguage || "english";
+			const generationTemplateId =
+				activeSettings.generationTemplateId || state?.defaultGenerationTemplateId || undefined;
 
-		try {
-			setPublishResult(null);
-			setPublishPhase("starting");
-			setStatusText(translate("progress.uploading"));
+			try {
+				setPublishResult(null);
+				setPublishPhase("starting");
+				setStatusText(translate("progress.uploading"));
 
-			const start = await window.electronAPI.docsieStartVideoToDocs({
-				videoPath,
-				quality: activeSettings.quality,
-				language,
-				workspaceId: state?.workspaceId,
-				docStyle: state?.defaultDocStyle ?? "sop",
-				generationTemplateId,
-				intent: "documentation",
-				targetDocumentationId: state?.targetDocumentationId || undefined,
-				autoPublishToKnowledgeBase: activeSettings.returnFormat === "kb",
-				bookTitle,
-				autoGenerate: false,
-				outputFormats: outputFormats ? [...outputFormats] : undefined,
-			});
-			if (!start.success || !start.jobId) {
-				throw new Error(start.error ?? translate("errors.startJobFailed"));
+				const start = await window.electronAPI.docsieStartVideoToDocs({
+					videoPath,
+					quality: activeSettings.quality,
+					language,
+					workspaceId: state?.workspaceId,
+					docStyle: state?.defaultDocStyle ?? "sop",
+					generationTemplateId,
+					intent: "documentation",
+					targetDocumentationId: state?.targetDocumentationId || undefined,
+					autoPublishToKnowledgeBase: activeSettings.returnFormat === "kb",
+					bookTitle,
+					autoGenerate: false,
+					outputFormats: outputFormats ? [...outputFormats] : undefined,
+				});
+				if (!start.success || !start.jobId) {
+					throw new Error(start.error ?? translate("errors.startJobFailed"));
+				}
+
+				setPublishPhase("analysis");
+				setStatusText(translate("progress.analyzing"));
+				const analysis = await pollJobUntilDone(start.jobId, translate);
+
+				setPublishPhase("generation");
+				setStatusText(translate("progress.generating"));
+				const generate = await window.electronAPI.docsieGenerateVideoToDocs({
+					jobId: analysis.jobId ?? start.jobId,
+					docStyle: state?.defaultDocStyle ?? "sop",
+					targetLanguage: language,
+					generationTemplateId,
+					targetDocumentationId: state?.targetDocumentationId || undefined,
+					autoPublishToKnowledgeBase: activeSettings.returnFormat === "kb",
+					bookTitle,
+					outputFormats: outputFormats ? [...outputFormats] : undefined,
+				});
+				if (!generate.success || !generate.generateJobId) {
+					throw new Error(generate.error ?? translate("errors.startGenerationFailed"));
+				}
+
+				const result = await pollJobUntilDone(generate.generateJobId, translate);
+
+				let pdfUrl: string | null = null;
+				if (activeSettings.returnFormat === "pdf") {
+					setPublishPhase("exporting");
+					setStatusText(translate("progress.preparingPdf"));
+					pdfUrl = await resolvePdfExportUrl(result, translate);
+				}
+
+				setPublishResult({
+					kbUrl: result.url ?? null,
+					pdfUrl,
+					title: result.title ?? bookTitle,
+				});
+				setPublishPhase("done");
+				setStatusText(translate("progress.done"));
+				toast.success(translate("toast.docsReady"));
+
+				void window.electronAPI.docsieSaveVideoToDocsHistory({
+					videoPath,
+					bookTitle,
+					quality: activeSettings.quality,
+					docStyle: state?.defaultDocStyle ?? "sop",
+					generationTemplateId,
+					language,
+					targetDocumentationId: state?.targetDocumentationId || undefined,
+					autoPublishToKnowledgeBase: activeSettings.returnFormat === "kb",
+					analysisJobId: start.jobId,
+					generationJobId: generate.generateJobId,
+					jobResult: result,
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				setPublishPhase("failed");
+				if (isDocsieAuthenticationError(message)) {
+					const recoveryMessage = translate("errors.sessionExpired");
+					setStatusText(recoveryMessage);
+					setAuthRecoveryRequired(true);
+					setAuthRecoveryCompleted(false);
+					setPendingRetryVideoPath(videoPath);
+
+					const clearResult = await window.electronAPI.docsieClearAuth();
+					if (clearResult.success && clearResult.state) {
+						setDocsieState(clearResult.state);
+					} else {
+						setDocsieState((current) => (current ? { ...current, hasToken: false } : current));
+					}
+
+					toast.error(recoveryMessage);
+					await openDocsieLogin();
+					return;
+				}
+
+				setStatusText(message);
+				toast.error(message);
 			}
+		},
+		[openDocsieLogin],
+	);
 
-			setPublishPhase("analysis");
-			setStatusText(translate("progress.analyzing"));
-			const analysis = await pollJobUntilDone(start.jobId, translate);
-
-			setPublishPhase("generation");
-			setStatusText(translate("progress.generating"));
-			const generate = await window.electronAPI.docsieGenerateVideoToDocs({
-				jobId: analysis.jobId ?? start.jobId,
-				docStyle: state?.defaultDocStyle ?? "sop",
-				targetLanguage: language,
-				generationTemplateId,
-				targetDocumentationId: state?.targetDocumentationId || undefined,
-				autoPublishToKnowledgeBase: activeSettings.returnFormat === "kb",
-				bookTitle,
-				outputFormats: outputFormats ? [...outputFormats] : undefined,
-			});
-			if (!generate.success || !generate.generateJobId) {
-				throw new Error(generate.error ?? translate("errors.startGenerationFailed"));
-			}
-
-			const result = await pollJobUntilDone(generate.generateJobId, translate);
-
-			let pdfUrl: string | null = null;
-			if (activeSettings.returnFormat === "pdf") {
-				setPublishPhase("exporting");
-				setStatusText(translate("progress.preparingPdf"));
-				pdfUrl = await resolvePdfExportUrl(result, translate);
-			}
-
-			setPublishResult({
-				kbUrl: result.url ?? null,
-				pdfUrl,
-				title: result.title ?? bookTitle,
-			});
-			setPublishPhase("done");
-			setStatusText(translate("progress.done"));
-			toast.success(translate("toast.docsReady"));
-
-			void window.electronAPI.docsieSaveVideoToDocsHistory({
-				videoPath,
-				bookTitle,
-				quality: activeSettings.quality,
-				docStyle: state?.defaultDocStyle ?? "sop",
-				generationTemplateId,
-				language,
-				targetDocumentationId: state?.targetDocumentationId || undefined,
-				autoPublishToKnowledgeBase: activeSettings.returnFormat === "kb",
-				analysisJobId: start.jobId,
-				generationJobId: generate.generateJobId,
-				jobResult: result,
-			});
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			setPublishPhase("failed");
-			setStatusText(message);
-			toast.error(message);
+	useEffect(() => {
+		if (!pendingRetryVideoPath || !authRecoveryCompleted || !docsieState?.hasToken) {
+			return;
 		}
-	}, []);
+
+		const videoPath = pendingRetryVideoPath;
+		setPendingRetryVideoPath(null);
+		setAuthRecoveryRequired(false);
+		setAuthRecoveryCompleted(false);
+		void publishRecording(videoPath);
+	}, [authRecoveryCompleted, docsieState?.hasToken, pendingRetryVideoPath, publishRecording]);
 
 	const handleRecordingFinalized = useCallback(
 		async (info: { path: string | null }) => {
@@ -570,11 +630,8 @@ export function CaptureCompanion() {
 	availableSourcesRef.current = availableSources;
 
 	const handleConnect = useCallback(() => {
-		const loginUrl = buildDocsieDesktopLoginUrl(
-			getDocsieWebAppUrl(docsieStateRef.current?.apiBaseUrl),
-		);
-		void window.electronAPI.openExternalUrl(loginUrl);
-	}, []);
+		void openDocsieLogin();
+	}, [openDocsieLogin]);
 
 	const updateSettings = useCallback((partial: Partial<CompanionSettings>) => {
 		setSettings((current) => {
@@ -599,6 +656,9 @@ export function CaptureCompanion() {
 		setPublishResult(null);
 		setStatusText("");
 		setSessionTitle("");
+		setAuthRecoveryRequired(false);
+		setAuthRecoveryCompleted(false);
+		setPendingRetryVideoPath(null);
 	}, []);
 
 	const connected = Boolean(docsieState?.hasToken);
@@ -1007,13 +1067,24 @@ export function CaptureCompanion() {
 						)}
 
 						{publishPhase === "failed" && (
-							<button
-								type="button"
-								onClick={resetForNextSession}
-								className="py-2 rounded-md border border-white/15 text-xs hover:bg-white/10"
-							>
-								{t("result.dismiss")}
-							</button>
+							<div className="flex flex-col gap-2">
+								{authRecoveryRequired && (
+									<button
+										type="button"
+										onClick={() => void openDocsieLogin()}
+										className="py-2 rounded-md bg-[#FF6738] text-white text-xs font-medium hover:opacity-90"
+									>
+										{t("result.reconnect")}
+									</button>
+								)}
+								<button
+									type="button"
+									onClick={resetForNextSession}
+									className="py-2 rounded-md border border-white/15 text-xs hover:bg-white/10"
+								>
+									{t("result.dismiss")}
+								</button>
+							</div>
 						)}
 					</section>
 				)}

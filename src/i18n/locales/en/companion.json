@@ -78,7 +78,8 @@
 		"openKb": "Open in knowledge base",
 		"downloadPdf": "Download PDF",
 		"recordAnother": "Record another session",
-		"dismiss": "Dismiss"
+		"dismiss": "Dismiss",
+		"reconnect": "Reconnect to Docsie"
 	},
 	"errors": {
 		"pollStatusFailed": "Failed to poll Docsie job status",
@@ -88,6 +89,8 @@
 		"pdfExportTimeout": "Timed out waiting for the PDF export",
 		"startJobFailed": "Failed to start the Docsie job",
 		"startGenerationFailed": "Failed to start Docsie generation",
-		"noVideoProduced": "The recording finished but no video file was produced."
+		"noVideoProduced": "The recording finished but no video file was produced.",
+		"sessionExpired": "Your Docsie session expired. Sign in again to resume this recording.",
+		"openSignInFailed": "Could not open the Docsie sign-in page."
 	}
 }

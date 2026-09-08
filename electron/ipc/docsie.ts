@@ -1178,6 +1178,19 @@ export async function getDocsieIntegrationState(): Promise<DocsieIntegrationStat
 	return toDocsieState(await readStoredDocsieConfig());
 }
 
+export async function clearDocsieAuthentication(): Promise<DocsieIntegrationState> {
+	const stored = await readStoredDocsieConfig();
+	if (!stored) {
+		return toDocsieState(null);
+	}
+
+	const persisted = { ...stored };
+	delete persisted.tokenEncrypted;
+	delete persisted.tokenPlaintext;
+	await fs.writeFile(DOCSIE_CONFIG_PATH, JSON.stringify(persisted, null, 2), "utf-8");
+	return toDocsieState(persisted);
+}
+
 export async function saveDocsieIntegrationConfig(
 	input: DocsieIntegrationConfigInput,
 ): Promise<DocsieIntegrationState> {

@@ -78,7 +78,8 @@
 		"openKb": "Abrir en la base de conocimientos",
 		"downloadPdf": "Descargar PDF",
 		"recordAnother": "Grabar otra sesión",
-		"dismiss": "Descartar"
+		"dismiss": "Descartar",
+		"reconnect": "Volver a conectar con Docsie"
 	},
 	"errors": {
 		"pollStatusFailed": "No se pudo consultar el estado del trabajo de Docsie",
@@ -88,6 +89,8 @@
 		"pdfExportTimeout": "Se agotó el tiempo de espera de la exportación a PDF",
 		"startJobFailed": "No se pudo iniciar el trabajo de Docsie",
 		"startGenerationFailed": "No se pudo iniciar la generación de Docsie",
-		"noVideoProduced": "La grabación terminó, pero no se generó ningún archivo de vídeo."
+		"noVideoProduced": "La grabación terminó, pero no se generó ningún archivo de vídeo.",
+		"sessionExpired": "Tu sesión de Docsie ha caducado. Vuelve a iniciar sesión para reanudar esta grabación.",
+		"openSignInFailed": "No se pudo abrir la página de inicio de sesión de Docsie."
 	}
 }

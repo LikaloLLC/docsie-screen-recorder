@@ -78,7 +78,8 @@
 		"openKb": "在知識庫中開啟",
 		"downloadPdf": "下載 PDF",
 		"recordAnother": "錄製另一個工作階段",
-		"dismiss": "關閉"
+		"dismiss": "關閉",
+		"reconnect": "重新連線至 Docsie"
 	},
 	"errors": {
 		"pollStatusFailed": "無法取得 Docsie 工作狀態",
@@ -88,6 +89,8 @@
 		"pdfExportTimeout": "等待 PDF 匯出逾時",
 		"startJobFailed": "無法啟動 Docsie 工作",
 		"startGenerationFailed": "無法啟動 Docsie 文件產生",
-		"noVideoProduced": "錄製已結束，但未產生影片檔案。"
+		"noVideoProduced": "錄製已結束，但未產生影片檔案。",
+		"sessionExpired": "您的 Docsie 工作階段已過期。重新登入後將繼續處理此錄製內容。",
+		"openSignInFailed": "無法開啟 Docsie 登入頁面。"
 	}
 }

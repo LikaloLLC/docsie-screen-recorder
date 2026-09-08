@@ -78,7 +78,8 @@
 		"openKb": "在知识库中打开",
 		"downloadPdf": "下载 PDF",
 		"recordAnother": "录制另一个会话",
-		"dismiss": "关闭"
+		"dismiss": "关闭",
+		"reconnect": "重新连接 Docsie"
 	},
 	"errors": {
 		"pollStatusFailed": "无法获取 Docsie 任务状态",
@@ -88,6 +89,8 @@
 		"pdfExportTimeout": "等待 PDF 导出超时",
 		"startJobFailed": "无法启动 Docsie 任务",
 		"startGenerationFailed": "无法启动 Docsie 文档生成",
-		"noVideoProduced": "录制已结束，但未生成视频文件。"
+		"noVideoProduced": "录制已结束，但未生成视频文件。",
+		"sessionExpired": "您的 Docsie 会话已过期。重新登录后将继续处理此录制内容。",
+		"openSignInFailed": "无法打开 Docsie 登录页面。"
 	}
 }

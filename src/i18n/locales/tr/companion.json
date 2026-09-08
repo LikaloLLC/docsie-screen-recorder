@@ -78,7 +78,8 @@
 		"openKb": "Bilgi bankasında aç",
 		"downloadPdf": "PDF'yi indir",
 		"recordAnother": "Başka bir oturum kaydet",
-		"dismiss": "Kapat"
+		"dismiss": "Kapat",
+		"reconnect": "Docsie'ye yeniden bağlan"
 	},
 	"errors": {
 		"pollStatusFailed": "Docsie iş durumu sorgulanamadı",
@@ -88,6 +89,8 @@
 		"pdfExportTimeout": "PDF dışa aktarma beklenirken zaman aşımı oluştu",
 		"startJobFailed": "Docsie işi başlatılamadı",
 		"startGenerationFailed": "Docsie oluşturma işlemi başlatılamadı",
-		"noVideoProduced": "Kayıt tamamlandı ancak video dosyası oluşturulmadı."
+		"noVideoProduced": "Kayıt tamamlandı ancak video dosyası oluşturulmadı.",
+		"sessionExpired": "Docsie oturumunuzun süresi doldu. Bu kaydı işlemeye devam etmek için tekrar oturum açın.",
+		"openSignInFailed": "Docsie oturum açma sayfası açılamadı."
 	}
 }

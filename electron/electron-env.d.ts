@@ -121,6 +121,11 @@ interface Window {
 			state?: import("../src/lib/docsieIntegration").DocsieIntegrationState;
 			error?: string;
 		}>;
+		docsieClearAuth: () => Promise<{
+			success: boolean;
+			state?: import("../src/lib/docsieIntegration").DocsieIntegrationState;
+			error?: string;
+		}>;
 		docsieSaveConfig: (
 			input: import("../src/lib/docsieIntegration").DocsieIntegrationConfigInput,
 		) => Promise<{

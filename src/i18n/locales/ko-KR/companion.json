@@ -78,7 +78,8 @@
 		"openKb": "지식 베이스에서 열기",
 		"downloadPdf": "PDF 다운로드",
 		"recordAnother": "다른 세션 녹화",
-		"dismiss": "닫기"
+		"dismiss": "닫기",
+		"reconnect": "Docsie에 다시 연결"
 	},
 	"errors": {
 		"pollStatusFailed": "Docsie 작업 상태를 확인하지 못했습니다",
@@ -88,6 +89,8 @@
 		"pdfExportTimeout": "PDF 내보내기 대기 시간이 초과되었습니다",
 		"startJobFailed": "Docsie 작업을 시작하지 못했습니다",
 		"startGenerationFailed": "Docsie 생성을 시작하지 못했습니다",
-		"noVideoProduced": "녹화가 끝났지만 비디오 파일이 생성되지 않았습니다."
+		"noVideoProduced": "녹화가 끝났지만 비디오 파일이 생성되지 않았습니다.",
+		"sessionExpired": "Docsie 세션이 만료되었습니다. 다시 로그인하면 이 녹화 처리가 재개됩니다.",
+		"openSignInFailed": "Docsie 로그인 페이지를 열 수 없습니다."
 	}
 }

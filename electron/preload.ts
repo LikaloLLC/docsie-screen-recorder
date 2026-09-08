@@ -112,6 +112,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	docsieGetState: () => {
 		return ipcRenderer.invoke("docsie:get-state");
 	},
+	docsieClearAuth: () => {
+		return ipcRenderer.invoke("docsie:clear-auth");
+	},
 	docsieSaveConfig: (input: DocsieIntegrationConfigInput) => {
 		return ipcRenderer.invoke("docsie:save-config", input);
 	},
