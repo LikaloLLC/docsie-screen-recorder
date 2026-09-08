@@ -1,6 +1,9 @@
 {
 	"shell": {
 		"title": "Docsie Capture Companion",
+		"appLanguage": "App language",
+		"openRecorder": "Recorder",
+		"openRecorderTitle": "Open Docsie Screen Recorder",
 		"minimize": "Minimize",
 		"close": "Close"
 	},

@@ -1,6 +1,9 @@
 {
 	"shell": {
 		"title": "Docsie 錄製助手",
+		"appLanguage": "應用程式語言",
+		"openRecorder": "錄影器",
+		"openRecorderTitle": "開啟 Docsie Screen Recorder",
 		"minimize": "最小化",
 		"close": "關閉"
 	},

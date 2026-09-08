@@ -103,9 +103,31 @@ function createWindow() {
 	attachDesktopAuthEventFlush(mainWindow);
 }
 
+function isCompanionLaunch(argv: string[]) {
+	return argv.includes("--companion");
+}
+
+function isCompanionWindow(window: BrowserWindow) {
+	return window.webContents.getURL().includes("windowType=capture-companion");
+}
+
+function openRecorderWindowWrapper() {
+	if (mainWindow && !mainWindow.isDestroyed()) {
+		if (!isCompanionWindow(mainWindow)) {
+			showMainWindow();
+			return;
+		}
+		isForceClosing = true;
+		mainWindow.close();
+		isForceClosing = false;
+	}
+	mainWindow = createLaunchWindow();
+	attachDesktopAuthEventFlush(mainWindow);
+}
+
 function openCompanionWindowWrapper() {
 	if (mainWindow && !mainWindow.isDestroyed()) {
-		if (mainWindow.webContents.getURL().includes("windowType=capture-companion")) {
+		if (isCompanionWindow(mainWindow)) {
 			mainWindow.show();
 			mainWindow.focus();
 			return;
@@ -629,7 +651,12 @@ app.on("second-instance", (_event, argv) => {
 		return;
 	}
 
-	showMainWindow();
+	if (isCompanionLaunch(argv)) {
+		openCompanionWindowWrapper();
+		return;
+	}
+
+	openRecorderWindowWrapper();
 });
 
 // Register all IPC handlers when app is ready
@@ -673,13 +700,7 @@ app.whenReady().then(async () => {
 	await ensureRecordingsDir();
 
 	function switchToHudWrapper() {
-		if (mainWindow) {
-			isForceClosing = true;
-			mainWindow.close();
-			isForceClosing = false;
-			mainWindow = null;
-		}
-		showMainWindow();
+		openRecorderWindowWrapper();
 	}
 
 	registerIpcHandlers(

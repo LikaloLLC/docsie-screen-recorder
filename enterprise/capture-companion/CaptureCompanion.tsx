@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { useScreenRecorder } from "@/hooks/useScreenRecorder";
 import { LOCALE_STORAGE_KEY } from "@/i18n/config";
+import { getAvailableLocales, getLocaleName } from "@/i18n/loader";
 import type {
 	DocsieGenerationTemplate,
 	DocsieIntegrationState,
@@ -262,17 +263,39 @@ async function resolvePdfExportUrl(
 
 function CompanionShell({ children }: { children: ReactNode }) {
 	const t = useScopedT("companion");
+	const { locale, setLocale } = useI18n();
 	return (
 		<div className="w-screen h-screen bg-transparent p-2 font-sans">
 			<div className="w-full h-full rounded-xl border border-white/10 bg-[#101014] shadow-2xl overflow-hidden flex flex-col text-white/90">
 				<div
-					className="flex items-center justify-between pl-4 pr-2 h-10 flex-none border-b border-white/5"
+					className="flex items-center justify-between gap-2 pl-4 pr-2 h-10 flex-none border-b border-white/5"
 					style={dragRegionStyle}
 				>
-					<span className="text-[11px] font-medium text-white/50 tracking-wide">
+					<span className="text-[11px] font-medium text-white/50 tracking-wide truncate">
 						{t("shell.title")}
 					</span>
-					<div className="flex items-center gap-1" style={noDragRegionStyle}>
+					<div className="flex items-center gap-1.5 flex-none" style={noDragRegionStyle}>
+						<select
+							value={locale}
+							onChange={(event) => setLocale(event.target.value)}
+							title={t("shell.appLanguage")}
+							aria-label={t("shell.appLanguage")}
+							className="h-7 max-w-28 rounded-md border border-white/10 bg-black/40 px-1.5 text-[11px] text-white/75 outline-none hover:bg-white/10 focus:border-white/40"
+						>
+							{getAvailableLocales().map((availableLocale) => (
+								<option key={availableLocale} value={availableLocale}>
+									{getLocaleName(availableLocale)}
+								</option>
+							))}
+						</select>
+						<button
+							type="button"
+							onClick={() => void window.electronAPI.switchToHud()}
+							title={t("shell.openRecorderTitle")}
+							className="h-7 px-2 rounded-md border border-white/10 text-[11px] text-white/70 hover:bg-white/10 hover:text-white"
+						>
+							{t("shell.openRecorder")}
+						</button>
 						<button
 							type="button"
 							onClick={() => void window.electronAPI.minimizeCurrentWindow()}

@@ -1,6 +1,9 @@
 {
 	"shell": {
 		"title": "Docsie 캡처 컴패니언",
+		"appLanguage": "앱 언어",
+		"openRecorder": "녹화기",
+		"openRecorderTitle": "Docsie Screen Recorder 열기",
 		"minimize": "최소화",
 		"close": "닫기"
 	},

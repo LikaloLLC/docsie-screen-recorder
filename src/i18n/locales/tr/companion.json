@@ -1,6 +1,9 @@
 {
 	"shell": {
 		"title": "Docsie Capture Companion",
+		"appLanguage": "Uygulama dili",
+		"openRecorder": "Kaydedici",
+		"openRecorderTitle": "Docsie Screen Recorder'ı aç",
 		"minimize": "Simge durumuna küçült",
 		"close": "Kapat"
 	},

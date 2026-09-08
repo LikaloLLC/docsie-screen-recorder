@@ -1,6 +1,9 @@
 {
 	"shell": {
 		"title": "Docsie キャプチャコンパニオン",
+		"appLanguage": "アプリの言語",
+		"openRecorder": "レコーダー",
+		"openRecorderTitle": "Docsie Screen Recorder を開く",
 		"minimize": "最小化",
 		"close": "閉じる"
 	},
