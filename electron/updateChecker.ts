@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { app, BrowserWindow, dialog, shell } from "electron";
+import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import { autoUpdater } from "electron-updater";
 
 const RELEASES_API_URL =
 	"https://api.github.com/repos/LikaloLLC/docsie-screen-recorder/releases/latest";
@@ -25,11 +27,16 @@ interface UpdateCheckState {
 	skippedVersion?: string;
 }
 
-interface UpdateInfo {
+interface BrowserUpdateInfo {
 	version: string;
 	name: string;
 	pageUrl: string;
 	downloadUrl: string;
+}
+
+interface NativeUpdateInfo {
+	version: string;
+	name: string;
 }
 
 function showNativeMessageBox(
@@ -98,6 +105,10 @@ function asString(value: unknown) {
 	return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function getUpdateName(info: UpdateInfo) {
+	return asString(info.releaseName) ?? `Docsie Screen Recorder ${info.version}`;
+}
+
 function getPreferredDownloadUrl(release: GitHubRelease) {
 	const preferredAssetMatchers = getPreferredAssetMatchers();
 	const assets = Array.isArray(release.assets) ? release.assets : [];
@@ -157,7 +168,7 @@ async function fetchLatestRelease(): Promise<GitHubRelease> {
 	}
 }
 
-async function getAvailableUpdate(): Promise<UpdateInfo | null> {
+async function getAvailableBrowserUpdate(): Promise<BrowserUpdateInfo | null> {
 	const release = await fetchLatestRelease();
 	const tagName = asString(release.tag_name);
 	if (!tagName) {
@@ -177,15 +188,170 @@ async function getAvailableUpdate(): Promise<UpdateInfo | null> {
 	};
 }
 
+function canUseNativeUpdater() {
+	// The current release flow produces NSIS update metadata for Windows.
+	// Keep macOS/Linux on the browser fallback until their releases include
+	// updater-compatible metadata and install formats.
+	return app.isPackaged && process.platform === "win32";
+}
+
+function configureNativeUpdater() {
+	autoUpdater.autoDownload = false;
+	autoUpdater.autoInstallOnAppQuit = true;
+	autoUpdater.autoRunAppAfterInstall = true;
+	autoUpdater.allowPrerelease = false;
+	autoUpdater.logger = {
+		info: (message?: unknown) => console.info("[updater]", message),
+		warn: (message?: unknown) => console.warn("[updater]", message),
+		error: (message?: unknown) => console.error("[updater]", message),
+	};
+}
+
+async function getAvailableNativeUpdate(): Promise<NativeUpdateInfo | null> {
+	if (!canUseNativeUpdater()) {
+		return null;
+	}
+
+	configureNativeUpdater();
+	const result = await autoUpdater.checkForUpdates();
+	const info = result?.updateInfo;
+	if (!info || !isNewerVersion(info.version, app.getVersion())) {
+		return null;
+	}
+
+	return {
+		version: info.version,
+		name: getUpdateName(info),
+	};
+}
+
+async function downloadAndInstallNativeUpdate(
+	parent: BrowserWindow | undefined,
+	update: NativeUpdateInfo,
+) {
+	const progressWindow = parent && !parent.isDestroyed() ? parent : null;
+	const onProgress = (progress: ProgressInfo) => {
+		progressWindow?.setProgressBar(Math.max(0, Math.min(1, progress.percent / 100)));
+	};
+
+	try {
+		autoUpdater.on("download-progress", onProgress);
+		await autoUpdater.downloadUpdate();
+		progressWindow?.setProgressBar(-1);
+
+		const result = await showNativeMessageBox(parent, {
+			type: "info",
+			title: "Update ready",
+			message: `Docsie Screen Recorder ${update.version} is ready to install.`,
+			detail: "Restart Docsie Screen Recorder to finish installing the update.",
+			buttons: ["Restart and Install", "Later"],
+			defaultId: 0,
+			cancelId: 1,
+		});
+
+		if (result.response === 0) {
+			autoUpdater.quitAndInstall(false, true);
+		}
+	} finally {
+		autoUpdater.off("download-progress", onProgress);
+		progressWindow?.setProgressBar(-1);
+	}
+}
+
+async function openBrowserDownload(update: BrowserUpdateInfo) {
+	await writeUpdateCheckState({});
+	await shell.openExternal(update.downloadUrl || update.pageUrl);
+}
+
+async function handleNativeUpdate(
+	parent: BrowserWindow | undefined,
+	update: NativeUpdateInfo,
+	options?: { manual?: boolean },
+) {
+	const state = await readUpdateCheckState();
+	if (!options?.manual && state.skippedVersion === update.version) {
+		return;
+	}
+
+	const result = await showNativeMessageBox(parent, {
+		type: "info",
+		title: "Update available",
+		message: `Docsie Screen Recorder ${update.version} is available.`,
+		detail: `Installed version: ${app.getVersion()}\nLatest release: ${update.name}`,
+		buttons: ["Install Update", "Download in Browser", "Later", "Skip This Version"],
+		defaultId: 0,
+		cancelId: 2,
+	});
+
+	if (result.response === 0) {
+		await writeUpdateCheckState({});
+		await downloadAndInstallNativeUpdate(parent, update);
+		return;
+	}
+
+	if (result.response === 1) {
+		const browserUpdate = await getAvailableBrowserUpdate();
+		if (browserUpdate) {
+			await openBrowserDownload(browserUpdate);
+		}
+		return;
+	}
+
+	if (result.response === 3) {
+		await writeUpdateCheckState({ skippedVersion: update.version });
+	}
+}
+
+async function handleBrowserUpdate(
+	parent: BrowserWindow | undefined,
+	update: BrowserUpdateInfo,
+	options?: { manual?: boolean },
+) {
+	const state = await readUpdateCheckState();
+	if (!options?.manual && state.skippedVersion === update.version) {
+		return;
+	}
+
+	const result = await showNativeMessageBox(parent, {
+		type: "info",
+		title: "Update available",
+		message: `Docsie Screen Recorder ${update.version} is available.`,
+		detail: `Installed version: ${app.getVersion()}\nLatest release: ${update.name}`,
+		buttons: ["Download", "Later", "Skip This Version"],
+		defaultId: 0,
+		cancelId: 1,
+	});
+
+	if (result.response === 0) {
+		await openBrowserDownload(update);
+		return;
+	}
+
+	if (result.response === 2) {
+		await writeUpdateCheckState({ skippedVersion: update.version });
+	}
+}
+
 export async function checkForUpdates(options?: {
 	manual?: boolean;
 	parent?: BrowserWindow | null;
 }) {
+	const parent = options?.parent && !options.parent.isDestroyed() ? options.parent : undefined;
+
 	try {
-		const update = await getAvailableUpdate();
+		const nativeUpdate = await getAvailableNativeUpdate();
+		if (nativeUpdate) {
+			await handleNativeUpdate(parent, nativeUpdate, options);
+			return;
+		}
+	} catch (error) {
+		console.warn("Native updater failed; falling back to browser update check:", error);
+	}
+
+	try {
+		const update = await getAvailableBrowserUpdate();
 		if (!update) {
 			if (options?.manual) {
-				const parent = options.parent && !options.parent.isDestroyed() ? options.parent : undefined;
 				await showNativeMessageBox(parent, {
 					type: "info",
 					title: "Docsie Screen Recorder is up to date",
@@ -197,35 +363,10 @@ export async function checkForUpdates(options?: {
 			return;
 		}
 
-		const state = await readUpdateCheckState();
-		if (!options?.manual && state.skippedVersion === update.version) {
-			return;
-		}
-
-		const parent = options?.parent && !options.parent.isDestroyed() ? options.parent : undefined;
-		const result = await showNativeMessageBox(parent, {
-			type: "info",
-			title: "Update available",
-			message: `Docsie Screen Recorder ${update.version} is available.`,
-			detail: `Installed version: ${app.getVersion()}\nLatest release: ${update.name}`,
-			buttons: ["Download", "Later", "Skip This Version"],
-			defaultId: 0,
-			cancelId: 1,
-		});
-
-		if (result.response === 0) {
-			await writeUpdateCheckState({});
-			await shell.openExternal(update.downloadUrl || update.pageUrl);
-			return;
-		}
-
-		if (result.response === 2) {
-			await writeUpdateCheckState({ skippedVersion: update.version });
-		}
+		await handleBrowserUpdate(parent, update, options);
 	} catch (error) {
 		console.warn("Failed to check for updates:", error);
 		if (options?.manual) {
-			const parent = options.parent && !options.parent.isDestroyed() ? options.parent : undefined;
 			await showNativeMessageBox(parent, {
 				type: "warning",
 				title: "Update check failed",

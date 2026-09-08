@@ -16,6 +16,13 @@
   "directories": {
     "output": "release/${version}"
   },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "LikaloLLC",
+      "repo": "docsie-screen-recorder"
+    }
+  ],
   "files": [
     "dist",
     "dist-electron",
@@ -81,7 +88,8 @@
     "target": [
       "nsis"
     ],
-    "icon": "icons/icons/win/icon.ico"
+    "icon": "icons/icons/win/icon.ico",
+    "artifactName": "Docsie-Screen-Recorder-Setup-${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,

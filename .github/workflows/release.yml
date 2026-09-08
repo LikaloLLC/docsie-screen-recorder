@@ -232,6 +232,8 @@ jobs:
           name: release-windows
           path: |
             release/**/*.exe
+            release/**/*.exe.blockmap
+            release/**/latest.yml
           if-no-files-found: error
           retention-days: 30
 
@@ -590,9 +592,9 @@ jobs:
             "docsie-screen-recorder-mac-universal-${VERSION}.dmg" \
             "docsie-screen-recorder-mac-universal.dmg"
           copy_first "Docsie.Screen.Recorder.Setup.exe" \
+            "Docsie-Screen-Recorder-Setup-${VERSION}.exe" \
             "Docsie Screen Recorder Setup ${VERSION}.exe" \
-            "Docsie.Screen.Recorder.Setup.${VERSION}.exe" \
-            "Docsie-Screen-Recorder-Setup-${VERSION}.exe"
+            "Docsie.Screen.Recorder.Setup.${VERSION}.exe"
           copy_first "Docsie.Screen.Recorder-Linux.AppImage" \
             "Docsie Screen Recorder-Linux-${VERSION}.AppImage" \
             "Docsie.Screen.Recorder-Linux-${VERSION}.AppImage" \
